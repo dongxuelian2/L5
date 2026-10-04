@@ -10,6 +10,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes("platform.json")) return "platform-data";
           if (id.includes("scenario.json")) return "scenario";
           if (id.includes("node_modules")) return "vendor";
         },

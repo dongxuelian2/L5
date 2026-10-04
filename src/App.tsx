@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { PlatformWorkspace } from "./components/PlatformWorkspace";
 import { AnalystPanel, RootCauses } from "./components/Investigation";
 import { ModelLab } from "./components/ModelLab";
 import {
@@ -38,7 +39,7 @@ import {
 } from "./lib/engine";
 import type { IncidentBrief, SignalKey } from "./types";
 
-type View = "live" | "replay" | "lab";
+type View = "live" | "replay" | "lab" | "investigate" | "learn";
 type Overlay =
   | { type: "signal"; key: SignalKey }
   | { type: "evidence" }
@@ -49,12 +50,14 @@ type Overlay =
   | null;
 const views: { id: View; symbol: string; label: string; key: string }[] = [
   { id: "live", symbol: "◉", label: "Live incident", key: "1" },
-  { id: "replay", symbol: "↶", label: "Incident replay", key: "2" },
-  { id: "lab", symbol: "⌗", label: "Computation lab", key: "3" },
+  { id: "investigate", symbol: "⌘", label: "Investigate", key: "2" },
+  { id: "learn", symbol: "▣", label: "Learn", key: "3" },
+  { id: "replay", symbol: "↶", label: "Incident replay", key: "4" },
+  { id: "lab", symbol: "⌗", label: "Computation lab", key: "5" },
 ];
 
 export default function App() {
-  const [view, setView] = useState<View>("live");
+  const [view, setView] = useState<View>("investigate");
   const [time, setTime] = useState(180);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(6);
@@ -229,20 +232,25 @@ export default function App() {
           ))
       )
         return;
-      if (event.code === "Space") {
+      if (event.code === "Space" && (view === "live" || view === "replay")) {
         event.preventDefault();
         if (time >= 300) reset(true);
         else setPlaying((p) => !p);
       }
       if (event.key === "1") setView("live");
-      if (event.key === "2") setView("replay");
-      if (event.key === "3") setView("lab");
-      if (event.key.toLowerCase() === "r") reset(true);
+      if (event.key === "2") setView("investigate");
+      if (event.key === "3") setView("learn");
+      if (event.key === "4") setView("replay");
+      if (event.key === "5") setView("lab");
+      if (event.key.toLowerCase() === "r") {
+        setView("live");
+        reset(true);
+      }
       if (event.key === "?") setOverlay({ type: "help" });
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [overlay, reset, time]);
+  }, [overlay, reset, time, view]);
 
   function exportBrief() {
     if (!brief) return;
@@ -284,7 +292,7 @@ export default function App() {
       },
     },
     {
-      id: "investigate",
+      id: "legacy-investigate",
       title: "Investigate rising reactor pressure",
       group: "ACTION",
       hint: "↗",
@@ -336,7 +344,7 @@ export default function App() {
 
   return (
     <div
-      className={`workstation ${view === "lab" ? "is-lab" : "has-playback"}`}
+      className={`workstation ${view === "live" || view === "replay" ? "has-playback" : "is-lab"}`}
     >
       <a href="#main-content" className="skip-link">
         Skip to workspace
@@ -396,26 +404,47 @@ export default function App() {
         <div className="plant-card">
           <div>
             <StatusDot pulse={playing} />
-            <strong>PROCESS / 01</strong>
+            <strong>
+              PROCESS /{" "}
+              {view === "investigate" || view === "learn" ? "02" : "01"}
+            </strong>
           </div>
-          <p>Reactor cooling loop</p>
+          <p>
+            {view === "investigate" || view === "learn"
+              ? "Coupled process network"
+              : "Reactor cooling loop"}
+          </p>
           <div className="plant-tags">
-            <span>6 signals</span>
-            <span>5 paths</span>
+            <span>
+              {view === "investigate" || view === "learn"
+                ? "18 channels"
+                : "6 signals"}
+            </span>
+            <span>
+              {view === "investigate" || view === "learn"
+                ? "14 paths"
+                : "5 paths"}
+            </span>
           </div>
         </div>
         <div className="sidebar-tree">
           <div>
             <span className="tree-line">├─</span> R-101 <span>reactor</span>
-            <i className={`bg-${time >= 41 ? "amber" : "mint"}`} />
+            <i
+              className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 41 ? "amber" : "mint"}`}
+            />
           </div>
           <div>
             <span className="tree-line">├─</span> V-201 <span>separator</span>
-            <i className={`bg-${time >= 56 ? "violet" : "mint"}`} />
+            <i
+              className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 56 ? "violet" : "mint"}`}
+            />
           </div>
           <div>
             <span className="tree-line">└─</span> P-301 <span>product</span>
-            <i className={`bg-${time >= 67 ? "violet" : "mint"}`} />
+            <i
+              className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 67 ? "violet" : "mint"}`}
+            />
           </div>
         </div>
         <div className="sidebar-bottom">
@@ -440,7 +469,7 @@ export default function App() {
             <Glyph>?</Glyph> Field guide <kbd>?</kbd>
           </button>
           <div className="sidebar-version">
-            <span>TRIPLENS / v0.1</span>
+            <span>TRIPLENS / v0.2</span>
             <span className="text-mint">●</span>
           </div>
         </div>
@@ -457,7 +486,11 @@ export default function App() {
                 ? "live-incident"
                 : view === "replay"
                   ? "incident-replay"
-                  : "computation-lab"}
+                  : view === "investigate"
+                    ? "investigate"
+                    : view === "learn"
+                      ? "learn"
+                      : "computation-lab"}
             </strong>
             <span className="terminal-cursor" aria-hidden="true">
               ▍
@@ -481,7 +514,15 @@ export default function App() {
             </span>
             <span className="topbar-divider" />
             <time>
-              {wallClock(time)} <span>UTC+08</span>
+              {view === "investigate" || view === "learn" ? (
+                <>
+                  WINDOW <span>Δt 1s</span>
+                </>
+              ) : (
+                <>
+                  {wallClock(time)} <span>UTC+08</span>
+                </>
+              )}
             </time>
             <button
               className="topbar-help"
@@ -495,13 +536,17 @@ export default function App() {
         <main id="main-content">
           <AnimatePresence mode="wait">
             <motion.div
-              key={view}
+              key={
+                view === "investigate" || view === "learn" ? "platform" : view
+              }
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -3 }}
               transition={{ duration: 0.2 }}
             >
-              {view === "lab" ? (
+              {view === "investigate" || view === "learn" ? (
+                <PlatformWorkspace mode={view} onModeChange={changeView} />
+              ) : view === "lab" ? (
                 <ModelLab />
               ) : (
                 <>
@@ -903,7 +948,7 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
-        {view !== "lab" && (
+        {(view === "live" || view === "replay") && (
           <div className="playback-dock">
             <Timeline
               time={time}
@@ -925,21 +970,38 @@ export default function App() {
           <div>
             <span className="text-mint">❯</span>
             <strong>triplens</strong>
-            <span className="statusbar-path">~/process-01</span>
+            <span className="statusbar-path">
+              {view === "investigate" || view === "learn"
+                ? "~/process-02"
+                : "~/process-01"}
+            </span>
             <span className="text-mint">●</span>
             <span>{playing ? "streaming" : "snapshot"}</span>
             <span className="statusbar-mode">
-              {view === "lab"
-                ? "COMPUTE"
-                : view === "replay"
-                  ? "REPLAY"
-                  : "OBSERVE"}
+              {view === "investigate"
+                ? "INVESTIGATE"
+                : view === "learn"
+                  ? "LEARN"
+                  : view === "lab"
+                    ? "COMPUTE"
+                    : view === "replay"
+                      ? "REPLAY"
+                      : "OBSERVE"}
             </span>
           </div>
           <div>
             <span>Δt 1s</span>
-            <span>{Math.floor(time) + 1}/301 samples</span>
-            <BlockBar value={time / 300} count={12} />
+            <span>
+              {view === "investigate" || view === "learn"
+                ? "12 incident sessions"
+                : `${Math.floor(time) + 1}/301 samples`}
+            </span>
+            <BlockBar
+              value={
+                view === "investigate" || view === "learn" ? 1 : time / 300
+              }
+              count={12}
+            />
             <span className="desktop-only">evidence before inference</span>
           </div>
         </footer>

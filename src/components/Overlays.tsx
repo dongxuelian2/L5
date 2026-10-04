@@ -559,7 +559,7 @@ export function Help({ onClose }: { onClose: () => void }) {
           {[
             ["Space", "Play or pause"],
             ["Ctrl / ⌘ K", "Search commands, signals and chapters"],
-            ["1 / 2 / 3", "Switch workspaces"],
+            ["1 / 2 / 3 / 4 / 5", "Live / Investigate / Learn / Replay / Lab"],
             ["R", "Restart the sequence"],
             ["?", "Open this reference"],
             ["Esc", "Close a dialog"],
