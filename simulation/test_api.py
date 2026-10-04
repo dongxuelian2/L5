@@ -86,6 +86,28 @@ class ApiTests(unittest.TestCase):
             upstream.server_close()
             worker.join()
 
+    def test_csv_replay_uses_observed_data_over_http(self):
+        from simulation.platform import KEYS, simulate, Config
+        rows=simulate(Config(fault='pump_loss'))
+        columns=['t',*KEYS]
+        csv_text=','.join(columns)+'\n'+'\n'.join(','.join(str(r[k]) for k in columns) for r in rows)
+        request=Request(self.base+'/api/replay',data=json.dumps({'csv':csv_text}).encode(),headers={'Content-Type':'application/json'})
+        with urlopen(request,timeout=10) as response:
+            result=json.load(response)
+        self.assertEqual(result['diagnosis']['candidates'][0]['id'],'pump_loss')
+        request=Request(self.base+'/api/replay',data=b'{"csv":"t,bad\\n0,1"}',headers={'Content-Type':'application/json'})
+        with self.assertRaises(HTTPError) as caught:urlopen(request,timeout=5)
+        self.assertEqual(caught.exception.code,400)
+        caught.exception.close()
+
+    def test_structured_investigation_plan_endpoint(self):
+        from simulation.platform import simulate, Config
+        body={'rows':simulate(Config()),'calls':[{'tool':'inspect_controller','args':{}}]}
+        request=Request(self.base+'/api/investigate',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+        with urlopen(request,timeout=10) as response:result=json.load(response)
+        self.assertEqual(result['trace'][0]['result']['id'],'TIC-101')
+        self.assertEqual(result['provider'],'local')
+
     def test_schema_rejects_unknown_evidence(self):
         brief = local_brief('test')
         brief['evidenceTags'] = ['invented-signal']

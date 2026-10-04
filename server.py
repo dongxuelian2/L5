@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from simulation.generate import build_scenario
+from simulation.platform import analyze_rows, parse_csv, run_tools
 
 ROOT = Path(__file__).resolve().parent
 MAX_BODY = 16_384
@@ -107,18 +108,31 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path != '/api/analyze':
+        if self.path not in ('/api/analyze', '/api/replay', '/api/investigate'):
             return self.send_json(404, {"error": "Unknown endpoint."})
         try:
             length = int(self.headers.get('Content-Length', '0'))
         except ValueError:
             return self.send_json(400, {"error": "Invalid content length."})
-        if not 0 < length <= MAX_BODY:
-            return self.send_json(413, {"error": "Request body must be 1–16384 bytes."})
+        limit = 2_000_000 if self.path in ('/api/replay', '/api/investigate') else MAX_BODY
+        if not 0 < length <= limit:
+            return self.send_json(413, {"error": f"Request body must be 1–{limit} bytes."})
         try:
             body = json.loads(self.rfile.read(length))
         except (json.JSONDecodeError, UnicodeDecodeError):
             return self.send_json(400, {"error": "Invalid JSON."})
+        if self.path in ('/api/replay', '/api/investigate'):
+            try:
+                if not isinstance(body, dict):
+                    raise ValueError('Request must be a JSON object.')
+                if self.path == '/api/replay':
+                    if not isinstance(body.get('csv'), str):
+                        raise ValueError('A CSV string is required.')
+                    return self.send_json(200, analyze_rows(parse_csv(body['csv'])))
+                return self.send_json(200, {'schemaVersion': 2, 'provider': 'local',
+                                           'trace': run_tools(body.get('rows'), body.get('calls'))})
+            except (ValueError, TypeError) as error:
+                return self.send_json(400, {'error': str(error)})
         if not isinstance(body, dict) or body.get('incidentId') != 'INC-001':
             return self.send_json(400, {"error": "Unknown incident."})
         prompt = body.get('prompt')
