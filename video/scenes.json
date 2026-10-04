@@ -1,0 +1,123 @@
+[
+  {
+    "id": "01-hook",
+    "duration": 9,
+    "kind": "opening",
+    "chapter": "THE PROBLEM",
+    "title": "312 events. Where did it start?",
+    "lines": [
+      "When hundreds of alarms fire together, the first cause gets buried.",
+      "TripLens reconstructs the incident behind the noise."
+    ]
+  },
+  {
+    "id": "02-overview",
+    "duration": 14,
+    "kind": "capture",
+    "chapter": "01 / THE WORKSTATION",
+    "title": "Detect → investigate → intervene → learn",
+    "lines": [
+      "For process engineers, TripLens connects eighteen observed channels, two control loops, and a branching process graph.",
+      "Twelve incident sessions put different fault hypotheses to the test."
+    ]
+  },
+  {
+    "id": "03-investigate",
+    "duration": 21,
+    "kind": "capture",
+    "chapter": "02 / CHALLENGE THE HYPOTHESIS",
+    "title": "Observed signals in. Inspectable evidence out.",
+    "lines": [
+      "Here, cooling demand rises, but valve feedback stays low.",
+      "Flow falls, and reactor temperature follows.",
+      "Compare competing causes, including the evidence against each one.",
+      "Rewind the investigation to see only what was known at that moment."
+    ]
+  },
+  {
+    "id": "04-sensor",
+    "duration": 16,
+    "kind": "capture",
+    "chapter": "03 / CHECK THE MEASUREMENT",
+    "title": "A sensor fault is not a process fault.",
+    "lines": [
+      "A second session tells a different story: a frozen pressure sensor.",
+      "Independent channels keep moving.",
+      "TripLens flags the bad measurement and excludes it from strong process evidence."
+    ]
+  },
+  {
+    "id": "05-alarm",
+    "duration": 14,
+    "kind": "capture",
+    "chapter": "04 / COMPRESS THE FLOOD",
+    "title": "312 events → 6 conditions → 3 process groups",
+    "lines": [
+      "The cooling-valve incident produces three hundred twelve events, six unique conditions, and three process groups.",
+      "Activations, repeated annunciations, and returns remain inspectable."
+    ]
+  },
+  {
+    "id": "06-recovery",
+    "duration": 29,
+    "take_lead_trim_seconds": 3.8,
+    "kind": "capture",
+    "chapter": "05 / CHANGE THE OUTCOME",
+    "title": "1,547 branches. Find the last recoverable second.",
+    "lines": [
+      "Now ask what could still prevent the trip.",
+      "TripLens fits the leading hypothesis, then computes seven interventions across fifteen hundred forty-seven branches.",
+      "For the cooling bypass, one hundred one seconds is the last safe start in this model window.",
+      "One second later, pressure crosses the limit.",
+      "Emergency cooling buys two more seconds. A backup pump cannot resolve this stuck valve."
+    ]
+  },
+  {
+    "id": "07-audit",
+    "duration": 19,
+    "kind": "capture",
+    "chapter": "06 / SHOW THE WORK",
+    "title": "Inputs. Outputs. Evidence. A complete trail.",
+    "lines": [
+      "Every investigation step exposes its inputs and calculated output.",
+      "Controller behavior, competing hypotheses, and procedure preconditions remain visible.",
+      "Export the full root-cause dossier, including uncertainty and counterfactual results."
+    ]
+  },
+  {
+    "id": "08-learn",
+    "duration": 21,
+    "kind": "capture",
+    "chapter": "07 / CARRY THE EVIDENCE FORWARD",
+    "title": "Incident memory + verification + alarm improvement",
+    "lines": [
+      "Save the incident fingerprint and operator note.",
+      "Retrieve similar sessions, review repeated alarms, and inspect thirty-six internal parameter variants.",
+      "These checks are simulator regressions, not independent industrial validation.",
+      "New signal windows can enter through CSV."
+    ]
+  },
+  {
+    "id": "09-interface",
+    "duration": 17,
+    "kind": "architecture",
+    "chapter": "THE MODEL BOUNDARY",
+    "title": "Structured investigation. Deterministic verification.",
+    "lines": [
+      "Native Python computes the evidence and verifies interventions.",
+      "A structured interface is prepared for NVIDIA Nemotron through Nebius Token Factory.",
+      "This recording uses the local investigation policy; live provider integration is pending."
+    ]
+  },
+  {
+    "id": "10-outro",
+    "duration": 10,
+    "kind": "closing",
+    "chapter": "TRIPLENS",
+    "title": "Follow the evidence. Change the outcome.",
+    "lines": [
+      "From alarm floods to an investigation you can inspect, challenge, and replay.",
+      "TripLens. Follow the evidence. Change the outcome."
+    ]
+  }
+]

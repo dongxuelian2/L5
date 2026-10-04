@@ -2,7 +2,7 @@
 
 **Follow the evidence. Change the outcome.** An incident investigation and decision workstation for continuous processes.
 
-[中文](README.md) · [Run locally](#run-locally) · [Computation and scope](#computation-and-scope) · [Adjustment notes](docs/adjustment-notes.md)
+[中文](README.md) · [Run locally](#run-locally) · [Product video · 2:50](video/README.md) · [Computation and scope](#computation-and-scope) · [Adjustment notes](docs/adjustment-notes.md)
 
 A modern terminal aesthetic in the browser: character animation, fine process graphs, moving propagation paths, inspectable evidence and numerical intervention search. The workflow is **Detect → Compress → Investigate → Verify → Intervene → Learn**.
 

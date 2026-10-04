@@ -2,7 +2,7 @@
 
 **Follow the evidence. Change the outcome.** 面向连续过程工业的事故调查与决策工作站。
 
-[English](README.en.md) · [运行项目](#运行项目) · [计算与边界](#计算与边界) · [调整说明](docs/adjustment-notes.md)
+[English](README.en.md) · [运行项目](#运行项目) · [项目视频 · 2:50](video/README.md) · [计算与边界](#计算与边界) · [调整说明](docs/adjustment-notes.md)
 
 TripLens 在浏览器里呈现现代终端风格：字符动画、细线拓扑、流动的传播路径、可展开的证据，以及真正由数值计算支撑的干预搜索。核心闭环为 **Detect → Compress → Investigate → Verify → Intervene → Learn**。
 
