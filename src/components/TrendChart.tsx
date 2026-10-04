@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { clock, formatValue, scenario } from "../lib/engine";
 import type { Point, SignalKey } from "../types";
 
@@ -20,6 +20,7 @@ export function TrendChart({
   large = false,
   intervention,
   onSeek,
+  animateComparison = false,
 }: {
   keys?: SignalKey[];
   time?: number;
@@ -28,8 +29,10 @@ export function TrendChart({
   large?: boolean;
   intervention?: number;
   onSeek?: (time: number) => void;
+  animateComparison?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const reducedMotion = useReducedMotion();
   const id = useId().replaceAll(":", "");
   const width = 700,
     height = large ? 245 : 144,
@@ -73,7 +76,9 @@ export function TrendChart({
   const at =
     hover === null
       ? null
-      : points[Math.min(Math.round(hover), points.length - 1)];
+      : points[
+          Math.min(Math.floor(time), Math.round(hover), points.length - 1)
+        ];
   return (
     <div className={`trend-chart ${large ? "large" : ""}`}>
       <svg
@@ -82,7 +87,9 @@ export function TrendChart({
         aria-label={
           compare
             ? "Observed and intervention pressure trajectories over five minutes"
-            : "Normalized process signal trends over five minutes"
+            : keys.length === 1
+              ? `${scenario.tags.find((tag) => tag.key === keys[0])?.name} over five minutes`
+              : "Normalized process signal trends over five minutes"
         }
         onPointerMove={(event) => {
           const rect = event.currentTarget.getBoundingClientRect();
@@ -99,8 +106,13 @@ export function TrendChart({
           );
         }}
         onPointerLeave={() => setHover(null)}
-        onClick={() => {
-          if (hover !== null) onSeek?.(Math.round(hover));
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const clicked =
+            ((((event.clientX - rect.left) / rect.width) * width - left) /
+              plotWidth) *
+            300;
+          onSeek?.(Math.round(Math.max(0, Math.min(time, clicked))));
         }}
       >
         <defs>
@@ -196,11 +208,22 @@ export function TrendChart({
           />
         ))}
         {compare && (
-          <path
+          <motion.path
+            key={`comparison-${intervention}`}
             d={path(keys[0], compare)}
             fill="none"
             stroke="#b5ed9a"
             strokeWidth="2"
+            initial={
+              animateComparison && !reducedMotion
+                ? { pathLength: 0, opacity: 0.4 }
+                : false
+            }
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{
+              duration: reducedMotion ? 0 : 1.1,
+              ease: "easeInOut",
+            }}
           />
         )}
         {intervention !== undefined && (

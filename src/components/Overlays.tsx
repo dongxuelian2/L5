@@ -399,6 +399,8 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
               <button
                 key={b.time}
                 className={selected === b.time ? "selected" : ""}
+                aria-pressed={selected === b.time}
+                disabled={running}
                 onClick={() => setSelected(b.time)}
               >
                 +{clock(b.time)}
@@ -415,6 +417,36 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
           {running ? "Comparing trajectories" : "Compare intervention"}
           <span>↗</span>
         </button>
+      </div>
+      <div
+        className={`intervention-verdict ${branch.trip ? "verdict-late" : "verdict-safe"}`}
+        role="status"
+      >
+        <span className="verdict-symbol" aria-hidden="true">
+          {branch.trip ? "△" : "⑂"}
+        </span>
+        <div>
+          <span className="eyebrow">
+            {!running && `AT +${clock(run)} / `}
+            {running
+              ? "COMPARING BRANCHES"
+              : branch.trip
+                ? "TIMING IS THE DIFFERENCE"
+                : "A DIFFERENT OUTCOME"}
+          </span>
+          <strong>
+            {running
+              ? "Tracing the alternate trajectory…"
+              : branch.trip
+                ? "Cooling recovers. The threshold is still crossed."
+                : "The cascade can be interrupted."}
+          </strong>
+        </div>
+        <span className="verdict-margin">
+          {branch.trip ? "+" : "−"}
+          {Math.abs(3050 - branch.peakPressure)}
+          <small>kPa {branch.trip ? "above" : "below"} limit</small>
+        </span>
       </div>
       <div className="compare-legend">
         <span>
@@ -435,6 +467,7 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
           compare={branch.points}
           large
           intervention={run}
+          animateComparison
         />
       </motion.div>
       <div className="compare-outcomes">
@@ -525,6 +558,7 @@ export function Help({ onClose }: { onClose: () => void }) {
         <div className="help-keys">
           {[
             ["Space", "Play or pause"],
+            ["Ctrl / ⌘ K", "Search commands, signals and chapters"],
             ["1 / 2 / 3", "Switch workspaces"],
             ["R", "Restart the sequence"],
             ["?", "Open this reference"],

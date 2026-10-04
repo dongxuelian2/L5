@@ -171,6 +171,29 @@ export function AnalystPanel({
           >
             <div className="eyebrow text-mint">✓ EVIDENCE CONNECTED</div>
             <p>{brief.summary}</p>
+            <details className="analyst-evidence-trail">
+              <summary>
+                <span>Read the evidence trail</span>
+                <span>
+                  {brief.steps.length} checks <span aria-hidden="true">+</span>
+                </span>
+              </summary>
+              <div>
+                {brief.steps.map((item, i) => (
+                  <div className="trail-step" key={item.tool}>
+                    <span className="trail-step-index">0{i + 1}</span>
+                    <div>
+                      <strong>{item.action}</strong>
+                      <p>{item.result}</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="trail-limit">
+                  <span className="text-amber">◇</span>
+                  <p>{brief.limitation}</p>
+                </div>
+              </div>
+            </details>
             <div className="analyst-actions">
               <button className="text-button" onClick={onCompare}>
                 Test an intervention ↗

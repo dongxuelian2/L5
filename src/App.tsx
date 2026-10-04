@@ -21,10 +21,16 @@ import {
 import { ProcessMap } from "./components/ProcessMap";
 import { Timeline } from "./components/Timeline";
 import { TrendChart } from "./components/TrendChart";
+import { IncidentStage, chapters } from "./components/IncidentStage";
+import {
+  CommandPalette,
+  type WorkstationCommand,
+} from "./components/CommandPalette";
 import {
   alarmsAt,
   analyst,
   briefMarkdown,
+  clock,
   downloadFile,
   pointAt,
   scenario,
@@ -39,6 +45,7 @@ type Overlay =
   | { type: "alarms"; chain: string | null }
   | { type: "compare" }
   | { type: "help" }
+  | { type: "commands" }
   | null;
 const views: { id: View; symbol: string; label: string; key: string }[] = [
   { id: "live", symbol: "◉", label: "Live incident", key: "1" },
@@ -69,6 +76,12 @@ export default function App() {
     alarms.some((a) => a.chain === c.id),
   ).length;
   const recentRate = alarms.filter((a) => a.t > time - 60).length;
+  const alarmBins = Array.from({ length: 24 }, (_, i) => {
+    const start = time - 120 + i * 5;
+    return alarms.filter((alarm) => alarm.t > start && alarm.t <= start + 5)
+      .length;
+  });
+  const maxBin = Math.max(1, ...alarmBins);
   const point = pointAt(time);
   const status =
     time < scenario.faultTime
@@ -194,25 +207,32 @@ export default function App() {
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (!overlay || overlay.type === "commands") {
+          setPlaying(false);
+          setOverlay(
+            overlay?.type === "commands" ? null : { type: "commands" },
+          );
+        }
+        return;
+      }
       if (
         overlay ||
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||
-        (event.target instanceof HTMLElement &&
-          (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(
-            event.target.tagName,
-          ) ||
-            event.target.isContentEditable ||
-            event.target.getAttribute("role") === "button"))
+        (event.target instanceof Element &&
+          event.target.closest(
+            'input, textarea, select, button, summary, a, [role="button"], [contenteditable="true"]',
+          ))
       )
         return;
       if (event.code === "Space") {
         event.preventDefault();
-        setPlaying((p) => {
-          if (time >= 300) setTime(0);
-          return !p;
-        });
+        if (time >= 300) reset(true);
+        else setPlaying((p) => !p);
       }
       if (event.key === "1") setView("live");
       if (event.key === "2") setView("replay");
@@ -241,8 +261,83 @@ export default function App() {
     }
   }
 
+  const commands: WorkstationCommand[] = [
+    ...views.map((item) => ({
+      id: item.id,
+      title: item.label,
+      group: "WORKSPACE",
+      hint: item.key,
+      run: () => {
+        closeOverlay();
+        changeView(item.id);
+      },
+    })),
+    {
+      id: "run",
+      title: "Run the complete incident sequence",
+      group: "ACTION",
+      hint: "R",
+      keywords: "restart start play",
+      run: () => {
+        changeView("live");
+        reset(true);
+      },
+    },
+    {
+      id: "investigate",
+      title: "Investigate rising reactor pressure",
+      group: "ACTION",
+      hint: "↗",
+      keywords: "analyst root cause why",
+      disabled: !ready,
+      run: () => {
+        closeOverlay();
+        changeView("live");
+        void runAnalysis();
+      },
+    },
+    {
+      id: "compare",
+      title: "Compare a cooling-bypass intervention",
+      group: "ACTION",
+      hint: "⑂",
+      keywords: "counterfactual simulate branch",
+      run: () => setOverlay({ type: "compare" }),
+    },
+    {
+      id: "journal",
+      title: "Open the alarm journal",
+      group: "ACTION",
+      hint: "↗",
+      keywords: "logs raw events",
+      run: () => setOverlay({ type: "alarms", chain: null }),
+    },
+    ...scenario.tags.map((tag) => ({
+      id: tag.key,
+      title: tag.name,
+      group: "SIGNAL",
+      hint: tag.tag,
+      keywords: tag.tag,
+      run: () => setOverlay({ type: "signal", key: tag.key }),
+    })),
+    ...chapters.map((chapter) => ({
+      id: `chapter-${chapter.time}`,
+      title: `Jump to ${chapter.label.toLowerCase()}`,
+      group: "CHAPTER",
+      hint: `+${clock(chapter.time)}`,
+      keywords: chapter.title,
+      run: () => {
+        closeOverlay();
+        changeView("replay");
+        seek(chapter.time);
+      },
+    })),
+  ];
+
   return (
-    <div className="workstation">
+    <div
+      className={`workstation ${view === "lab" ? "is-lab" : "has-playback"}`}
+    >
       <a href="#main-content" className="skip-link">
         Skip to workspace
       </a>
@@ -369,6 +464,18 @@ export default function App() {
             </span>
           </div>
           <div className="topbar-right">
+            <button
+              className="command-trigger"
+              aria-label="Open command palette"
+              onClick={() => {
+                setPlaying(false);
+                setOverlay({ type: "commands" });
+              }}
+            >
+              <span>⌕</span>
+              <span>Jump to…</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <span className="connection-label">
               <StatusDot /> SYSTEM ONLINE
             </span>
@@ -475,12 +582,12 @@ export default function App() {
                             <Count value={alarms.length} />
                           </strong>
                           <span className="mini-bars" aria-hidden="true">
-                            {Array.from({ length: 24 }, (_, i) => (
+                            {alarmBins.map((count, i) => (
                               <i
                                 key={i}
                                 style={{
-                                  height: `${12 + ((i * 13 + 7) % 29)}px`,
-                                  opacity: i / 24 < time / 300 ? 1 : 0.15,
+                                  height: `${3 + (33 * count) / maxBin}px`,
+                                  opacity: count ? 1 : 0.15,
                                 }}
                               />
                             ))}
@@ -570,6 +677,7 @@ export default function App() {
                     </section>
                   </Reveal>
 
+                  <IncidentStage time={time} onSeek={seek} />
                   <div className="main-grid">
                     <Reveal delay={0.1}>
                       <ProcessMap
@@ -767,25 +875,6 @@ export default function App() {
                     )}
                   </AnimatePresence>
 
-                  <Reveal delay={0.3}>
-                    <Timeline
-                      time={time}
-                      playing={playing}
-                      speed={speed}
-                      onSeek={seek}
-                      onToggle={() => {
-                        if (time >= 300) reset(true);
-                        else setPlaying((p) => !p);
-                      }}
-                      onSpeed={() =>
-                        setSpeed((s) =>
-                          s === 1 ? 3 : s === 3 ? 6 : s === 6 ? 12 : 1,
-                        )
-                      }
-                      onReset={() => reset()}
-                    />
-                  </Reveal>
-
                   <div className="event-ribbon">
                     <span className="eyebrow">LATEST EVENT</span>
                     <span className="text-muted">
@@ -814,6 +903,24 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
+        {view !== "lab" && (
+          <div className="playback-dock">
+            <Timeline
+              time={time}
+              playing={playing}
+              speed={speed}
+              onSeek={seek}
+              onToggle={() => {
+                if (time >= 300) reset(true);
+                else setPlaying((p) => !p);
+              }}
+              onSpeed={() =>
+                setSpeed((s) => (s === 1 ? 3 : s === 3 ? 6 : s === 6 ? 12 : 1))
+              }
+              onReset={() => reset()}
+            />
+          </div>
+        )}
         <footer className="statusbar">
           <div>
             <span className="text-mint">❯</span>
@@ -838,7 +945,14 @@ export default function App() {
         </footer>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
+        {overlay?.type === "commands" && (
+          <CommandPalette
+            key="commands"
+            commands={commands}
+            onClose={closeOverlay}
+          />
+        )}
         {overlay?.type === "signal" && (
           <SignalInspector
             key={`signal-${overlay.key}`}

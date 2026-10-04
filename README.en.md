@@ -8,17 +8,19 @@ A browser-based incident workstation with a carefully crafted terminal aesthetic
 
 ![TripLens workstation](docs/workstation.png)
 
-[View the computation lab](docs/computation-lab.png)
+[Computation lab](docs/computation-lab.png) · [Intervention comparison](docs/intervention.png) · [Command palette](docs/command-palette.png)
 
 ## What works
 
-- **Incident workstation:** six process signals, alarm counts, three propagation chains, and ranked hypotheses. Inspect a process node for measurements, detection time and baseline; inspect any chain for its original alarms.
-- **Complete presentation flow:** `Run sequence` begins at normal operation, injects a cooling-valve fault, and reveals deviations, alarms, propagation and a structured investigation. Pause, restart, seek, or select 1× / 3× / 6× / 12× playback.
+- **Incident workstation:** six process signals, alarm counts, three propagation chains, and ranked hypotheses. Hover or focus a node to trace its upstream path; each node includes the last 40 seconds of observed readings. Open nodes for full signal details and chains for their original alarms.
+- **Complete presentation flow:** `Run sequence` follows six navigable chapters through the cooling-valve fault, detection, connected evidence, threshold crossing and structured investigation. A persistent playback dock offers pause, restart, seek and 1× / 3× / 6× / 12× speed, with an actual alarm-count distribution in five-second bins.
 - **Incident replay:** the timeline synchronizes signals, nodes, alarms and calculations. Seeking before evidence exists clears the investigation.
-- **Counterfactual comparison:** branch from the same initial state at +90 / +120 / +150 seconds, open an independent cooling bypass, and reduce feed. Compare pressure peaks and alarm counts. Early intervention avoids the threshold; late intervention may not.
+- **Counterfactual comparison:** branch from the same initial state at +90 / +120 / +150 seconds, open an independent cooling bypass, and reduce feed. Animated trajectories emphasize pressure peaks, distance to the trip threshold and alarm reductions. Early intervention avoids the threshold; late intervention may not.
+- **Expandable investigation evidence:** after an investigation, open `Read the evidence trail` to inspect each structured evidence step and the limits of the conclusion.
 - **Computation lab:** Pearson correlation matrix, onset lags, lagged correlation, score decomposition and six reproducibility checks. Expand live calculations for robust z, CUSUM and per-second changes.
 - **Exports:** Markdown incident brief, raw alarms, signal samples, counterfactual trajectories and complete diagnostics as JSON.
 - **Model boundary:** local evidence and a model service share one structured JSON contract. Connecting a model does not require rebuilding the UI.
+- **Command palette:** `Ctrl/⌘ K` searches workspaces, signals, chapters and actions. Arrow keys select; Enter executes. Actions without sufficient evidence are disabled.
 - **Interaction details:** shortcuts, modal focus management, mobile layouts, bundled fonts, reduced-motion support.
 
 ## Run locally
@@ -47,7 +49,7 @@ python3 server.py   # http://127.0.0.1:8787
 
 Presentation route: **Run sequence → Inspect evidence → Investigate incident → Simulate intervention → Computation lab**. The application opens at a +03:00 incident snapshot for immediate exploration; drag the timeline to any point.
 
-Shortcuts: `Space` play/pause, `1/2/3` switch workspace, `R` restart the sequence, `?` field guide, `Esc` close dialog.
+Shortcuts: `Ctrl/⌘ K` command palette, `Space` play/pause, `1/2/3` switch workspace, `R` restart the sequence, `?` field guide, `Esc` close dialog. Use `↑/↓` and `Enter` in the palette; use arrow keys on the focused timeline to move one second at a time.
 
 ## Computation
 
