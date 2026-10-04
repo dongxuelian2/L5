@@ -1,127 +1,119 @@
 # TripLens
 
-**Every alarm has an origin.** Evidence-backed incident intelligence for process plants.
+**Follow the evidence. Change the outcome.** An incident investigation and decision workstation for continuous processes.
 
-[中文](README.md) · [Run locally](#run-locally) · [Model interface](#model-interface)
+[中文](README.md) · [Run locally](#run-locally) · [Computation and scope](#computation-and-scope) · [Adjustment notes](docs/adjustment-notes.md)
 
-A browser-based incident workstation with a carefully crafted terminal aesthetic: character graphics, fine process lines, animated propagation, progressive evidence, and a scrubbable timeline. Built with modern web technology, not a terminal application.
+A modern terminal aesthetic in the browser: character animation, fine process graphs, moving propagation paths, inspectable evidence and numerical intervention search. The workflow is **Detect → Compress → Investigate → Verify → Intervene → Learn**.
 
-![TripLens workstation](docs/workstation.png)
+![Investigation workspace](docs/investigation-v2.png)
 
-[Computation lab](docs/computation-lab.png) · [Intervention comparison](docs/intervention.png) · [Command palette](docs/command-palette.png)
+[Recovery search](docs/recovery-v2.png) · [History and verification](docs/learn-v2.png) · [Original incident replay](docs/workstation.png)
 
-## What works
+## Current capabilities
 
-- **Incident workstation:** six process signals, alarm counts, three propagation chains, and ranked hypotheses. Hover or focus a node to trace its upstream path; each node includes the last 40 seconds of observed readings. Open nodes for full signal details and chains for their original alarms.
-- **Complete presentation flow:** `Run sequence` follows six navigable chapters through the cooling-valve fault, detection, connected evidence, threshold crossing and structured investigation. A persistent playback dock offers pause, restart, seek and 1× / 3× / 6× / 12× speed, with an actual alarm-count distribution in five-second bins.
-- **Incident replay:** the timeline synchronizes signals, nodes, alarms and calculations. Seeking before evidence exists clears the investigation.
-- **Counterfactual comparison:** branch from the same initial state at +90 / +120 / +150 seconds, open an independent cooling bypass, and reduce feed. Animated trajectories emphasize pressure peaks, distance to the trip threshold and alarm reductions. Early intervention avoids the threshold; late intervention may not.
-- **Expandable investigation evidence:** after an investigation, open `Read the evidence trail` to inspect each structured evidence step and the limits of the conclusion.
-- **Computation lab:** Pearson correlation matrix, onset lags, lagged correlation, score decomposition and six reproducibility checks. Expand live calculations for robust z, CUSUM and per-second changes.
-- **Exports:** Markdown incident brief, raw alarms, signal samples, counterfactual trajectories and complete diagnostics as JSON.
-- **Model boundary:** local evidence and a model service share one structured JSON contract. Connecting a model does not require rebuilding the UI.
-- **Command palette:** `Ctrl/⌘ K` searches workspaces, signals, chapters and actions. Arrow keys select; Enter executes. Actions without sufficient evidence are disabled.
-- **Interaction details:** shortcuts, modal focus management, mobile layouts, bundled fonts, reduced-motion support.
+- **INVESTIGATE:** 12 incident sessions, 18 observed channels and 14 material, energy, control and feedback paths. Diagnosis receives observations, never scenario labels. Each hypothesis exposes supporting, contradictory and unresolved evidence, signed score components and recommended next measurements.
+- **Process versus control:** two loops expose SP / PV / OP / actuator feedback / output limit. Independent pressure and temperature channels help distinguish process changes from sensor faults. Frozen, missing, stale or extreme-step evidence cannot earn strong process-causality credit.
+- **Time boundaries:** +40 / 70 / 110 / 180 / 240-second snapshots are separately recomputed from available samples. Earlier windows cannot display full-window counterfactuals or historical similarity.
+- **Intervention search:** cooling bypass, feed reduction, backup pump, setpoint adjustment, emergency cooling, controlled shutdown and combined actions. Each session fits its leading hypothesis and evaluates **1,547 branches**, enumerating every second from +20 to +240. All safe intervals, latest recoverable starts, pressure margins, production loss, quality loss and additional cooling consumption are retained. Drag the start time to inspect successful and unsuccessful branches.
+- **Alarm compression:** separate activations, reannunciations, returns, unique conditions and process groups. Inspect flood segments, persistent/fleeting/chattering conditions and a filterable raw journal. Rationalization suggestions preserve independent safety alarms; they do not execute suppression.
+- **Investigation audit:** expand exact structured inputs and numerical outputs. A local deterministic investigation policy operates behind a reserved interface for model-authored tool requests.
+- **LEARN:** similar observed fingerprints, alarm rationalization, a 36-variant internal verification matrix, and completed investigations with operator notes retained as browser-local JSON and exportable.
+- **CSV replay analysis:** imported time-ordered signals use the same blind diagnosis, quality checks, alarm analysis and tool audit. Missing channels remain unresolved. Imports require the local Python service.
+- **RCA dossiers:** Markdown / JSON exports include the summary, detection and alarm times, controllers, propagation, hypotheses and counterevidence, counterfactuals, procedure prerequisites, similar sessions, health and open questions.
+- **LIVE / REPLAY / LAB:** the original cooling-valve sequence, chapter navigation, signal inspectors, correlation matrix and CUSUM remain available. That six-channel PROCESS 01 model and the new two-controller PROCESS 02 model are computed separately.
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+ and npm. Python 3.10+ is only needed to regenerate data, run checks, or use the optional backend.
+Requires Node.js 20.19+ or 22.12+, npm, and Python 3.10+ for regeneration, tests and the optional backend. No third-party Python packages.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Open the local address printed by Vite. The default application needs no backend, API key, or external network. Computed JSON artifacts and fonts are included.
+The app opens INVESTIGATE. The static experience needs no API key or external network; calculated artifacts and fonts are bundled.
 
 ```bash
-npm run generate  # regenerate numerical artifacts with native Python
-npm run check     # Python tests, TypeScript checks, production build
-npm run preview   # preview dist on port 4173
+npm run generate  # recompute both models, 12 sessions and the verification matrix
+npm run check     # Python tests, TypeScript checking and production build
+npm run preview   # static preview, port 4173 by default
 ```
 
-Alternatively, serve the built application and API with Python:
+For the complete experience including CSV imports:
 
 ```bash
 npm run build
 python3 server.py   # http://127.0.0.1:8787
 ```
 
-Presentation route: **Run sequence → Inspect evidence → Investigate incident → Simulate intervention → Computation lab**. The application opens at a +03:00 incident snapshot for immediate exploration; drag the timeline to any point.
+During development run both `python3 server.py` and `npm run dev`; Vite proxies `/api` to local port 8787.
 
-Shortcuts: `Ctrl/⌘ K` command palette, `Space` play/pause, `1/2/3` switch workspace, `R` restart the sequence, `?` field guide, `Esc` close dialog. Use `↑/↓` and `Enter` in the palette; use arrow keys on the focused timeline to move one second at a time.
+Suggested route: **Investigate → choose a session / observation time → Interventions → Tool audit → Alarm journal → Save to memory → Learn**. The original animated sequence remains under **Live incident → Run sequence**.
 
-## Computation
+Shortcuts: `Ctrl/⌘ K` command palette; `1/2/3/4/5` Live / Investigate / Learn / Replay / Lab; `Space` play/pause in Live / Replay; `R` open Live and restart; `?` field guide; `Esc` close dialog.
 
-`simulation/generate.py` uses only the Python standard library to calculate 301 process states and three intervention branches.
+## Computation and scope
 
-1. Valve position changes at +30s. After a 5s transport delay, cooling flow follows a first-order response. Temperature, pressure, separator pressure and purity respond downstream.
-2. Median/MAD baselines are fit on the normal segment. Four consecutive readings beyond six robust standard deviations confirm detection. Descriptive CUSUM and first differences are also calculated.
-3. Thresholds and repeated annunciation intervals produce alarms. Explicit equipment topology assigns them to three chains; raw repeated events remain inspectable.
-4. Ranking combines signal direction, topology coverage, temporal agreement, unexplained signals and missing-feedback penalties. Scores are not probabilities, and correlation alone is not causal proof.
-5. Each intervention shares an identical sample-by-sample prefix with the observed trajectory. The failed valve stays stuck while the separate bypass restores cooling.
+`simulation/platform.py` uses only the Python standard library. The coupled reduced-order model includes output saturation and rate limits, actuator response, transport delay, cooling, feed, thermal inertia, pressure, separation and feedback. Physical pressure is separate from measured pressure: a faulty transmitter alarm is not a physical threshold crossing.
 
-This project implements a **reduced-order process model**, not the full Tennessee Eastman simulator or a live plant connection. Checks cover one fault and three intervention times; they are not benchmark diagnostic accuracy. Crossing the pressure threshold indicates a trip condition; post-shutdown control dynamics are not implemented.
+Fault families: cooling-valve sticking, feed-valve sticking, cooling-water degradation, feed-composition disturbance, reaction-rate disturbance, pump degradation, separator restriction, pressure bias, temperature drift, pressure freeze, controller output-limit changes and control-loop oscillation. Parameters include severity, onset, delay, noise, controller response, operating point and seed.
 
-The complete calculation produces **656 raw alarms → 3 propagation chains**. Detection order: `CV-101 (+33s) → FI-101 (+38s) → TI-101 (+41s) → PI-101 (+44s) → PI-201 (+56s) → AI-301 (+67s)`.
+Detection fits median/MAD baselines on the first 20 stable samples, with minimum engineering scales, and confirms four consecutive observations beyond six scales. The baseline remains fixed within the window; it is not adaptive. Scores combine signed engineering evidence and a small topology term; **they are not calibrated probabilities**. Next-observation priorities are explainable heuristics, not calibrated information value.
 
-| Trajectory | Peak pressure | Crosses 3,050 kPa? |
-|---|---:|---|
-| Observed | 3,174 kPa | Yes |
-| Intervention +90s | 2,975 kPa | No |
-| Intervention +120s | 3,072 kPa | Yes |
-| Intervention +150s | 3,126 kPa | Yes |
+Counterfactuals do not receive ground truth: diagnose the observed window, then grid-fit onset and severity for the leading hypothesis. Interventions run on that fitted model and preserve its pre-action prefix. Safe means **physical pressure never crosses 3,050 kPa within the 240-second model horizon**, not indefinite safety or a plant actuation recommendation. Recommendations compare each action at its own latest safe start by pressure margin, production loss or recoverable time; no opaque overall optimum is asserted.
 
-## Model interface
+The PROCESS 02 cooling-valve session produces **312 events → 6 conditions → 3 process groups**. Its fitted unmitigated model crosses at +109 seconds. The latest safe cooling-bypass start is **+101 seconds**; emergency cooling remains effective through **+103 seconds**. Different control behavior means these values must not be mixed with the original 656-event PROCESS 01 model.
 
-The default `localAnalyst` reads structured evidence generated by Python. Its supported prompt is `Why is reactor pressure rising?`. There are no hidden cloud requests, and local responses are not labeled as model inference.
+Internal checks cover **12 families × 3 parameter variants = 36 fault windows**, plus three healthy windows. Current Top-1 / Top-3 are 36/36, median detection delay is 3 seconds and healthy windows flagged are 0/3. These are same-simulator rule regressions, **not independent dataset accuracy**. No Tennessee Eastman benchmark or real factory connection has been evaluated. MQTT / OPC UA, general natural-language SOP import, real Nemotron planning and an independent public benchmark remain future integration work.
 
-`src/lib/engine.ts` defines `AnalystProvider` and `IncidentBrief`. `server.py` supplies a thin Chat Completions compatible adapter without an orchestration framework.
+## Data and model interfaces
+
+CSV uses timestamps in seconds under `t`; other columns use the signal keys documented in `src/lib/platform.ts`. Download a complete example from the UI. Supply 25–2,000 rows including 20 stable baseline rows. Blank values are missing; duplicate or decreasing timestamps, nonfinite values and unknown columns are rejected.
 
 ```http
-POST /api/analyze
+POST /api/replay
 Content-Type: application/json
 
-{"incidentId":"INC-001","prompt":"Why is reactor pressure rising?"}
+{"csv":"t,valve,flow,...\n..."}
 ```
 
-The response includes `schemaVersion`, `incidentId`, `provider`, `prompt`, `steps`, `summary`, `limitation`, `candidateId`, and `evidenceTags`. A model organizes computed evidence into JSON; numerical work stays in the process module.
+Structured tools require no orchestration framework:
 
-Connect the frontend to the server (without model configuration, the server still uses local computation):
+```http
+POST /api/investigate
+Content-Type: application/json
 
-```bash
-python3 server.py
-# In another terminal
-VITE_ANALYST_PROVIDER=http npm run dev
+{"rows":[...],"calls":[{"tool":"inspect_signal_window","args":{"signal":"valve"}},{"tool":"compare_hypotheses","args":{}}]}
 ```
 
-To enable a compatible model, set these in the **Python server environment**. `.env.example` documents the settings; Python does not automatically load `.env`.
+Accepts 1–16 allowlisted requests: signal window, change point, controller, downstream paths, alarm history, hypothesis comparison, SOP alignment and next measurement. Only signal-window inspection accepts a `signal` parameter; other tools use empty argument objects. Omitting `calls` runs the default policy. Results come from the observations; a model cannot override numerical values or submit fault labels.
+
+The original six-channel analyst retains `POST /api/analyze` and a server-side Chat Completions compatible adapter. Local structured evidence is the default; an external model is not configured. To connect one, set the Python server environment:
 
 ```bash
 export TRIPLENS_MODEL_ENDPOINT='https://your-provider/v1/chat/completions'
 export TRIPLENS_MODEL='your-model-id'
 export TRIPLENS_MODEL_API_KEY='your-secret'
 python3 server.py
+# Another terminal: VITE_ANALYST_PROVIDER=http npm run dev
 ```
 
-For production API mode, run `VITE_ANALYST_PROVIDER=http npm run build`, then the Python server. Keys remain server-side: **never put secrets in a `VITE_` variable**. Both layers validate structured output; failures offer a retry. A real model provider has not been connected or verified; the adapter is tested with a loopback HTTP fixture.
+`.env.example` is documentation; Python does not load it automatically. Credentials stay server-side and must never use `VITE_` variables. The adapter is verified with a loopback fixture, with no claim of real Nebius / NVIDIA inference.
 
-## Layout and choices
+## Structure
 
 ```text
-src/
-  App.tsx                 workspaces, playback, investigation state
-  components/             process map, charts, lab, timeline, inspectors
-  lib/engine.ts           data access, analyst contract, exports
-  data/scenario.json      reproducible numerical artifacts
-  styles.css              terminal design system and responsive layouts
-simulation/
-  generate.py             model, detection, ranking, diagnostics
-  test_model.py           numerical and artifact consistency checks
-  test_api.py             loopback API and model-adapter checks
-server.py                 optional standard-library API and static server
+src/components/PlatformWorkspace.tsx  Investigation, recovery, alarms and learning
+src/components/platform.css           Terminal visuals and responsive layout
+src/lib/platform.ts                   Contracts, RCA exports and browser memory
+src/data/platform.json                Rebuildable sessions, branches and checks
+simulation/platform.py                Blind diagnosis, control loops, search and tools
+simulation/test_platform.py           Time, quality, branch and diagnosis validation
+simulation/generate.py                Original six-channel incident model
+server.py                             Standard-library HTTP, CSV and model adapter
 ```
 
-React + TypeScript + Vite + Motion + Tailwind CSS; native Python + JSON. No Docker, database, LangChain, ML framework or 3D engine. Process diagrams and charts use SVG; character graphics, animated values and transitions live in the browser.
+React + TypeScript + Vite + Motion + Tailwind CSS; native Python + JSON. No Docker, database, LangChain, ML framework or 3D engine.
 
 MIT License.

@@ -1,127 +1,119 @@
 # TripLens
 
-**Every alarm has an origin.** 从报警洪泛追溯第一故障的过程事故工作站。
+**Follow the evidence. Change the outcome.** 面向连续过程工业的事故调查与决策工作站。
 
-[English](README.en.md) · [运行项目](#运行项目) · [模型接口](#模型接口)
+[English](README.en.md) · [运行项目](#运行项目) · [计算与边界](#计算与边界) · [调整说明](docs/adjustment-notes.md)
 
-TripLens 用现代 Web 技术呈现精致的终端视觉：字符图形、细线工艺拓扑、流动的传播路径、证据展开动画和可拖动的时间轴。浏览器就是工作站，不需要真正的终端 UI。
+TripLens 在浏览器里呈现现代终端风格：字符动画、细线拓扑、流动的传播路径、可展开的证据，以及真正由数值计算支撑的干预搜索。核心闭环为 **Detect → Compress → Investigate → Verify → Intervene → Learn**。
 
-![TripLens 工作站](docs/workstation.png)
+![事故调查工作区](docs/investigation-v2.png)
 
-[计算实验室](docs/computation-lab.png) · [干预对比](docs/intervention.png) · [快捷命令](docs/command-palette.png)
+[恢复窗口搜索](docs/recovery-v2.png) · [历史与验证](docs/learn-v2.png) · [原事故回放](docs/workstation.png)
 
-## 已实现
+## 当前能力
 
-- **事故工作站**：6 路过程信号、实时状态、报警计数、3 条传播链与根因候选。悬停或聚焦节点高亮上游路径，节点内展示最近 40 秒的趋势；点开查看完整信号，点开传播链追查所有原始报警。
-- **完整演示流程**：`Run sequence` 从正常工况开始，经过六个可跳转章节，呈现冷却阀故障、偏离检测、证据连接、阈值越线和结构化调查。常驻播放条支持暂停、1× / 3× / 6× / 12×、跳转和重置，并显示每 5 秒的实际报警数量分布。
-- **事故回放**：时间轴同步更新趋势、节点、报警和计算。回退到证据尚未出现的时刻会清除调查结果。
-- **反事实比较**：相同初始状态，分别在 +90 / +120 / +150 秒打开独立冷却旁路并降低进料。轨迹逐步展开，突出压力峰值、与停机阈值的距离以及报警减少量。早干预能避开阈值，晚干预未必能。
-- **可展开的调查依据**：调查完成后，展开 `Read the evidence trail` 逐条查看结构化证据与结论边界。
-- **计算实验室**：Pearson 相关矩阵、传播时差和滞后相关、根因评分分解、六项可复现性检查。主界面可展开每路信号的 robust z、CUSUM 和每秒变化量。
-- **证据导出**：事故简报 Markdown、原始报警 JSON、信号 JSON、干预轨迹 JSON 和完整计算 JSON。
-- **模型边界**：本地证据和模型服务使用相同的结构化 JSON 协议；模型接入无需改写前端。
-- **快捷命令**：`Ctrl/⌘ K` 搜索并跳转工作区、信号、章节或操作，支持方向键选择和回车执行；证据不足的操作自动禁用。
-- **交互打磨**：键盘快捷键、模态框焦点管理、移动端布局、本地字体、减少动态效果偏好支持。
+- **INVESTIGATE**：12 个事故会话，18 路观测通道，14 条物料、能量、控制和反馈路径。诊断只接收观测记录，不接收场景标签；候选包含支持、反证、未决证据、权重分解和下一步检查建议。
+- **过程与控制分离**：两套控制回路显示 SP / PV / OP / actuator feedback / output limit；独立温度、压力通道帮助区分过程变化和传感器故障。冻结、缺失、过时和异常跳变数据不能直接获得强因果证据分。
+- **时间边界**：+40 / 70 / 110 / 180 / 240 秒快照分别用当时已有样本重新分析。早期快照不会显示完整窗口的反事实结果或历史相似度。
+- **干预搜索**：旁路、降进料、备用泵、调整设定点、紧急冷却、受控停机和组合动作。每个会话拟合领先假设后，计算 **1,547 条分支**，逐秒枚举 +20…240 秒，保留所有安全区间、最后可恢复时间、压力裕度、产量损失、质量损失和额外冷却消耗。界面可拖动起始时间，查看成功和失败分支。
+- **报警压缩**：分别统计激活、重复提示、恢复事件、唯一条件和过程分组；显示洪泛区间、持续/短暂/抖动条件和完整可筛选日志。整治建议保留独立安全报警，不能直接执行抑制。
+- **调查审计**：结构化工具输入与数值输出可展开检查。使用本地确定性调查策略，保留模型输出结构化工具请求的接口。
+- **LEARN**：观测指纹相似会话、报警整治建议、36 个参数变体的内部验证矩阵；完成的调查和操作员备注可保存在本浏览器的 JSON 存储中并导出。
+- **CSV 回放分析**：导入时间有序的通道数据，执行同一套盲诊断、质量检查、报警分析和工具审计；缺少的通道明确保留为未决证据。导入需要本机 Python 服务。
+- **RCA 档案**：Markdown / JSON 导出包含事故摘要、检测与报警时间、控制器、传播路径、候选正反证、反事实、规程前置条件、历史相似度、健康状态及开放问题。
+- **LIVE / REPLAY / LAB**：保留原有冷却阀事故的逐秒播放、章节跳转、信号检查器、相关矩阵、CUSUM 和演示流程。此工作区使用原来的六通道模型，和新增 PROCESS 02 的两控制回路模型分别计算。
 
 ## 运行项目
 
-需要 Node.js 20.19+ 或 22.12+，以及 npm。Python 3.10+ 仅用于重新计算数据、验证或运行可选服务端。
+需要 Node.js 20.19+ 或 22.12+、npm；Python 3.10+ 用于重新计算、测试和可选服务端。无额外 Python 包。
 
 ```bash
 npm ci
 npm run dev
 ```
 
-打开终端给出的本地地址。默认无需后端、API 密钥或外部网络；计算产物已提交为 JSON，字体也随项目打包。
+默认打开 INVESTIGATE。静态应用不需要 API 密钥或外部网络，数值产物和字体已随项目提供。
 
 ```bash
-npm run generate  # 原生 Python 重新生成所有计算结果
-npm run check     # Python 测试 + TypeScript 检查 + 生产构建
-npm run preview  # 预览 dist，默认 4173 端口
+npm run generate  # 重新计算两个模型、12 个会话及验证矩阵
+npm run check     # Python 测试、TypeScript 检查与生产构建
+npm run preview   # 静态预览，默认 4173 端口
 ```
 
-也可以只用 Python 启动构建后的成品与 API：
+完整运行，包括 CSV 导入：
 
 ```bash
 npm run build
 python3 server.py   # http://127.0.0.1:8787
 ```
 
-前端演示路径：**Run sequence → Inspect evidence → Investigate incident → Simulate intervention → Computation lab**。可直接拖动时间轴；默认进入 +03:00 的事故快照以便立即查看。
+开发时可同时启动 `python3 server.py` 和 `npm run dev`；Vite 将 `/api` 转发到本机 8787 端口。
 
-快捷键：`Ctrl/⌘ K` 打开命令面板，`Space` 播放/暂停，`1/2/3` 切换工作区，`R` 重启序列，`?` 打开操作说明，`Esc` 关闭对话框。命令面板使用 `↑/↓` 选择、`Enter` 执行；时间轴聚焦后可用方向键逐秒移动。
+浏览路径：**Investigate → 切换会话/观测时刻 → Interventions → Tool audit → Alarm journal → Save to memory → Learn**。原来的完整动画通过 **Live incident → Run sequence** 播放。
 
-## 计算方法
+快捷键：`Ctrl/⌘ K` 命令面板；`1/2/3/4/5` 切换 Live / Investigate / Learn / Replay / Lab；`Space` 在 Live / Replay 播放或暂停；`R` 打开 Live 并重播；`?` 操作说明；`Esc` 关闭对话框。
 
-`simulation/generate.py` 只用 Python 标准库，实际计算 301 个时刻的过程状态以及三条干预分支。
+## 计算与边界
 
-1. 阀位在 +30s 改变，冷却流量经过 5s 传输延迟进入一阶响应；温度、压力、分离器和产品纯度依次响应。
-2. 正常段建立 median/MAD 基线。连续四个样本超过 6 倍鲁棒尺度才确认偏离；同步计算描述性 CUSUM 和差分。
-3. 按阈值和重复提示间隔生成报警，并根据显式设备拓扑归入三条链。重复事件保留在原始日志中。
-4. 评分使用信号方向、拓扑覆盖、时序匹配、无法解释的信号以及缺失反馈惩罚。评分不是概率，相关性也不是单独的因果证明。
-5. 干预分支与原轨迹在干预前逐样本一致；故障阀保持卡住，独立旁路恢复冷却。
+`simulation/platform.py` 使用 Python 标准库实现耦合低阶过程模型：控制输出限幅和变化率限制、执行器响应、传输延迟、冷却、进料、热惯性、压力、分离器与反馈。物理压力与测量压力分别计算，单个压力传感器误报不等于真实压力越线。
 
-模型是本项目实现的**低阶过程模型**，并非完整 Tennessee Eastman 仿真器，也未连接真实工厂。当前检查针对一个故障场景和三个干预时机，不代表公开基准上的诊断准确率。阈值越线表示轨迹达到停机条件，当前模型没有加入实际停机后的控制动作。
+故障覆盖：冷却阀卡滞、进料阀卡滞、冷却水退化、进料组分扰动、反应速率扰动、泵退化、分离器受限、压力偏置、温度漂移、压力冻结、控制输出上限变化、控制回路振荡。参数支持严重度、起始时刻、传输延迟、噪声、控制器响应、工况与种子。
 
-完整计算得到 **656 个原始报警 → 3 条传播链**。检测顺序为 `CV-101 (+33s) → FI-101 (+38s) → TI-101 (+41s) → PI-101 (+44s) → PI-201 (+56s) → AI-301 (+67s)`。
+检测以输入窗口前 20 个稳定样本建立 median/MAD 基线，加入工程尺度下限，连续四个样本偏离 6 倍尺度才确认。该基线在窗口内固定，不是自适应滚动基线。评分由带符号的工程证据和小幅拓扑项构成，**不是校准概率**。下一观测的优先级为可解释启发式，不是已校准的信息价值。
 
-| 轨迹 | 压力峰值 | 是否越过 3,050 kPa |
-|---|---:|---|
-| 原事故 | 3,174 kPa | 是 |
-| +90s 干预 | 2,975 kPa | 否 |
-| +120s 干预 | 3,072 kPa | 是 |
-| +150s 干预 | 3,126 kPa | 是 |
+反事实不读取场景真值：先从观测窗口诊断，再对领先故障的严重度和起始时间做网格拟合。所有干预在该拟合模型上计算，干预前与拟合模型轨迹一致。安全表示 **240 秒模型窗口内物理压力未越过 3,050 kPa**，不是无限时间保证，也不是可直接控制工厂的建议。三项推荐分别比较每种动作自身最后安全时刻的裕度、产量损失和可恢复时间；不存在单一未经说明的“最优”总分。
 
-## 模型接口
+当前 PROCESS 02 冷却阀会话产生 **312 个事件 → 6 个条件 → 3 个过程分组**。拟合模型未干预时在 +109 秒越线；冷却旁路最后安全启动时刻为 **+101 秒**，紧急冷却为 **+103 秒**。控制方式不同，因此这些数值不应与 PROCESS 01 的 656 事件模型混用。
 
-默认 `localAnalyst` 读取 Python 生成的结构化证据。目前本地调查仅支持界面给定的提问 `Why is reactor pressure rising?`。这里没有隐藏的云请求，也不会把本地输出标作实际模型推理。
+内部验证覆盖 **12 类 × 3 组参数 = 36 个故障窗口**及 3 个正常窗口；当前 Top-1 / Top-3 为 36/36，中位检测延迟 3 秒，正常窗口误报 0/3。这是同一模拟器上的规则回归，**不代表独立数据集准确率**。未运行 Tennessee Eastman 基准，未接真实工厂。MQTT / OPC UA、通用自然语言 SOP 导入、真实 Nemotron 调度及独立公开基准仍待接入。
 
-`src/lib/engine.ts` 定义 `AnalystProvider` 和 `IncidentBrief`，`server.py` 提供兼容 Chat Completions 的薄适配器，无编排框架。接口为：
+## 数据与模型接口
+
+CSV 首列为秒单位时间戳 `t`；其他列使用 `src/lib/platform.ts` 对应的信号键。界面可下载完整示例。要求 25–2,000 行，其中前 20 行为稳定基线；空白信号值作为缺失，重复或倒退时间戳、非有限数值、未知列会被拒绝。
 
 ```http
-POST /api/analyze
+POST /api/replay
 Content-Type: application/json
 
-{"incidentId":"INC-001","prompt":"Why is reactor pressure rising?"}
+{"csv":"t,valve,flow,...\n..."}
 ```
 
-响应包含 `schemaVersion`、`incidentId`、`provider`、`prompt`、`steps`、`summary`、`limitation`、`candidateId`、`evidenceTags`。模型只组织已计算证据，并返回 JSON；数值计算保留在过程模块。
+结构化工具边界不需要编排框架：
 
-开发时连接服务端（可以先不配模型，服务端仍使用本地计算）：
+```http
+POST /api/investigate
+Content-Type: application/json
 
-```bash
-python3 server.py
-# 另一个终端
-VITE_ANALYST_PROVIDER=http npm run dev
+{"rows":[...],"calls":[{"tool":"inspect_signal_window","args":{"signal":"valve"}},{"tool":"compare_hypotheses","args":{}}]}
 ```
 
-接入兼容服务时，在 **Python 服务端环境** 设置以下变量。`.env.example` 仅作示例；Python 不会自动读取 `.env`。
+允许 1–16 个已知工具请求；当前支持 signal window、change point、controller、downstream path、alarm history、hypothesis comparison、SOP alignment、next measurement。除窗口检查的 `signal` 参数外，其余工具使用空参数对象。省略 `calls` 使用默认调查策略。接口只返回观测数据计算结果；模型不能覆盖物理值或传入故障标签。
+
+原六通道调查保留 `POST /api/analyze` 和兼容 Chat Completions 的服务端适配器。默认读取本地结构化证据；实际模型服务仍未配置。接入时在 Python 服务端环境设置：
 
 ```bash
 export TRIPLENS_MODEL_ENDPOINT='https://your-provider/v1/chat/completions'
 export TRIPLENS_MODEL='your-model-id'
 export TRIPLENS_MODEL_API_KEY='your-secret'
 python3 server.py
+# 另一个终端：VITE_ANALYST_PROVIDER=http npm run dev
 ```
 
-生产成品接 API 时先 `VITE_ANALYST_PROVIDER=http npm run build`，再运行 Python 服务端。密钥只在服务端，**不要放入任何 `VITE_` 变量**。模型响应经过前后端结构校验；网络失败会给出可重试错误。真实模型服务尚未接通验证；适配器通过本地 HTTP fixture 测试。
+`.env.example` 仅作示例，Python 不自动读取它。密钥只留在服务端，不能使用 `VITE_` 变量。模型适配器已通过 loopback fixture 验证，未声称真实 Nebius / NVIDIA 调用。
 
-## 结构与取舍
+## 项目结构
 
 ```text
-src/
-  App.tsx                 工作区、播放状态、调查流程
-  components/             工艺图、趋势、计算面板、时间轴、检查器
-  lib/engine.ts           数据查询、结构化分析接口、导出
-  data/scenario.json      可重建的数值产物
-  styles.css              终端设计系统、动效、响应式布局
-simulation/
-  generate.py             过程模拟、检测、评分与数值诊断
-  test_model.py           数值和产物一致性检查
-  test_api.py             loopback API / 模型适配器验证
-server.py                 可选的标准库 API 与静态服务器
+src/components/PlatformWorkspace.tsx  多事故调查、干预、报警与学习界面
+src/components/platform.css           新工作区的终端视觉与响应式布局
+src/lib/platform.ts                   数据协议、RCA 导出和浏览器事故记忆
+src/data/platform.json                可重建的会话、反事实和验证产物
+simulation/platform.py                盲诊断、双控制回路、搜索与工具边界
+simulation/test_platform.py           时间边界、数据质量、物理分支与盲诊断验证
+simulation/generate.py                原六通道事故模型
+server.py                             标准库 HTTP、CSV 与模型接口
 ```
 
-React + TypeScript + Vite + Motion + Tailwind CSS；原生 Python + JSON。没有 Docker、数据库、LangChain、ML 框架或 3D 引擎。工艺拓扑和图表使用 SVG，数字、字符和过渡动画留在浏览器中。
+React + TypeScript + Vite + Motion + Tailwind CSS；原生 Python + JSON。无 Docker、数据库、LangChain、ML 框架或 3D 引擎。
 
 MIT License.
