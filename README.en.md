@@ -1,0 +1,125 @@
+# TripLens
+
+**Every alarm has an origin.** Evidence-backed incident intelligence for process plants.
+
+[中文](README.md) · [Run locally](#run-locally) · [Model interface](#model-interface)
+
+A browser-based incident workstation with a carefully crafted terminal aesthetic: character graphics, fine process lines, animated propagation, progressive evidence, and a scrubbable timeline. Built with modern web technology, not a terminal application.
+
+![TripLens workstation](docs/workstation.png)
+
+[View the computation lab](docs/computation-lab.png)
+
+## What works
+
+- **Incident workstation:** six process signals, alarm counts, three propagation chains, and ranked hypotheses. Inspect a process node for measurements, detection time and baseline; inspect any chain for its original alarms.
+- **Complete presentation flow:** `Run sequence` begins at normal operation, injects a cooling-valve fault, and reveals deviations, alarms, propagation and a structured investigation. Pause, restart, seek, or select 1× / 3× / 6× / 12× playback.
+- **Incident replay:** the timeline synchronizes signals, nodes, alarms and calculations. Seeking before evidence exists clears the investigation.
+- **Counterfactual comparison:** branch from the same initial state at +90 / +120 / +150 seconds, open an independent cooling bypass, and reduce feed. Compare pressure peaks and alarm counts. Early intervention avoids the threshold; late intervention may not.
+- **Computation lab:** Pearson correlation matrix, onset lags, lagged correlation, score decomposition and six reproducibility checks. Expand live calculations for robust z, CUSUM and per-second changes.
+- **Exports:** Markdown incident brief, raw alarms, signal samples, counterfactual trajectories and complete diagnostics as JSON.
+- **Model boundary:** local evidence and a model service share one structured JSON contract. Connecting a model does not require rebuilding the UI.
+- **Interaction details:** shortcuts, modal focus management, mobile layouts, bundled fonts, reduced-motion support.
+
+## Run locally
+
+Requires Node.js 20.19+ or 22.12+ and npm. Python 3.10+ is only needed to regenerate data, run checks, or use the optional backend.
+
+```bash
+npm ci
+npm run dev
+```
+
+Open the local address printed by Vite. The default application needs no backend, API key, or external network. Computed JSON artifacts and fonts are included.
+
+```bash
+npm run generate  # regenerate numerical artifacts with native Python
+npm run check     # Python tests, TypeScript checks, production build
+npm run preview   # preview dist on port 4173
+```
+
+Alternatively, serve the built application and API with Python:
+
+```bash
+npm run build
+python3 server.py   # http://127.0.0.1:8787
+```
+
+Presentation route: **Run sequence → Inspect evidence → Investigate incident → Simulate intervention → Computation lab**. The application opens at a +03:00 incident snapshot for immediate exploration; drag the timeline to any point.
+
+Shortcuts: `Space` play/pause, `1/2/3` switch workspace, `R` restart the sequence, `?` field guide, `Esc` close dialog.
+
+## Computation
+
+`simulation/generate.py` uses only the Python standard library to calculate 301 process states and three intervention branches.
+
+1. Valve position changes at +30s. After a 5s transport delay, cooling flow follows a first-order response. Temperature, pressure, separator pressure and purity respond downstream.
+2. Median/MAD baselines are fit on the normal segment. Four consecutive readings beyond six robust standard deviations confirm detection. Descriptive CUSUM and first differences are also calculated.
+3. Thresholds and repeated annunciation intervals produce alarms. Explicit equipment topology assigns them to three chains; raw repeated events remain inspectable.
+4. Ranking combines signal direction, topology coverage, temporal agreement, unexplained signals and missing-feedback penalties. Scores are not probabilities, and correlation alone is not causal proof.
+5. Each intervention shares an identical sample-by-sample prefix with the observed trajectory. The failed valve stays stuck while the separate bypass restores cooling.
+
+This project implements a **reduced-order process model**, not the full Tennessee Eastman simulator or a live plant connection. Checks cover one fault and three intervention times; they are not benchmark diagnostic accuracy. Crossing the pressure threshold indicates a trip condition; post-shutdown control dynamics are not implemented.
+
+The complete calculation produces **656 raw alarms → 3 propagation chains**. Detection order: `CV-101 (+33s) → FI-101 (+38s) → TI-101 (+41s) → PI-101 (+44s) → PI-201 (+56s) → AI-301 (+67s)`.
+
+| Trajectory | Peak pressure | Crosses 3,050 kPa? |
+|---|---:|---|
+| Observed | 3,174 kPa | Yes |
+| Intervention +90s | 2,975 kPa | No |
+| Intervention +120s | 3,072 kPa | Yes |
+| Intervention +150s | 3,126 kPa | Yes |
+
+## Model interface
+
+The default `localAnalyst` reads structured evidence generated by Python. Its supported prompt is `Why is reactor pressure rising?`. There are no hidden cloud requests, and local responses are not labeled as model inference.
+
+`src/lib/engine.ts` defines `AnalystProvider` and `IncidentBrief`. `server.py` supplies a thin Chat Completions compatible adapter without an orchestration framework.
+
+```http
+POST /api/analyze
+Content-Type: application/json
+
+{"incidentId":"INC-001","prompt":"Why is reactor pressure rising?"}
+```
+
+The response includes `schemaVersion`, `incidentId`, `provider`, `prompt`, `steps`, `summary`, `limitation`, `candidateId`, and `evidenceTags`. A model organizes computed evidence into JSON; numerical work stays in the process module.
+
+Connect the frontend to the server (without model configuration, the server still uses local computation):
+
+```bash
+python3 server.py
+# In another terminal
+VITE_ANALYST_PROVIDER=http npm run dev
+```
+
+To enable a compatible model, set these in the **Python server environment**. `.env.example` documents the settings; Python does not automatically load `.env`.
+
+```bash
+export TRIPLENS_MODEL_ENDPOINT='https://your-provider/v1/chat/completions'
+export TRIPLENS_MODEL='your-model-id'
+export TRIPLENS_MODEL_API_KEY='your-secret'
+python3 server.py
+```
+
+For production API mode, run `VITE_ANALYST_PROVIDER=http npm run build`, then the Python server. Keys remain server-side: **never put secrets in a `VITE_` variable**. Both layers validate structured output; failures offer a retry. A real model provider has not been connected or verified; the adapter is tested with a loopback HTTP fixture.
+
+## Layout and choices
+
+```text
+src/
+  App.tsx                 workspaces, playback, investigation state
+  components/             process map, charts, lab, timeline, inspectors
+  lib/engine.ts           data access, analyst contract, exports
+  data/scenario.json      reproducible numerical artifacts
+  styles.css              terminal design system and responsive layouts
+simulation/
+  generate.py             model, detection, ranking, diagnostics
+  test_model.py           numerical and artifact consistency checks
+  test_api.py             loopback API and model-adapter checks
+server.py                 optional standard-library API and static server
+```
+
+React + TypeScript + Vite + Motion + Tailwind CSS; native Python + JSON. No Docker, database, LangChain, ML framework or 3D engine. Process diagrams and charts use SVG; character graphics, animated values and transitions live in the browser.
+
+MIT License.
