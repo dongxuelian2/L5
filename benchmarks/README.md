@@ -362,6 +362,62 @@ with missed faults, 960-sample healthy-test workload, coverage and actual
 detection delays. No test-based method tuning or fault-type classification
 is performed.
 
+## Causal drift adaptation and evidence-based alarm recovery (stage 8)
+
+This increment adds an exploratory **guarded adaptive Max-Z** monitor
+and a separate, hysteretic alarm recovery policy to investigate slow
+baseline drift without hiding genuinely persistent high-score faults.
+
+New fixed-before-evaluation model **adaptive-maxz**:
+- Robust normal-fit median and scale are the original baseline reference.
+- An adaptive per-channel reference is updated by rate 0.02 **only after
+  scoring each sample**, and only where that channel's pre-update absolute
+  robust residual is at most 2.5. This guards against absorbing abrupt,
+  high-amplitude faults, but does **not** protect against a subtle or
+  slowly developing fault being tracked away.
+- Drift adjustment is capped at 1.5 original training scales per channel;
+  all adaptive state starts fresh at each file/valid observation segment.
+- Fit statistics and thresholds use normal training/calibration only.
+  No test faults or perturbations affect reference parameters.
+
+The **recovery-hysteresis** alarm policy confirms an incident after three
+high-threshold exceedances and releases it *only after three consecutive
+observed scores at or below 75% of the same trigger threshold*. It does not
+silence a still-high anomaly after a fixed clock duration. A missing
+observation triggers an explicit abstention and resets both the alarm latch
+and any temporal monitor state. The unchanged legacy persistence policy is
+also run as a control.
+
+    python3 -m benchmarks.drift_recovery /tmp/tep-reference --output-dir /tmp/tep-drift
+    python3 -m benchmarks.drift_recovery /tmp/tep-reference --faults 1
+
+Evaluation is paired across three detectors (static Max-Z, EWMA and new
+adaptive Max-Z), two alarm policies, and four predeclared test conditions:
+unaltered records, a linear ramp that accumulates **+1 normal-fit standard
+deviation across each 960-sample file**, a **+2 standard-deviation artificial
+offset at samples 240..259**, and a complete 15-sample sensor blackout at
+155..169. The perturbations are applied to both healthy and fault test
+records with no test-dependent tuning. The ramps/steps are *arbitrary
+instrumentation challenges*, **not** physically validated Tennessee
+Eastman operating-point transitions.
+
+The evaluation records early (60-minute) detections, eventual fault hits,
+false-alarm episodes, total alarm-active samples and coverage. In the
+temporary-step healthy test, it also records whether an alarm is still
+active at the end of the temporary offset, whether it later clears, and
+time-to-clear or right-censoring; no clearance time is invented when no
+alarm was raised. Clean legacy scores are checked against the existing
+canonical reference benchmark for every method.
+
+**Do not promote an adaptive monitor based only on fewer false alarms.**
+The ability to absorb normal slow drift is also a mechanism for suppressing
+subtle fault signatures. The entire held-out fault denominator is retained,
+and any early-hit loss is reported plainly. The evaluation does not learn
+a production safety rule or propose unattended plant actuation.
+
+Output artifacts: tep_drift_recovery_report.json and
+tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault CI.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
