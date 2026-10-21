@@ -139,11 +139,87 @@ def run_benchmark(
     return result
 
 
-def write_report(report: dict, output_dir: str | Path) -> tuple[Path, Path]:
+def render_markdown(report: dict) -> str:
+    """Human-readable, reproducible benchmark scoreboard (not a scientific comparison claim)."""
+    protocol = report["evaluation_protocol"]
+    window = protocol["early_detection_window_minutes"]
+    lines = [
+        "# Tennessee Eastman: external anomaly-detection baseline",
+        "",
+        "**Scope:** 21 known TEP test scenarios; this is anomaly detection, not",
+        "fault-ID classification, causal diagnosis, or validated plant control.",
+        "",
+        f"- Train: normal \`d00.dat\`; chronological {protocol['fit_samples']} fit + "
+        f"{protocol['calibration_samples']} calibration samples",
+        f"- Test: healthy \`d00_te.dat\`; faulty \`d01_te.dat\` ... \`d21_te.dat\`",
+        f"- Assumed fault onset: zero-based sample {protocol['fault_onset_zero_based_sample']}; "
+        f"alarm persistence: {protocol['persistence_consecutive_samples']} consecutive samples",
+        f"- **Early detection horizon: {window} minutes**; later alarms are not early successes",
+        "",
+        "| Method | Early faults | Eventual faults | Healthy false-alarm samples | Mean detected delay |",
+        "|:--|--:|--:|--:|--:|",
+    ]
+    for name, result in report["methods"].items():
+        aggr = result["aggregate"]
+        n = aggr["faults_evaluated"]
+        delay = aggr["mean_detected_delay_minutes"]
+        lines.append(
+            f"| {name} | {aggr['faults_detected_early']}/{n} | "
+            f"{aggr['faults_detected']}/{n} | "
+            f"{aggr['healthy_test_false_alarm_samples']}/960 | "
+            f"{delay if delay is not None else 'N/A'} min |"
+        )
+    lines += [
+        "",
+        "## Per-fault delay (minutes from onset; * indicates early detection)",
+        "",
+        "| Fault ID | " + " | ".join(report["methods"]) + " |",
+        "|:--|" + "|".join("--:" for _ in report["methods"]) + "|",
+    ]
+    faulty = sorted(
+        case["fault_id"]
+        for case in next(iter(report["methods"].values()))["cases"]
+        if case["fault_id"] != 0
+    )
+    for fault in faulty:
+        cells = []
+        for method in report["methods"].values():
+            case = next(c for c in method["cases"] if c["fault_id"] == fault)
+            delay = case["detection_delay_minutes"]
+            if delay is None:
+                cells.append("missed")
+            else:
+                cells.append(f"{delay}{'*' if case['detected_within_early_window'] else ''}")
+        lines.append(f"| IDV({fault}) | " + " | ".join(cells) + " |")
+    lines += [
+        "",
+        "## Limits and reproducibility",
+        "",
+        "- Eventual detection over 800 post-fault samples (~40 hours) is not rapid detection.",
+        "- False alarm fraction measures alarm-active samples, not statistically",
+        "  independent false alarm episodes.",
+        "- Mean delay excludes undetected faults, so it must be read alongside",
+        "  detected counts and the early-horizon metric.",
+        "- Calibration is healthy training-only; the threshold is an empirical",
+        "  quantile and does not establish a guaranteed deployment false-alarm rate.",
+        "- The highlighted variables are descriptive signal deviations, not",
+        "  verified physical or causal root causes.",
+        "",
+        "### Input provenance (SHA-256)",
+        "",
+    ]
+    for item in report["input_files"]:
+        lines.append(f"- \`{item['source']}\`: \`{item['sha256']}\`")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_report(report: dict, output_dir: str | Path) -> tuple[Path, Path, Path]:
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     json_path = destination / "tep_detection_report.json"
     csv_path = destination / "tep_detection_cases.csv"
+    markdown_path = destination / "tep_detection_scoreboard.md"
     json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     fields = [
         "method", "source", "fault_id", "samples", "onset_sample",
@@ -164,7 +240,8 @@ def write_report(report: dict, output_dir: str | Path) -> tuple[Path, Path]:
                         case["first_post_onset_alarm_variables"]
                     ),
                 })
-    return json_path, csv_path
+    markdown_path.write_text(render_markdown(report), encoding="utf-8")
+    return json_path, csv_path, markdown_path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -193,8 +270,8 @@ def main(argv: list[str] | None = None) -> int:
             early_window_samples=args.early_window_samples,
         )
         if args.output_dir:
-            json_path, csv_path = write_report(report, args.output_dir)
-            print(f"Reports: {json_path} and {csv_path}")
+            json_path, csv_path, markdown_path = write_report(report, args.output_dir)
+            print(f"Reports: {json_path}, {csv_path} and {markdown_path}")
         for name, result in report["methods"].items():
             summary = result["aggregate"]
             print(
