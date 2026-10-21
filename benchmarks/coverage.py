@@ -88,6 +88,42 @@ def decide(
     return tuple(states)
 
 
+def score_with_observation_resets(
+    monitor,
+    values: np.ndarray,
+    original_mask: np.ndarray,
+    policy: CoveragePolicy,
+) -> np.ndarray:
+    """Restart temporal history after abstained rows, never on imputed data.
+
+    Static detectors can still score all imputed rows, but the decision gate
+    makes invalid rows abstentions. Temporal detectors must *not* ingest a
+    missing row as a valid zero-ish value or carry history across it.
+    """
+    data = as_matrix(values, features=len(VARIABLES))
+    observed = np.asarray(original_mask)
+    if observed.dtype != np.bool_ or observed.shape != data.shape:
+        raise ValueError("Observation mask must be Boolean and feature-aligned.")
+    if not hasattr(monitor, "explain_at"):
+        return monitor.score(data)
+    required = [VARIABLES.index(name) for name in policy.required_channels]
+    valid = np.mean(observed, axis=1) >= policy.min_observed_fraction
+    if required:
+        valid &= np.all(observed[:, required], axis=1)
+    scores = np.zeros(len(data), dtype=float)
+    start = 0
+    while start < len(data):
+        if not valid[start]:
+            start += 1
+            continue
+        end = start + 1
+        while end < len(data) and valid[end]:
+            end += 1
+        scores[start:end] = monitor.score(data[start:end])
+        start = end
+    return scores
+
+
 def observation_summary(
     states: tuple[str, ...],
     *,
@@ -240,7 +276,9 @@ def run_coverage(
             for name in names:
                 perturbed = transformed[name]
                 onset = None if name == "d00_te.dat" else onset_sample
-                scores = monitor.score(perturbed.data)
+                scores = score_with_observation_resets(
+                    monitor, perturbed.data, perturbed.observed_mask, policy,
+                )
                 states = decide(
                     scores, perturbed.observed_mask, threshold=limit,
                     consecutive=persistence, policy=policy,
