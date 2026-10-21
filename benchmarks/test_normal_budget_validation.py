@@ -77,11 +77,13 @@ class ForwardReferenceFormatTests(unittest.TestCase):
         np.savetxt(self.path / "d01_te.dat", self.fault, fmt="%.8f")
 
     def small_run(self, **overrides):
-        return run_validation(
-            self.path, faults=(1,),
-            methods=("robust-maxz", "dpca-q-lag2"),
-            policies=POLICIES, **overrides,
-        )
+        options = {
+            "faults": (1,),
+            "methods": ("robust-maxz", "dpca-q-lag2"),
+            "policies": POLICIES,
+        }
+        options.update(overrides)
+        return run_validation(self.path, **options)
 
     def test_precommitted_folds_reports_and_calibration_caps(self):
         result = self.small_run()
