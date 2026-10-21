@@ -30,6 +30,7 @@ def run_benchmark(
     alpha: float = 0.01,
     persistence: int = 3,
     onset_sample: int = 160,
+    early_window_samples: int = 20,
 ) -> dict:
     """Fit and calibrate only on d00.dat; never fit on *_te or fault data."""
     folder = Path(data_dir)
@@ -43,6 +44,8 @@ def run_benchmark(
         raise ValueError("persistence must be positive.")
     if onset_sample < 1:
         raise ValueError("onset_sample must be positive.")
+    if early_window_samples < 1:
+        raise ValueError("early_window_samples must be positive.")
 
     expected = ["d00.dat", "d00_te.dat", *[f"d{i:02d}_te.dat" for i in sorted(faults)]]
     absent = [name for name in expected if not (folder / name).is_file()]
@@ -82,6 +85,8 @@ def run_benchmark(
             "fault_test_sources": [f"d{i:02d}_te.dat" for i in sorted(faults)],
             "fault_onset_zero_based_sample": onset_sample,
             "fault_onset_is_protocol_assumption": True,
+            "early_detection_window_samples": early_window_samples,
+            "early_detection_window_minutes": early_window_samples * SAMPLE_SECONDS // 60,
             "fault_training_used": False,
             "threshold_from": "held_out_normal_training_only",
             "threshold_alpha_target": alpha,
@@ -119,6 +124,7 @@ def run_benchmark(
                 feature_names=VARIABLES,
                 onset_sample=onset,
                 seconds_per_sample=SAMPLE_SECONDS,
+                early_window_samples=early_window_samples,
             )
             for dataset, onset in cases
         ]
@@ -142,7 +148,7 @@ def write_report(report: dict, output_dir: str | Path) -> tuple[Path, Path]:
     fields = [
         "method", "source", "fault_id", "samples", "onset_sample",
         "false_alarm_samples", "normal_samples", "false_alarm_rate",
-        "detected_after_onset", "detection_delay_samples", "detection_delay_minutes",
+        "detected_after_onset", "detected_within_early_window", "detection_delay_samples", "detection_delay_minutes",
         "detection_fraction_post_onset", "first_post_onset_alarm_sample",
         "first_post_onset_alarm_variables",
     ]
@@ -171,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--alpha", type=float, default=0.01)
     parser.add_argument("--persistence", type=int, default=3)
     parser.add_argument("--onset-sample", type=int, default=160)
+    parser.add_argument("--early-window-samples", type=int, default=20)
     parser.add_argument("--output-dir", type=Path, help="Write JSON + CSV result artifacts here")
     args = parser.parse_args(argv)
 
@@ -183,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
             alpha=args.alpha,
             persistence=args.persistence,
             onset_sample=args.onset_sample,
+            early_window_samples=args.early_window_samples,
         )
         if args.output_dir:
             json_path, csv_path = write_report(report, args.output_dir)
@@ -190,8 +198,8 @@ def main(argv: list[str] | None = None) -> int:
         for name, result in report["methods"].items():
             summary = result["aggregate"]
             print(
-                f"{name}: {summary['faults_detected']}/{summary['faults_evaluated']} "
-                f"detected; held-out normal FPR {summary['healthy_test_false_alarm_rate']:.4f}; "
+                f"{name}: {summary['faults_detected']}/{summary['faults_evaluated']} eventual, "
+                f"{summary['faults_detected_early']}/{summary['faults_evaluated']} early; held-out normal FPR {summary['healthy_test_false_alarm_rate']:.4f}; "
                 f"mean delay {summary['mean_detected_delay_minutes']} min (detected faults)"
             )
     except (ValueError, OSError) as error:
