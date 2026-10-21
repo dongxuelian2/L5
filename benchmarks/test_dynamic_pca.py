@@ -22,7 +22,7 @@ class DynamicPCAMathsTests(unittest.TestCase):
         common = self.rng.normal(size=(280, 3))
         mixing = self.rng.normal(size=(3, 52))
         self.training = common @ mixing + self.rng.normal(scale=.25, size=(280, 52))
-        self.test = self.rng.normal(size=(64, 52)) @ mixing + self.rng.normal(scale=.25, size=(64, 52))
+        self.test = self.rng.normal(size=(64, 3)) @ mixing + self.rng.normal(scale=.25, size=(64, 52))
 
     def test_no_future_data_lags_use_only_current_or_past(self):
         model = DynamicPCAMonitor("q", lags=2)
