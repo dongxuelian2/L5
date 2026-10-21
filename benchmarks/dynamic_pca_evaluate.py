@@ -116,7 +116,7 @@ def render_markdown(report: dict) -> str:
         "Healthy training uses a chronological fit/calibration split and each",
         "independent test file starts with normal-fit mean history padding.",
         "History-aware statistical feature contributions are not root causes.",
-        "", "## Original source checksums", "",
+        "", "## Original source SHA-256 checksums", "",
     ]
     for f in report["source_files"]:
         lines.append(f"- {f['source']}: {f['sha256']}")
