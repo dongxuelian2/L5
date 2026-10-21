@@ -90,6 +90,11 @@ class MonitoringTests(unittest.TestCase):
         self.assertTrue(all(path.is_file() for path in paths))
         self.assertEqual(json.loads(paths[0].read_text()), first)
         self.assertEqual(len(paths[1].read_text().splitlines()), 3)
+        scoreboard = paths[2].read_text()
+        self.assertIn("IDV(1)", scoreboard)
+        self.assertIn("Early faults", scoreboard)
+        self.assertIn("SHA-256", scoreboard)
+        self.assertIn("60 minutes", scoreboard)
 
     def test_missing_reference_files_fail_loudly(self):
         with self.assertRaisesRegex(ValueError, "Missing required reference files"):
