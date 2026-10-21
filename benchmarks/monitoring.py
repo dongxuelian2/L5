@@ -6,7 +6,7 @@ NumPy is an explicit benchmark-only dependency; TripLens runtime remains stdlib.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 import hashlib
 import math
 from pathlib import Path
@@ -255,7 +255,7 @@ def summarize_cases(cases: Sequence[CaseMetrics]) -> dict:
         "faults_detected": len(delays),
         "fault_detection_fraction": round(len(delays) / len(faults), 6),
         "mean_detected_delay_samples": round(sum(delays) / len(delays), 3) if delays else None,
-        "mean_detected_delay_minutes": round(sum(delays) * 3 / len(delays), 3) if delays else None,
+        "mean_detected_delay_minutes": round(sum(c.detection_delay_minutes for c in faults if c.detection_delay_minutes is not None) / len(delays), 3) if delays else None,
         "undetected_faults": [c.fault_id for c in faults if c.detection_delay_samples is None],
     }
 
