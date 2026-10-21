@@ -152,6 +152,9 @@ def build_monitor(name: str) -> Monitor:
     if name in ("window-cusum-12", "window-cusum-24"):
         from .window_cusum import WindowCUSUMMonitor
         return WindowCUSUMMonitor(window=int(name.rsplit("-", 1)[-1]))
+    if name == "adaptive-maxz":
+        from .adaptive import AdaptiveMaxZMonitor
+        return AdaptiveMaxZMonitor()
     raise ValueError(f"Unknown method {name!r}.")
 
 
