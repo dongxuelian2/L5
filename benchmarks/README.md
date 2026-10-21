@@ -214,6 +214,47 @@ This gate provides only auditable data-availability behavior: it does not
 prove safe fault response, causality, or robustness to real-world plant
 telemetry failure.
 
+## Predetermined threshold / perturbation-seed sensitivity (stage 5)
+
+The next evaluation layer keeps the **same fixed public TEP reference
+files** and repeats synthetic dropout/noise trials under several declared
+random seeds. It does not create independent plant runs or infer a confidence
+interval for actual deployment performance.
+
+    python3 -m benchmarks.sensitivity /tmp/tep-reference --output-dir /tmp/tep-sweep
+    # Small smoke test for local development:
+    python3 -m benchmarks.sensitivity /tmp/tep-reference --faults 1 --methods robust-maxz --seeds 19 23 --alphas .01 .05
+
+The default grid is specified in source **before testing**:
+
+- Alpha (nominal upper empirical threshold tail): 0.005, 0.01, 0.05.
+  These are distinct sensitivity settings fitted from the unchanged normal
+  training/calibration split, not competing candidates ranked on fault tests.
+  Alpha is **not** a guarantee of a realized test false-alarm probability.
+- Five deterministic perturbation seeds: 20261021 through 20261025.
+- Three test conditions: **clean**, **5% seeded cell deletion**, and
+  **20% training-standard-deviation added Gaussian noise**.
+- Three frozen monitors: robust Max-Z, PCA-Q and PCA-T2. Each alpha setting
+  is calibrated on the held-out *normal training partition only*; no
+  abnormal test values or labels affect the models or thresholds.
+
+Results include individual seed/alpha/scenario records and
+min/median/max across artificial stress seeds for early (60-minute)
+fault detection, healthy coverage and nuisance false-alarm episodes. For
+each seed there are **paired differences versus clean at the same alpha**;
+per-fault early hit frequencies are also retained. The baseline clean
+condition must remain exactly the same across seeds, and thresholds must
+remain fixed across test perturbations at a given alpha.
+
+The report intentionally never outputs a "winning" alpha; choosing it
+after looking at test faults would contaminate the external benchmark.
+No uncertainty interval or generalization guarantee is attached to these
+seed ranges: the *original process trajectory is the same* every time.
+
+Artifacts: tep_sensitivity_report.json and
+tep_sensitivity_scoreboard.md, both archived by the independent reference
+workflow, alongside the base, robustness and coverage reports.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
