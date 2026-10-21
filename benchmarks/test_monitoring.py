@@ -152,6 +152,8 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(metrics.normal_samples, 160)
         self.assertTrue(metrics.detected_after_onset)
         self.assertEqual(metrics.detection_delay_minutes, metrics.detection_delay_samples * 3)
+        self.assertTrue(metrics.detected_within_early_window)
+        self.assertTrue(run_benchmark(self.root, faults=(1,), methods=("robust-maxz",))["methods"]["robust-maxz"]["aggregate"]["faults_detected_early"])
         with self.assertRaisesRegex(ValueError, "within"):
             evaluate_case(
                 source="fault", fault_id=1, samples=data, monitor=model,
