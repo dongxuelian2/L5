@@ -43,7 +43,11 @@ class CoveragePolicy:
             raise ValueError("Required channels must use canonical TEP feature names.")
 
     def public_metadata(self) -> dict:
-        return asdict(self)
+        # JSON round-trips should retain stable types rather than a tuple.
+        return {
+            "min_observed_fraction": self.min_observed_fraction,
+            "required_channels": list(self.required_channels),
+        }
 
 
 def decide(
