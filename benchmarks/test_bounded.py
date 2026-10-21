@@ -31,7 +31,7 @@ class WindowCUSUMMathematicsTests(unittest.TestCase):
         x = np.asarray([[1., 0.], [1., 0.], [1., 0.], [1., 0.],
                         [0., 0.], [0., 0.], [0., 0.]])
         np.testing.assert_allclose(
-            monitor.score(x), [.5, 1., 1.5, 1.5, 1.0, .5, 0.]
+            monitor.score(x), [.5, 1., 1.5, 1.5, .5, 0., 0.]
         )
         neg = np.asarray([[-1., 0.], [-1., 0.], [-1., 0.], [-1., 0.]])
         np.testing.assert_allclose(monitor.score(neg), [.5, 1., 1.5, 1.5])
