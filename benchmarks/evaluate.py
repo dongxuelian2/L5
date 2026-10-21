@@ -146,12 +146,12 @@ def render_markdown(report: dict) -> str:
     lines = [
         "# Tennessee Eastman: external anomaly-detection baseline",
         "",
-        "**Scope:** 21 known TEP test scenarios; this is anomaly detection, not",
+        f"**Scope:** {len(protocol['fault_test_sources'])} TEP fault-test scenarios; this is anomaly detection, not",
         "fault-ID classification, causal diagnosis, or validated plant control.",
         "",
-        f"- Train: normal \`d00.dat\`; chronological {protocol['fit_samples']} fit + "
+        f"- Train: normal `d00.dat`; chronological {protocol['fit_samples']} fit + "
         f"{protocol['calibration_samples']} calibration samples",
-        f"- Test: healthy \`d00_te.dat\`; faulty \`d01_te.dat\` ... \`d21_te.dat\`",
+        f"- Test: healthy `d00_te.dat`; faulty `d01_te.dat` ... `d21_te.dat`",
         f"- Assumed fault onset: zero-based sample {protocol['fault_onset_zero_based_sample']}; "
         f"alarm persistence: {protocol['persistence_consecutive_samples']} consecutive samples",
         f"- **Early detection horizon: {window} minutes**; later alarms are not early successes",
@@ -209,7 +209,7 @@ def render_markdown(report: dict) -> str:
         "",
     ]
     for item in report["input_files"]:
-        lines.append(f"- \`{item['source']}\`: \`{item['sha256']}\`")
+        lines.append(f"- `{item['source']}`: `{item['sha256']}`")
     lines.append("")
     return "\n".join(lines)
 
