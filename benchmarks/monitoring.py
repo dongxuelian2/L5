@@ -155,6 +155,9 @@ def build_monitor(name: str) -> Monitor:
     if name == "adaptive-maxz":
         from .adaptive import AdaptiveMaxZMonitor
         return AdaptiveMaxZMonitor()
+    if name in ("dpca-q-lag2", "dpca-t2-lag2"):
+        from .dynamic_pca import DynamicPCAMonitor
+        return DynamicPCAMonitor(mode="q" if name == "dpca-q-lag2" else "t2", lags=2)
     raise ValueError(f"Unknown method {name!r}.")
 
 
