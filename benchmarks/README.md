@@ -421,6 +421,61 @@ a production safety rule or propose unattended plant actuation.
 Output artifacts: tep_drift_recovery_report.json and
 tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault CI.
 
+## Causal dynamic PCA: multivariate time-lag structure (stage 9)
+
+This stage studies a different hypothesis from the preceding CUSUM,
+EWMA and online-adaptive detector experiments: a fault might change the
+**relationships across sensors and across successive time instants**
+rather than only the instantaneous magnitude of a measurement.
+
+Two predeclared new baselines, **dpca-q-lag2** and **dpca-t2-lag2**,
+fit PCA to 156-dimensional observations composed of **52 current
+channels + 52 channels one sample ago + 52 channels two samples ago**
+(a nine-minute window sampled every 180 seconds). At time t, no x[t+1]
+or future observations are consumed. Each file starts with unavailable
+past observations filled from the normal-fit **per-channel mean**, not
+a peek at the first or later test record. No state crosses file
+boundaries or a coverage-gated abstention interval.
+
+The PCA normal-fit segment alone supplies augmented-feature means
+and scales, components, eigenvalues, and lag-padding values. Its
+chronologically later normal-calibration segment sets each method's
+empirical alpha=0.01 threshold; never inspect held-out faults while
+setting the number of lags, target 90% variance, 20-component cap,
+threshold or three-sample alert persistence.
+
+Models use the established squared prediction error (Q) and Hotelling
+T-squared statistics of the lag-augmented standardized matrix. At
+alert time the explanation lists channels with large descriptive
+lag-aggregated PCA contributions, **not physical fault root causes**.
+
+    python3 -m benchmarks.dynamic_pca_evaluate /tmp/tep-reference --output-dir /tmp/tep-dpca
+    python3 -m benchmarks.dynamic_pca_evaluate /tmp/tep-reference --faults 1
+    python3 -m benchmarks.coverage /tmp/tep-reference \
+      --methods dpca-q-lag2 dpca-t2-lag2 \
+      --scenarios clean random-missing-05 blackout-15samples \
+      --output-dir /tmp/tep-dpca-coverage
+
+The same pinned public TEP workflow compares **Max-Z, ordinary PCA-Q/T2,
+and DPCA-Q/T2** over the original 21 held-out fault-test trajectories and
+independent normal test. Reports include early detection **within 60
+minutes**, eventual detection, mean delay conditional on detection,
+healthy false-alarm episode counts and alarm-active sample totals.
+The separate sensor-loss audit confirms the lag history resets after
+missing observation intervals; unavailable evidence must not count
+as a healthy observation.
+
+Expected limitations: a lag-augmented model has more dimensions, and
+the short original 350-sample normal-fit segment may estimate them
+poorly. Fixed calibration alpha does **not** equalize observed nuisance
+alarm rates among five methods; more early detections alone cannot
+establish superior monitoring. No result-based lag tuning is permitted.
+This is anomaly evaluation, not causal diagnosis or plant actuation.
+
+Artifacts: tep_dynamic_pca_report.json,
+tep_dynamic_pca_scoreboard.md, and separate coverage audit reports,
+with original dataset SHA-256 hashes included.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
