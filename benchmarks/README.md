@@ -24,7 +24,8 @@ python3 -m unittest discover -s benchmarks -p 'test_*.py' -v
 
 All 21 `dXX_te.dat` files plus `d00_te.dat` are **required by default**:
 missing files cause an error, not silently missing fault scores. Reports
-`tep_detection_report.json` and `tep_detection_cases.csv` contain per-case results,
+`tep_detection_report.json`, `tep_detection_cases.csv` and
+`tep_detection_scoreboard.md` contain per-case results,
 evaluation configuration, original channel names and per-file SHA-256s.
 Continuous integration additionally runs the pinned external dataset
 workflow `.github/workflows/tep-reference.yml` and retains these reports as
