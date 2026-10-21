@@ -37,6 +37,7 @@ class Perturbed:
     data: np.ndarray
     missing_cells: int
     total_cells: int
+    observed_mask: np.ndarray
 
     @property
     def missing_fraction(self) -> float:
@@ -77,7 +78,10 @@ def apply_stress(
     count = int(missing.sum())
     if count:
         measurements[missing] = np.broadcast_to(median, missing.shape)[missing]
-    return Perturbed(measurements, count, int(measurements.size))
+    # Preserve original observation validity even after numerical imputation.
+    # Consumers making decisions must gate on this mask BEFORE interpreting
+    # an imputed statistic as a normal or alarm outcome.
+    return Perturbed(measurements, count, int(measurements.size), ~missing)
 
 
 def alarm_episodes(alarms: tuple[bool, ...], normal_end: int) -> dict:
