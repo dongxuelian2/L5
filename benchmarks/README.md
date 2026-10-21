@@ -116,6 +116,53 @@ framework therefore uses TEP only for anomaly detection and explicitly
 **does not call** `simulation.platform.diagnose` or its
 counterfactual simulator.
 
+
+## Frozen-model sensor-stress audit (stage 3)
+
+The independent benchmark now measures **robustness without retraining**.
+It evaluates all 21 original fault tests and the healthy test under six
+conditions: **clean** (unchanged), **loss-xmeas7**, **loss-xmeas9**
+(entire sensor unavailable), **random-missing-05** (seeded 5% missing cells),
+**noise-20pct** (Gaussian noise at 20% of healthy-fit channel standard
+deviation), and **offset-half-sigma** (uniform half-standard-deviation
+offset on every channel).
+
+These are artificial stress settings, **not validated physical plant
+disturbance distributions**. Perturbation sizes are fixed and were not
+selected by optimizing against fault-test performance.
+
+To reproduce locally, install the benchmark dependencies and run:
+
+    python3 -m benchmarks.fetch_reference --dest /tmp/tep-reference
+    python3 -m benchmarks.robustness /tmp/tep-reference --output-dir /tmp/tep-stress
+    python3 -m benchmarks.robustness /tmp/tep-reference --faults 1 --methods robust-maxz
+
+The evaluator writes JSON (all cases, original SHA-256 data hashes, frozen
+thresholds and scenario seeds) and a Markdown scoreboard (early-detection
+changes versus clean and nuisance alarm episode counts) named
+tep_robustness_report.json and tep_robustness_scoreboard.md. The same reports
+are collected as artifacts by the reference-evaluation GitHub workflow.
+
+**Leakage control:** normal fit data determine imputation medians, noise
+scales and model parameters; the normal calibration partition determines
+the fixed alarm thresholds. Stressors are applied exclusively to *held-out
+normal and fault tests*. No test-time retraining or threshold tuning occurs.
+Unmodified clean metrics are checked against the canonical reference report.
+
+**Incomplete signals:** missing channels are imputed with frozen *training*
+medians, not test-series means. This can hide evidence and cause PCA
+artifacts. A completely unobserved row causes an explicit error rather than
+a reassuring normal score. An independent follow-up should introduce
+coverage-aware abstention.
+
+**Alarm quality:** a continuous false alarm is one *episode* (a rising
+edge within the healthy interval), no matter how many samples it lasts.
+Alarm-active sample fractions and episodes per 24 hours are reported
+separately; neither is an independent per-observation false-alarm guarantee.
+
+These results audit the current unsupervised monitors rather than claiming
+state-of-the-art industrial fault diagnostics.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
