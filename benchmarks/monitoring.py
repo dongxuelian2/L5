@@ -146,6 +146,9 @@ def build_monitor(name: str) -> Monitor:
         return MaxZMonitor()
     if name in ("pca-q", "pca-t2"):
         return PCAMonitor(mode=name.split("-")[1])
+    if name in ("cusum-maxz", "ewma-maxz"):
+        from .temporal import CUSUMMonitor, EWMAMonitor
+        return CUSUMMonitor() if name == "cusum-maxz" else EWMAMonitor()
     raise ValueError(f"Unknown method {name!r}.")
 
 
@@ -240,7 +243,12 @@ def evaluate_case(
         detection_delay_minutes=(first - onset_sample) * seconds_per_sample // 60 if first is not None else None,
         detection_fraction_post_onset=round(fraction, 6) if fraction is not None else None,
         first_post_onset_alarm_sample=first,
-        first_post_onset_alarm_variables=monitor.explain(data[first], feature_names) if first is not None else [],
+        first_post_onset_alarm_variables=(
+            (monitor.explain_at(data, first, feature_names)
+             if hasattr(monitor, "explain_at")
+             else monitor.explain(data[first], feature_names))
+            if first is not None else []
+        ),
     )
 
 
