@@ -39,6 +39,10 @@ jobs:
         run: python -m benchmarks.coverage "$RUNNER_TEMP/tep_reference" --methods window-cusum-12 window-cusum-24 --scenarios clean random-missing-05 blackout-15samples --output-dir "$RUNNER_TEMP/tep_bounded_coverage"
       - name: Evaluate causal drift adaptation and evidence-based alarm recovery
         run: python -m benchmarks.drift_recovery "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Compare causal two-lag dynamic PCA Q and T2 against static baselines
+        run: python -m benchmarks.dynamic_pca_evaluate "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Audit dynamic PCA observation loss and abstention resets
+        run: python -m benchmarks.coverage "$RUNNER_TEMP/tep_reference" --methods dpca-q-lag2 dpca-t2-lag2 --scenarios clean random-missing-05 blackout-15samples --output-dir "$RUNNER_TEMP/tep_dpca_coverage"
       - name: Upload auditable report
         uses: actions/upload-artifact@v4
         with:
@@ -59,6 +63,10 @@ jobs:
             ${{ runner.temp }}/tep_report/tep_bounded_cusum_scoreboard.md
             ${{ runner.temp }}/tep_report/tep_drift_recovery_report.json
             ${{ runner.temp }}/tep_report/tep_drift_recovery_scoreboard.md
+            ${{ runner.temp }}/tep_report/tep_dynamic_pca_report.json
+            ${{ runner.temp }}/tep_report/tep_dynamic_pca_scoreboard.md
+            ${{ runner.temp }}/tep_dpca_coverage/tep_coverage_report.json
+            ${{ runner.temp }}/tep_dpca_coverage/tep_coverage_scoreboard.md
             ${{ runner.temp }}/tep_bounded_coverage/tep_coverage_report.json
             ${{ runner.temp }}/tep_bounded_coverage/tep_coverage_scoreboard.md
           retention-days: 30
