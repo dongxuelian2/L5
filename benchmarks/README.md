@@ -163,6 +163,57 @@ separately; neither is an independent per-observation false-alarm guarantee.
 These results audit the current unsupervised monitors rather than claiming
 state-of-the-art industrial fault diagnostics.
 
+## Coverage-aware abstention / three-state monitoring (stage 4)
+
+The robustness benchmark previously reported anomaly scores even when sensor
+values had been filled from the normal-training median. That masked a crucial
+distinction: a *computable number* is not necessarily a *credible observation*.
+
+Run a separate three-state audit (the original baseline and ungated stress
+report remain available for comparison):
+
+    python3 -m benchmarks.coverage /tmp/tep-reference --output-dir /tmp/tep-coverage
+    python3 -m benchmarks.coverage /tmp/tep-reference --faults 1 --methods robust-maxz
+
+The new output states are **normal**, **alarm** and **abstain**. A sample
+abstains if fewer than 90% of original channels were observed or either of
+the illustrative required channels **XMEAS(7)** or **XMEAS(9)** is missing.
+The policy is configurable with --min-observed-fraction and
+--required-channels. Choosing these required channels does **not** establish
+them as a verified safety-critical sensor set for any real plant.
+
+The original 52-channel observation mask is preserved next to imputed data.
+Imputed values are allowed to maintain the feature shape for mathematical
+scoring, but **do not override abstention**. Fully unavailable rows are
+counted as abstentions; they are never silently labeled normal. Each
+abstention breaks the consecutive-alarm streak, which must be rebuilt from
+fresh observed samples before raising a new alert.
+
+The audit adds a deliberately severe 15-sample (45-minute) all-channel
+blackout from test indexes 155 through 169, spanning the nominal
+fault-onset sample 160. Every scenario is applied to healthy and faulty test
+series using the same non-label-based rule. Other previous stress scenarios
+are also evaluated.
+
+Reports include healthy coverage, missing/abstained sample counts, early
+post-onset observation coverage, confirmed alarm episodes, conditional
+alarm-active fraction over *observed* samples, early 60-minute fault
+detection and its change from the clean reference. An unobserved fault
+still counts in the **full fault denominator**; silently removing it from
+the evaluation would falsely inflate the detection rate. Conditional
+false-alarm fractions are explicitly null if no normal samples are
+observable, rather than falsely reporting a zero rate.
+
+Normal data alone still fit monitors, estimate imputation values and set
+thresholds. Test faults and perturbations have no access to that process.
+The clean coverage-policy run is regression-checked against the original
+reference benchmark. Data hashes, policy parameters, seed, all cases and
+explicit limitations are included in the JSON/Markdown workflow artifacts.
+
+This gate provides only auditable data-availability behavior: it does not
+prove safe fault response, causality, or robustness to real-world plant
+telemetry failure.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
