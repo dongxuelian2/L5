@@ -189,6 +189,7 @@ class CaseMetrics:
     normal_samples: int
     false_alarm_rate: float
     detected_after_onset: bool | None
+    detected_within_early_window: bool | None
     detection_delay_samples: int | None
     detection_delay_minutes: int | None
     detection_fraction_post_onset: float | None
@@ -207,12 +208,15 @@ def evaluate_case(
     feature_names: Sequence[str],
     onset_sample: int | None,
     seconds_per_sample: int,
+    early_window_samples: int = 20,
 ) -> CaseMetrics:
     data = as_matrix(samples, features=len(feature_names))
     if onset_sample is not None and not 0 < onset_sample < len(data):
         raise ValueError("Fault onset must be within the test sequence.")
     if seconds_per_sample < 1:
         raise ValueError("Sampling interval must be positive.")
+    if early_window_samples < 1:
+        raise ValueError("Early window must contain at least one sample.")
     scores = monitor.score(data)
     alarms = persistent_alarms(scores, threshold, consecutive)
     normal_count = len(data) if onset_sample is None else onset_sample
@@ -231,6 +235,7 @@ def evaluate_case(
         normal_samples=normal_count,
         false_alarm_rate=round(false_count / normal_count, 6),
         detected_after_onset=first is not None if onset_sample is not None else None,
+        detected_within_early_window=(first is not None and first - onset_sample <= early_window_samples) if onset_sample is not None else None,
         detection_delay_samples=first - onset_sample if first is not None else None,
         detection_delay_minutes=(first - onset_sample) * seconds_per_sample // 60 if first is not None else None,
         detection_fraction_post_onset=round(fraction, 6) if fraction is not None else None,
@@ -246,6 +251,7 @@ def summarize_cases(cases: Sequence[CaseMetrics]) -> dict:
         raise ValueError("Need a healthy test and at least one fault test.")
     healthy = normals[0]
     delays = [c.detection_delay_samples for c in faults if c.detection_delay_samples is not None]
+    early = sum(c.detected_within_early_window is True for c in faults)
     pre_fault = sum(c.normal_samples for c in faults)
     pre_false = sum(c.false_alarm_samples for c in faults)
     return {
@@ -255,6 +261,8 @@ def summarize_cases(cases: Sequence[CaseMetrics]) -> dict:
         "faults_evaluated": len(faults),
         "faults_detected": len(delays),
         "fault_detection_fraction": round(len(delays) / len(faults), 6),
+        "faults_detected_early": early,
+        "early_detection_fraction": round(early / len(faults), 6),
         "mean_detected_delay_samples": round(sum(delays) / len(delays), 3) if delays else None,
         "mean_detected_delay_minutes": round(sum(c.detection_delay_minutes for c in faults if c.detection_delay_minutes is not None) / len(delays), 3) if delays else None,
         "undetected_faults": [c.fault_id for c in faults if c.detection_delay_samples is None],
