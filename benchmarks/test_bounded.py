@@ -63,6 +63,30 @@ class WindowCUSUMMathematicsTests(unittest.TestCase):
         self.assertAlmostEqual(limited.score(x)[-1], 0)
         self.assertGreater(unbounded.score(x)[-1], 15)
 
+    def test_coverage_gap_resets_temporal_history_not_only_alert_counter(self):
+        from benchmarks.coverage import (
+            ABSTAIN, CoveragePolicy, decide, score_with_observation_resets,
+        )
+        monitor = WindowCUSUMMonitor(window=12, reference=.5)
+        monitor.center = np.zeros(52)
+        monitor.scale = np.ones(52)
+        monitor.features = 52
+        trace = np.zeros((8, 52))
+        trace[:, 0] = 2.
+        mask = np.ones(trace.shape, dtype=bool)
+        mask[3] = False
+        scores = score_with_observation_resets(monitor, trace, mask, CoveragePolicy())
+        full_scores = monitor.score(trace)
+        self.assertEqual(scores[3], 0)
+        self.assertAlmostEqual(scores[4], 1.5)
+        self.assertGreater(full_scores[4], scores[4])
+        states = decide(
+            scores, mask, threshold=2., consecutive=1, policy=CoveragePolicy(),
+        )
+        self.assertEqual(states[3], ABSTAIN)
+        self.assertEqual(states[4], "normal")
+        self.assertEqual(states[5], "alarm")
+
     def test_history_correct_explanation_and_metadata(self):
         monitor = self.simple(window=3)
         x = np.asarray([[2., 0.], [2., 0.], [2., 0.], [0., 0.]])
