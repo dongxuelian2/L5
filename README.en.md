@@ -67,6 +67,10 @@ The PROCESS 02 cooling-valve session produces **312 events → 6 conditions → 
 
 Internal checks cover **12 families × 3 parameter variants = 36 fault windows**, plus three healthy windows. Current Top-1 / Top-3 are 36/36, median detection delay is 3 seconds and healthy windows flagged are 0/3. These are same-simulator rule regressions, **not independent dataset accuracy**. No Tennessee Eastman benchmark or real factory connection has been evaluated. MQTT / OPC UA, general natural-language SOP import, real Nemotron planning and an independent public benchmark remain future integration work.
 
+## External benchmark: Tennessee Eastman (stage 1)
+
+A separate [TEP reference-data importer](benchmarks/README.md) now reads 52-channel `.dat` records (including the transposed `d00.dat`), validates inputs and exports timestamped CSV. **This is data ingestion only, not independently benchmarked diagnosis or a mapping to L5's synthetic process.**
+
 ## Data and model interfaces
 
 CSV uses timestamps in seconds under `t`; other columns use the signal keys documented in `src/lib/platform.ts`. Download a complete example from the UI. Supply 25–2,000 rows including 20 stable baseline rows. Blank values are missing; duplicate or decreasing timestamps, nonfinite values and unknown columns are rejected.
