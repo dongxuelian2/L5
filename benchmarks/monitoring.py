@@ -149,6 +149,9 @@ def build_monitor(name: str) -> Monitor:
     if name in ("cusum-maxz", "ewma-maxz"):
         from .temporal import CUSUMMonitor, EWMAMonitor
         return CUSUMMonitor() if name == "cusum-maxz" else EWMAMonitor()
+    if name in ("window-cusum-12", "window-cusum-24"):
+        from .window_cusum import WindowCUSUMMonitor
+        return WindowCUSUMMonitor(window=int(name.rsplit("-", 1)[-1]))
     raise ValueError(f"Unknown method {name!r}.")
 
 
