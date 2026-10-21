@@ -57,23 +57,20 @@ def fetch_reference(
                     payload = response.read(MAX_REFERENCE_BYTES + 1)
                 if len(payload) > MAX_REFERENCE_BYTES:
                     raise ValueError(f"{name}: reference payload exceeded size limit")
-                # Write temporarily, only promote after full data validation.
+                # Commit the download atomically; delete invalid payloads.
                 temp = dest / f".{name}.part"
                 try:
                     temp.write_bytes(payload)
-                    # The filename parser is deliberately strict.
-                    # Validate via a temporary canonical name inside this directory.
-                    validation = dest / f".validation-{name}"
+                    temp.replace(target)
                     try:
-                        validation.write_bytes(payload)
-                        # Rename to canonical name only after validation.
-                        temp.replace(target)
                         dataset = read_tep_dat(target)
                         size = len(dataset.rows)
-                        if size != (500 if name == "d00.dat" else 960):
-                            raise ValueError(f"{name}: expected 500/960 rows, found {size}")
-                    finally:
-                        validation.unlink(missing_ok=True)
+                        expected = 500 if name == "d00.dat" else 960
+                        if size != expected:
+                            raise ValueError(f"{name}: expected {expected} rows, found {size}")
+                    except (ValueError, OSError):
+                        target.unlink(missing_ok=True)
+                        raise
                 finally:
                     temp.unlink(missing_ok=True)
                 break
