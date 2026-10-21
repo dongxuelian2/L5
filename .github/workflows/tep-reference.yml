@@ -33,6 +33,10 @@ jobs:
         run: python -m benchmarks.sensitivity "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
       - name: Compare frozen static monitors with causal CUSUM and EWMA
         run: python -m benchmarks.temporal_evaluate "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Compare bounded and unbounded CUSUM under frozen calibration workload
+        run: python -m benchmarks.bounded_evaluate "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Verify bounded CUSUM restarts after observed-data blackouts
+        run: python -m benchmarks.coverage "$RUNNER_TEMP/tep_reference" --methods window-cusum-12 window-cusum-24 --scenarios clean random-missing-05 blackout-15samples --output-dir "$RUNNER_TEMP/tep_bounded_coverage"
       - name: Upload auditable report
         uses: actions/upload-artifact@v4
         with:
@@ -49,4 +53,8 @@ jobs:
             ${{ runner.temp }}/tep_report/tep_sensitivity_scoreboard.md
             ${{ runner.temp }}/tep_report/tep_temporal_comparison.json
             ${{ runner.temp }}/tep_report/tep_temporal_comparison.md
+            ${{ runner.temp }}/tep_report/tep_bounded_cusum_report.json
+            ${{ runner.temp }}/tep_report/tep_bounded_cusum_scoreboard.md
+            ${{ runner.temp }}/tep_bounded_coverage/tep_coverage_report.json
+            ${{ runner.temp }}/tep_bounded_coverage/tep_coverage_scoreboard.md
           retention-days: 30
