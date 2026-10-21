@@ -220,6 +220,11 @@ def run_experiment(
                     record = {
                         "source": name,
                         "fault_id": int(name[1:3]),
+                        # A pre-existing nuisance alarm is NOT a new detected
+                        # fault; make the distinction observable in reports.
+                        "alarm_already_active_at_fault_onset": (
+                            decisions[onset - 1] == ALARM if onset is not None else None
+                        ),
                         **summary,
                         "state_counts": {
                             NORMAL: decisions.count(NORMAL),
@@ -246,6 +251,9 @@ def run_experiment(
                     "faults_evaluated": len(faulty),
                     "early_detected": sum(c["detected_within_early_window"] is True for c in faulty),
                     "eventually_detected": sum(c["detected_after_onset"] is True for c in faulty),
+                    "fault_cases_already_in_alarm_before_onset": sum(
+                        c["alarm_already_active_at_fault_onset"] is True for c in faulty
+                    ),
                     "healthy_false_alarm_episodes": healthy["normal_false_alarm_episodes"],
                     "healthy_alarm_active_samples": healthy["normal_false_alarm_active_samples"],
                     "healthy_observed_fraction": healthy["normal_coverage_fraction"],
@@ -260,14 +268,15 @@ def render_markdown(report: dict) -> str:
         "# TEP causal adaptation and recovery: predeclared diagnostic audit", "",
         "No fault-test model selection. All center scales, model fit and thresholds",
         "originate in normal training. Synthetic drifts do not model physical plant state.", "",
-        "| Test condition | Detector | Alarm policy | Early / faults | Eventual / faults | Healthy false episodes | Healthy alarm-active samples |",
-        "|:--|:--|:--|--:|--:|--:|--:|",
+        "| Test condition | Detector | Alarm policy | Early / faults | Eventual / faults | Pre-existing fault-file alarms | Healthy false episodes | Healthy alarm-active samples |",
+        "|:--|:--|:--|--:|--:|--:|--:|--:|",
     ]
     for row in report["rows"]:
         lines.append(
             f"| {row['scenario']} | {row['method']} | {row['policy']} | "
             f"{row['early_detected']}/{row['faults_evaluated']} | "
             f"{row['eventually_detected']}/{row['faults_evaluated']} | "
+            f"{row['fault_cases_already_in_alarm_before_onset']} | "
             f"{row['healthy_false_alarm_episodes']} | {row['healthy_alarm_active_samples']} |"
         )
     lines.extend([
@@ -276,6 +285,8 @@ def render_markdown(report: dict) -> str:
         "sub-threshold readings are required for confirmed clearance.",
         "JSON additionally records post-transient clearance delay or censoring",
         "when the healthy test was in an alarm at intervention end.",
+        "Pre-existing pre-fault alarm episodes are reported separately; their",
+        "continuation past onset is not credited as a newly detected fault.",
         "An adaptive center can absorb gradual *fault* evidence; unchanged fault",
         "denominators and early-hit counts expose rather than conceal this risk.",
         "", "## Original input SHA-256", "",
