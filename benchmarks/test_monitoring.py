@@ -118,6 +118,21 @@ class MonitoringTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "positive"):
             persistent_alarms([1], 0, 0)
 
+    def test_prefault_persistent_alarm_is_not_falsely_credited_to_fault(self):
+        model = MaxZMonitor()
+        model.fit(self.training[:350])
+        threshold = calibrate(model, self.training[350:], alpha=0.01)
+        permanently_alarms = self.normal_test.copy()
+        permanently_alarms[:, 0] += 200
+        metrics = evaluate_case(
+            source="d01_te.dat", fault_id=1, samples=permanently_alarms,
+            monitor=model, threshold=threshold, consecutive=3,
+            feature_names=VARIABLES, onset_sample=160, seconds_per_sample=180,
+        )
+        self.assertGreater(metrics.false_alarm_rate, 0.9)
+        self.assertFalse(metrics.detected_after_onset)
+        self.assertIsNone(metrics.detection_delay_minutes)
+
     def test_metrics_exclude_prefault_from_detections(self):
         model = MaxZMonitor()
         model.fit(self.training[:350])
