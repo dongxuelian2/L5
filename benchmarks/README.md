@@ -255,6 +255,54 @@ Artifacts: tep_sensitivity_report.json and
 tep_sensitivity_scoreboard.md, both archived by the independent reference
 workflow, alongside the base, robustness and coverage reports.
 
+## Causal temporal detectors and static-baseline comparison (stage 6)
+
+This stage adds **two predeclared, causal temporal monitors** as actual
+algorithmic baselines, rather than another synthetic stress mode.
+
+- **cusum-maxz**: classical two-sided Page CUSUM applied independently
+  to 52 robust-standardized channels; at each instant take the maximum
+  positive or negative accumulated score. Reference drift k=0.5.
+- **ewma-maxz**: causal exponential moving average of robust-standardized
+  signed deviations in each channel, smoothed with lambda=0.25; alarm on
+  the largest absolute averaged deviation.
+
+Neither learns fault identity or accesses future samples. Channel centers
+and scales derive **only from the healthy fitting partition**. Each record
+starts with zero temporal state; the healthy calibration segment is scored
+from a zero state independently of the testing records. The empirical
+threshold for each detector is calibrated on the *same held-out normal
+training portion*, using alpha=0.01 and three consecutive exceedances;
+the original Max-Z / PCA-Q / PCA-T2 baselines use those identical rules.
+
+    python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --output-dir /tmp/tep-temporal
+    python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --faults 1 --alpha .01
+
+The full 21-fault reference CI generates tep_temporal_comparison.json and
+tep_temporal_comparison.md in the same artifact as all previous reports.
+These show early (60-minute) fault detections, eventual detections,
+**healthy alarm episodes**, alarm-active samples and delay conditional
+on detected faults, plus the complete per-fault canonical evaluation.
+
+**A causal explanation is not a root cause:** feature summaries at an
+alarm come from the full *past* time series, not the single current
+measurement, and are strictly labelled statistical contributions.
+
+**Limitations:** Standard Page CUSUM does not automatically reset on alarm,
+so an ongoing drift or operating-point shift can lead to an extremely
+persistent nuisance alarm over long records. The calibration segment
+(approximately 150 points) is much shorter than the 960-point held-out
+test, so the nominal empirical alpha does not control deployed false
+alarms. Temporal monitor parameters are fixed before examining test faults:
+any performance improvement, if found, must be considered together with
+nuisance-alarm episode counts and coverage. Temporal models have not
+been integrated into online L5 decisions or physical process actuation.
+
+**Next increments:** alarm-state-aware temporal resets around unobserved
+windows; controlled operating-point drift, repeated healthy trajectories
+and matched nuisance-alarm-budget comparisons. These must be evaluated
+without optimizing on held-out TEP fault labels.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
