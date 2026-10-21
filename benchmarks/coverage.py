@@ -389,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("data_dir", type=Path)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--faults", type=int, nargs="+", default=list(range(1, 22)))
-    parser.add_argument("--methods", nargs="+", choices=DEFAULT_METHODS, default=list(DEFAULT_METHODS))
+    parser.add_argument("--methods", nargs="+", choices=DEFAULT_METHODS + ("window-cusum-12", "window-cusum-24"), default=list(DEFAULT_METHODS))
     parser.add_argument("--scenarios", nargs="+", choices=DEFAULT_SCENARIOS, default=list(DEFAULT_SCENARIOS))
     parser.add_argument("--seed", type=int, default=20261021)
     parser.add_argument("--min-observed-fraction", type=float, default=0.90)
