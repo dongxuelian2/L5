@@ -32,4 +32,5 @@ jobs:
           path: |
             ${{ runner.temp }}/tep_report/tep_detection_report.json
             ${{ runner.temp }}/tep_report/tep_detection_cases.csv
+            ${{ runner.temp }}/tep_report/tep_detection_scoreboard.md
           retention-days: 30
