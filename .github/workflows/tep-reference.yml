@@ -29,6 +29,8 @@ jobs:
         run: python -m benchmarks.robustness "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
       - name: Evaluate coverage-gated normal/alarm/abstain decisions
         run: python -m benchmarks.coverage "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Audit 3 fixed thresholds across 5 seeded test perturbations
+        run: python -m benchmarks.sensitivity "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
       - name: Upload auditable report
         uses: actions/upload-artifact@v4
         with:
@@ -41,4 +43,6 @@ jobs:
             ${{ runner.temp }}/tep_report/tep_robustness_scoreboard.md
             ${{ runner.temp }}/tep_report/tep_coverage_report.json
             ${{ runner.temp }}/tep_report/tep_coverage_scoreboard.md
+            ${{ runner.temp }}/tep_report/tep_sensitivity_report.json
+            ${{ runner.temp }}/tep_report/tep_sensitivity_scoreboard.md
           retention-days: 30
