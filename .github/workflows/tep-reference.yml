@@ -43,6 +43,8 @@ jobs:
         run: python -m benchmarks.dynamic_pca_evaluate "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
       - name: Audit dynamic PCA observation loss and abstention resets
         run: python -m benchmarks.coverage "$RUNNER_TEMP/tep_reference" --methods dpca-q-lag2 dpca-t2-lag2 --scenarios clean random-missing-05 blackout-15samples --output-dir "$RUNNER_TEMP/tep_dpca_coverage"
+      - name: Validate normal-only forward folds and matched calibration alarm budgets
+        run: python -m benchmarks.normal_budget_validation "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
       - name: Upload auditable report
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +67,8 @@ jobs:
             ${{ runner.temp }}/tep_report/tep_drift_recovery_scoreboard.md
             ${{ runner.temp }}/tep_report/tep_dynamic_pca_report.json
             ${{ runner.temp }}/tep_report/tep_dynamic_pca_scoreboard.md
+            ${{ runner.temp }}/tep_report/tep_normal_budget_validation.json
+            ${{ runner.temp }}/tep_report/tep_normal_budget_scoreboard.md
             ${{ runner.temp }}/tep_dpca_coverage/tep_coverage_report.json
             ${{ runner.temp }}/tep_dpca_coverage/tep_coverage_scoreboard.md
             ${{ runner.temp }}/tep_bounded_coverage/tep_coverage_report.json
