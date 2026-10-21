@@ -303,6 +303,65 @@ windows; controlled operating-point drift, repeated healthy trajectories
 and matched nuisance-alarm-budget comparisons. These must be evaluated
 without optimizing on held-out TEP fault labels.
 
+## Bounded-memory temporal evidence & normal-calibration alarm budgets (stage 7)
+
+Previous public TEP evaluation exposed a major limitation: conventional
+unbounded Page CUSUM kept its alarm active for 433/960 healthy test samples.
+The next increment evaluates finite-lookback, two-sided Page-style suffix
+accumulation, with fixed windows of **12 samples (36 min)** and **24 samples
+(72 min)**. Positive and negative standardized evidence are evaluated
+only over suffixes of the last W observations. They cannot accumulate
+historical drift from earlier in the record.
+
+    python3 -m benchmarks.bounded_evaluate /tmp/tep-reference --output-dir /tmp/tep-bounded
+    python3 -m benchmarks.bounded_evaluate /tmp/tep-reference --faults 1
+
+Seven detectors are compared: Max-Z, PCA-Q, PCA-T2, classic unbounded
+CUSUM, EWMA and the two bounded CUSUM windows. The reference drift k=0.5
+and both window lengths were declared **before** evaluating test faults.
+
+To avoid "better detection only because of a more permissive alarm
+threshold", each algorithm is evaluated under **two frozen calibration
+policies**:
+
+1. The prior per-method empirical healthy-calibration 99th percentile
+   (nominal alpha=0.01).
+2. That same threshold raised when needed so the **healthy calibration
+   sequence** contains zero episodes of three consecutive threshold
+   exceedances. The required threshold is the greatest rolling minimum
+   of three adjacent healthy calibration scores. No held-out fault or
+   healthy *test* data may contribute to this calculation.
+
+These policies are equal in **calibration episode budget**, not necessarily
+in *realized test* false alarm rate. The calibration interval is short,
+and a policy that produces zero calibration alarms may still suffer many
+alarms on a much longer or shifted healthy test. The results deliberately
+report both the number of false alarm *episodes* and the total number of
+alarm-active samples, including prolonged false alarms.
+
+    python3 -m benchmarks.coverage /tmp/tep-reference \
+      --methods window-cusum-12 window-cusum-24 \
+      --scenarios clean random-missing-05 blackout-15samples \
+      --output-dir /tmp/tep-bounded-coverage
+
+The coverage audit has a second important change: **temporal state resets
+at every abstention**. It segments the observations into contiguous valid
+runs before scoring a history-dependent monitor. Imputed sensor readings
+cannot silently carry CUSUM history through an all-channel blackout.
+Alarm persistence independently resets on those same abstentions. The
+clean-data control is checked against the original reference pipeline.
+
+Outputs: tep_bounded_cusum_report.json, tep_bounded_cusum_scoreboard.md
+and the separate coverage audit's standard JSON/Markdown reports, retained
+by the pinned 21-fault GitHub workflow.
+
+These bounded detectors are **candidate baselines, not production-ready
+alarms**. Even matched normal-calibration workload does not imply matched
+field nuisance alarm rates. Early detection must be interpreted together
+with missed faults, 960-sample healthy-test workload, coverage and actual
+detection delays. No test-based method tuning or fault-type classification
+is performed.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
