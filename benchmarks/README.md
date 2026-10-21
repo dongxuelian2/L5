@@ -476,6 +476,72 @@ Artifacts: tep_dynamic_pca_report.json,
 tep_dynamic_pca_scoreboard.md, and separate coverage audit reports,
 with original dataset SHA-256 hashes included.
 
+## Forward normal-only validation and equal calibration alarm caps (stage 10)
+
+Stage 9's DPCA-Q reported 12/21 timely faults against Max-Z 11/21
+on the original TEP held-out fault suite, with 3 vs 4 nuisance episodes.
+This was a small difference on one public reference collection, not
+evidence of statistically independent industrial superiority.
+
+This independent increment **freezes the five algorithms and their fixed
+DPCA lag structure** (Max-Z, PCA-Q/T², two-lag DPCA-Q/T²). It introduces
+two forward-chronological normal-data partitions and a declared workload
+cap **without changing the algorithms**:
+
+- **Forward A:** normal d00.dat [0,250) fit, [250,350) calibration,
+  [350,425) untouched normal validation.
+- **Forward B:** d00.dat [0,300) fit, [300,400) calibration, [400,500)
+  normal validation; if d00.dat contains 480 observations instead of 500,
+  the final interval ends at 480.
+- These are **overlapping temporal folds of the SAME normal trajectory**,
+  not statistically independent training runs, operating regimes or
+  independent bootstrap replicates. The second normal file d00_te.dat
+  is a distinct *held-out file*, not a demonstrated independent plant
+  realization. The 21 fault files are reused in both folds.
+
+Two precommitted calibration thresholds are tested per detector and fold:
+
+1. Legacy empirical normal-calibration higher-quantile threshold at
+   alpha=0.01; strict greater-than comparison and three consecutive
+   exceedances.
+2. A more direct **matched healthy-calibration workload cap**:
+   choose the **smallest observed calibration score threshold** for
+   which there are **at most 1 confirmed normal calibration alarm
+   episode** and **at most 2% alarm-active calibration samples**.
+   The 2% limit is an exact floor of the number of calibration samples,
+   not a Monte Carlo estimate. All scores used for threshold selection
+   are calculated exclusively on normal calibration observations.
+
+    python3 -m benchmarks.normal_budget_validation \
+      /tmp/tep-reference --output-dir /tmp/tep-normal-validation
+    python3 -m benchmarks.normal_budget_validation \
+      /tmp/tep-reference --faults 1 --methods robust-maxz dpca-q-lag2
+
+The **normal validation partition** is never used to choose any
+threshold: it measures out-of-sample workload after the threshold has
+been frozen. The external normal d00_te.dat is assessed separately for
+healthy nuisance episodes and total alarm-active sample counts; no
+thresholds are adjusted from that file. All 21 original test fault
+records are then evaluated with unchanged nominal onset sample 160
+and 60-minute early-detection window.
+
+A matching calibration cap is **NOT a guarantee of equal false-alarm
+burden** on either the later normal holdout or the external 960-point
+normal test; these realized differences are fully reported. Similarly
+the overlapping folds do not establish independent statistical
+uncertainty estimates. The report includes all method-specific
+thresholds, fitted metadata, calibration/validation/test alarm
+episodes and active samples, per-fault hit sets, explicit gained
+and lost early-fault IDs relative to Max-Z, reference source hashes,
+and all prespecified methodological limitations.
+
+The report deliberately avoids selecting or deploying a "winning"
+algorithm based on these reused held-out fault outcomes.
+
+Artifacts: tep_normal_budget_validation.json and
+tep_normal_budget_scoreboard.md, attached to the pinned public
+21-fault GitHub CI run.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
