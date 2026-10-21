@@ -158,6 +158,12 @@ class ReferenceFormatExperimentTests(unittest.TestCase):
             self.assertEqual(row["faults_evaluated"], 1)
             self.assertEqual(row["per_case"][0]["source"], "d00_te.dat")
             self.assertEqual(len(row["per_case"]), 2)
+            self.assertIsNone(row["per_case"][0]["alarm_already_active_at_fault_onset"])
+            self.assertIsInstance(row["per_case"][1]["alarm_already_active_at_fault_onset"], bool)
+            self.assertEqual(
+                row["fault_cases_already_in_alarm_before_onset"],
+                int(row["per_case"][1]["alarm_already_active_at_fault_onset"]),
+            )
             self.assertEqual(sum(row["per_case"][0]["state_counts"].values()), 960)
             self.assertGreaterEqual(row["healthy_false_alarm_episodes"], 0)
         for row in report["rows"]:
