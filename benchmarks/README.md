@@ -402,7 +402,10 @@ instrumentation challenges*, **not** physically validated Tennessee
 Eastman operating-point transitions.
 
 The evaluation records early (60-minute) detections, eventual fault hits,
-false-alarm episodes, total alarm-active samples and coverage. In the
+false-alarm episodes, total alarm-active samples and coverage. It also counts
+fault-test records that were **already in alarm before the declared onset**;
+a pre-existing alarm carried through onset must not be credited as a new
+fault detection merely because the latch remained active. In the
 temporary-step healthy test, it also records whether an alarm is still
 active at the end of the temporary offset, whether it later clears, and
 time-to-clear or right-censoring; no clearance time is invented when no
