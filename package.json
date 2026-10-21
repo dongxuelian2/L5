@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "generate": "python3 simulation/generate.py && python3 simulation/platform.py",
     "serve": "python3 server.py",
-    "test": "python3 -m unittest discover -s simulation -p 'test_*.py' -v",
+    "test": "python3 -m unittest discover -s simulation -p 'test_*.py' -v && python3 -m unittest discover -s benchmarks -p 'test_*.py' -v",
     "check": "npm run test && npm run build"
   },
   "dependencies": {
