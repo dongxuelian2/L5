@@ -66,12 +66,18 @@ Metrics are intentionally separated:
   evaluated fault test records.
 - **Per-fault event detection:** at least one persisted alarm **after**
   the declared onset. This is anomaly detection, *not fault-ID classification*.
+- **Timely detection:** fraction of faults that trigger a new persisted
+  alarm within 20 samples (60 minutes) after the declared onset. The
+  window is explicit and configurable via `--early-window-samples`; a
+  previously active pre-fault alarm is not counted as a new detection.
 - **Detection delay:** number of test samples from onset to the first
-  post-onset alarm and corresponding minutes. Average delay is **conditional
+  newly raised post-onset alarm and corresponding minutes. Average delay is **conditional
   on successfully detected faults**; undetected fault IDs are listed.
 - **Post-onset detected sample fraction**, plus descriptive leading signal
   deviations at the first alarm. These are **not verified causal attributions**.
 
+The 40-hour post-fault test horizon can make eventual detection rates look
+misleadingly strong; the early-window metric is therefore shown separately.
 We publish both errors and successes, including undetected faults.
 Empirical calibration does not guarantee a target false-alarm rate on
 serially correlated or shifted test data. No use of fault classification
