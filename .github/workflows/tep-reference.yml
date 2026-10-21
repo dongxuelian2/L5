@@ -1,0 +1,35 @@
+name: Tennessee Eastman reference evaluation
+
+on:
+  pull_request:
+    paths:
+      - "benchmarks/**"
+      - ".github/workflows/tep-reference.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install benchmark dependencies
+        run: python -m pip install -r benchmarks/requirements.txt
+      - name: Download pinned reference data (never committed)
+        run: python -m benchmarks.fetch_reference --dest "$RUNNER_TEMP/tep_reference"
+      - name: Run all 21 held-out fault tests and healthy test
+        run: python -m benchmarks.evaluate "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Upload auditable report
+        uses: actions/upload-artifact@v4
+        with:
+          name: l5-tep-detection-report
+          path: |
+            ${{ runner.temp }}/tep_report/tep_detection_report.json
+            ${{ runner.temp }}/tep_report/tep_detection_cases.csv
+          retention-days: 30
