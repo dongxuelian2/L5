@@ -217,7 +217,8 @@ def evaluate_case(
     alarms = persistent_alarms(scores, threshold, consecutive)
     normal_count = len(data) if onset_sample is None else onset_sample
     false_count = sum(alarms[:normal_count])
-    first = next((i for i in range(normal_count, len(data)) if alarms[i]), None) if onset_sample is not None else None
+    # Do not call a continuously active pre-fault false alarm a newly detected fault.
+    first = next((i for i in range(normal_count, len(data)) if alarms[i] and (i == 0 or not alarms[i - 1])), None) if onset_sample is not None else None
     fraction = None
     if onset_sample is not None:
         fraction = sum(alarms[onset_sample:]) / (len(data) - onset_sample)
