@@ -63,6 +63,14 @@ class TransferProtocolTests(unittest.TestCase):
         self.assertEqual(r["calibration_samples"],CAL_END-FIT_END)
         self.assertEqual(len(r["rows"]),8)
         self.assertEqual(len(r["comparison"]),4)
+        self.assertEqual(len(r["descriptive_summary"]),4)
+        for summary in r["descriptive_summary"]:
+            self.assertEqual(summary["cells"], 2)
+            self.assertEqual(summary["healthy_normal_observations"], 340)
+            self.assertEqual(
+                summary["alarm_active_fraction"],
+                round(summary["alarm_active_samples"] / 340, 6),
+            )
         self.assertEqual({row["test"]["observations"] for row in r["rows"]},{170})
         for row in r["rows"]:
             self.assertEqual(row["fit_metadata"]["features"],FEATURES)
