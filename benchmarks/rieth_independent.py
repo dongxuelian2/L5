@@ -41,6 +41,13 @@ POLICIES = ("quantile-alpha-01", "normal-calibration-1episode-2pct")
 FOLDS = (("A", 1, 2, 3), ("B", 4, 5, 6))
 EXTERNAL_TEST_RUN_IDS = tuple(range(1, 11))
 MAX_BYTES = 100 * 1024 * 1024
+# SHA-256 observed in the first successful full Dataverse reference workflow.
+# Fail closed if file contents change instead of silently treating an upstream
+# modification as a reproducible replication.
+PINNED_SHA256 = {
+    "train": "12d1055b852763fac09ef36bd7c9612a800c8bf7b6f75f344d12119206f9e940",
+    "test": "4f45afafa469793eeb7203fb9ed10ed0b1724c73c9c95537f15a0889ade0ebd4",
+}
 
 
 def source_url(file_id: str) -> str:
@@ -92,13 +99,19 @@ def download_normal_data(directory: Path) -> dict:
                 tmp.unlink(missing_ok=True)
         if not target.is_file() or not 1_000_000 <= target.stat().st_size <= MAX_BYTES:
             raise ValueError(f"Invalid cached Rieth RData file: {target}")
+        actual_sha256 = _sha256(target)
+        if actual_sha256 != PINNED_SHA256[split]:
+            raise ValueError(
+                f"Original Rieth {split} source SHA-256 has changed: {actual_sha256}; "
+                f"expected {PINNED_SHA256[split]}. Do not silently evaluate modified data."
+            )
         meta[split] = {
             "source_file": filename,
             "source_doi": DOI,
             "file_persistent_id": f"{DOI}/{file_id}",
             "direct_download_url": url,
             "downloaded_bytes": target.stat().st_size,
-            "sha256": _sha256(target),
+            "sha256": actual_sha256,
         }
     return meta
 
@@ -272,6 +285,11 @@ def run_external(directory: Path, *, download: bool = True) -> dict:
                 "sha256":_sha256(directory/filename)}
         for split,(filename,file_id,_,_) in DATA_FILES.items()
     }
+    for split, meta in provenance.items():
+        if meta["sha256"] != PINNED_SHA256[split]:
+            raise ValueError(
+                f"Original Rieth {split} source SHA-256 differs from the pinned reference."
+            )
     train,test = read_normal_rdata(directory)
     report = run_independent_runs(train,test)
     report["source_files"] = provenance
