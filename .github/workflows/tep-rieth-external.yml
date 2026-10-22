@@ -22,7 +22,7 @@ jobs:
       - name: Install model and original RData reading dependencies
         run: |
           python -m pip install -r benchmarks/requirements.txt
-          python -m pip install pyreadr==0.5.7
+          python -m pip install pandas==2.3.3 pyreadr==0.5.7
       - name: Download only official versioned fault-free Rieth RData and validate 16 independent runs
         run: python -m benchmarks.rieth_independent "$RUNNER_TEMP/rieth_normal" --output-dir "$RUNNER_TEMP/rieth_report"
       - name: Archive independent normal-seed calibration and held-out false-alarm audit
