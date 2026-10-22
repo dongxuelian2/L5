@@ -542,6 +542,69 @@ Artifacts: tep_normal_budget_validation.json and
 tep_normal_budget_scoreboard.md, attached to the pinned public
 21-fault GitHub CI run.
 
+## Separately seeded TEP normal trajectories: Rieth external replication (stage 11)
+
+**This is a different simulation dataset**, not a synthetic perturbation
+of the original Braatz reference trajectory. Harvard Dataverse release
+[Rieth et al. 2017](https://doi.org/10.7910/DVN/6C3JR1) documents
+500 distinct simulation runs per normal training and testing split,
+using nonoverlapping random seeds between training and testing. Numerical
+simulationRun indices overlap across datasets, but the source random
+seeds do not. All runs remain **TEP operating mode 1**: this does not
+constitute multi-mode or different-plant testing.
+
+Only the TWO official fault-free RData files are downloaded:
+TEP_FaultFree_Training.RData (~24MB) and
+TEP_FaultFree_Testing.RData (~45MB). The near-gigabyte fault datasets
+are never downloaded or consulted. The Dataverse page uses **custom
+dataset terms**, so this repository redistributes **no** underlying
+sensor data. The external CI reports persistent file IDs, actual
+SHA-256 and file sizes, and rejects incomplete or mixed simulation runs,
+nonfinite features, feature reordering and fault-labeled records.
+
+    python3 -m pip install -r benchmarks/requirements.txt
+    python3 -m pip install pyreadr==0.5.7
+    python3 -m benchmarks.rieth_independent \
+      /tmp/rieth_original --output-dir /tmp/rieth_evidence
+
+16 different normal simulation runs are predeclared:
+
+- **Fit/calibration/validation A**: original training simulation runs
+  1 / 2 / 3 (each has 500 observations).
+- **Fit/calibration/validation B**: original training runs 4 / 5 / 6,
+  with no run reused across folds.
+- **External normal holdout**: testing simulation runs 1 through 10
+  (each has 960 samples; source documents nonoverlapping RNG seeds).
+- Five **unchanged** detectors: robust Max-Z, PCA-Q, PCA-T2,
+  and causal two-lag DPCA-Q / DPCA-T2. The SVD is fit only on the
+  *single normal fit run* and calibrated on its separate normal
+  calibration run. Temporal models never bridge records or borrow
+  earlier measurements from another simulation.
+- Two **predeclared** normal calibration policies: empirical
+  alpha=0.01 or at most 1 alarm episode plus at most 2% active
+  calibration samples, each with 3-point alarm confirmation.
+
+The report includes each normal calibration/validation workload and
+**each external test run's independent false alarm episodes and active
+samples**, their descriptive min/median/max and totals and paired
+per-run nuisance alarm differences versus Max-Z. It deliberately
+does NOT use any fault trajectories to rank or optimize algorithms;
+this stage establishes whether the nuisance-alarm conclusions
+generalize to more than the original one normal trajectory.
+
+The optional RData parser dependency pyreadr==0.5.7 is installed only
+in the dedicated workflow under .github/workflows/tep-rieth-external.yml.
+Use --local-only to rerun from locally cached original RData files.
+All source binaries stay outside the repository.
+
+Artifacts: tep_rieth_normal_report.json and
+tep_rieth_normal_scoreboard.md, with input hashes and full protocol.
+
+Limitations: ten distinct simulator runs, not ten independent physical
+industrial plants or operating modes. Descriptive variation over ten
+fixed runs is NOT an independent confidence interval. A matched
+calibration alarm budget does not guarantee equal held-out workload.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
