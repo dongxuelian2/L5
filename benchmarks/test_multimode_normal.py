@@ -97,7 +97,9 @@ class TransferProtocolTests(unittest.TestCase):
             {"methods":("cusum-maxz",)},
         ):
             with self.subTest(kwargs=kwargs),self.assertRaises(ValueError):
-                run_transfer(self.data,**kwargs)
+                opts={"modes":(1,2),"methods":("robust-maxz",)}
+                opts.update(kwargs)
+                run_transfer(self.data,**opts)
         shortened={1:self.data[1][:1000],2:self.data[2]}
         with self.assertRaisesRegex(ValueError,"1200"):
             run_transfer(shortened,modes=(1,2),methods=("robust-maxz",))
