@@ -605,6 +605,69 @@ industrial plants or operating modes. Descriptive variation over ten
 fixed runs is NOT an independent confidence interval. A matched
 calibration alarm budget does not guarantee equal held-out workload.
 
+## Six-mode TEP normal-domain transfer (stage 12)
+
+After the independent-seed, same-mode Rieth audit, this stage changes
+the actual operating conditions. It uses the compact **2023 MMFDD-TEP
+v1.0 six-mode** dataset maintained by the Tsinghua THUFDD contributors
+at [Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process]
+(https://github.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process).
+This is a separate source from the **132.96GB DTU/Reinartz dataset** and
+the Rieth/Harvard dataset; do not conflate any of these experimental
+protocols. The source README describes 6 operating modes, ~72h
+simulations, 28 fault disturbances and 81 raw columns (53 process
+measurements/input variables + 28 disturbance columns).
+
+Only six ORIGINAL fault-free MAT files m1d00.mat through m6d00.mat
+are downloaded (about 1.6MB apiece, under 10MB total), from a
+**pinned Git commit**. Git original blob hashes are verified before
+the files can be used; the report records SHA-256 for each source
+file and never uploads or redistributes the raw source binaries.
+The original source repository includes no assumptions about
+index-by-index equality to the 52-channel Braatz/Rieth feature layout:
+the 53 process input/measurement channels in raw columns 0..52
+remain in their native order with generic feature IDs. The other
+28 disturbance columns are excluded from both fit and evaluation.
+
+    python3 -m pip install -r benchmarks/requirements.txt
+    python3 -m pip install scipy==1.16.2
+    python3 -m benchmarks.multimode_normal \
+      /tmp/tep_six_modes --output-dir /tmp/tep_six_mode_evidence
+
+**Predeclared no-fault six-by-six transfer experiment**:
+
+- For each mode 1..6, fit unchanged Max-Z, PCA-Q, PCA-T2 and two-lag
+  DPCA-Q/DPCA-T2 on its first 720 normal samples. Calibrate the
+  normal-only alpha=.01 threshold on samples [720,1080), with 3
+  consecutive threshold exceedances for a confirmed alarm.
+- Compare each trained/calibrated source-mode model against the
+  **untouched normal tail** [1080,end) of every mode 1..6. This
+  produces 6 × 6 × 5 fully reported method/mode/source pairs.
+- *Diagonal cells* are single-trajectory, future same-mode normal
+  workload estimates; *off-diagonal cells* are different normal
+  operating modes incorrectly regarded as anomalous by a model
+  trained only for the original mode. Each evaluation tail is
+  scored from a fresh causal state; no file/mode histories cross.
+- Report confirmed nuisance alarm **episodes and alarm-active
+  samples** in each cell, never relabel an out-of-mode normal alarm
+  as an actual process fault. The full matrix and mode-paired
+  differences from Max-Z are stored as JSON and Markdown.
+
+**Important:** this is ONE continuous normal realization PER mode, not
+independent seeded replicates within each mode, and the MAT source may
+have different control signal ordering/conditioning from the
+prior 52-variable references. We therefore neither pool their raw
+channels nor compare absolute anomaly score magnitudes across datasets.
+This stage measures **cross-mode false alarms only**; it does not
+study multi-mode classifiers, mode transitions or fault detection.
+It cannot establish independent mode-specific false-alarm confidence
+intervals or a safe automatic plant control policy.
+
+The dedicated reference action in .github/workflows/tep-six-mode.yml
+archives tep_six_mode_normal_report.json and
+tep_six_mode_normal_scoreboard.md. The original model and all prior
+reference workflows remain unchanged.
+
 ## Framework boundaries and next increments
 
 The dataset ingestion boundary lives in `benchmarks/tep.py`. The
