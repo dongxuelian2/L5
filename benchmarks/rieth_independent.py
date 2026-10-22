@@ -143,7 +143,7 @@ def read_normal_rdata(directory: Path) -> tuple[dict[int, np.ndarray], dict[int,
     try:
         import pyreadr
     except ImportError as error:
-        raise RuntimeError("Install pyreadr==0.5.7 to read external Rieth RData.") from error
+        raise RuntimeError(f"Unable to import pyreadr==0.5.7 with a pandas backend: {type(error).__name__}: {error}") from error
     matrices = []
     for split, (_, _, object_name, n) in DATA_FILES.items():
         filename = DATA_FILES[split][0]
