@@ -223,6 +223,23 @@ def run_transfer(
                     "difference_from_maxz_episodes": row["test"]["episodes"]-base["test"]["episodes"],
                     "difference_from_maxz_active_samples": row["test"]["active_samples"]-base["test"]["active_samples"],
                 })
+    # Aggregates are descriptive over the SAME six trajectories reused
+    # across 36 source/target pairs; do not treat as independent trials.
+    for method in methods:
+        per_method = [r for r in report["rows"] if r["method"] == method]
+        for same in (True, False):
+            selected = [r for r in per_method if r["same_mode"] is same]
+            total = sum(r["test"]["observations"] for r in selected)
+            active = sum(r["test"]["active_samples"] for r in selected)
+            report.setdefault("descriptive_summary", []).append({
+                "method": method,
+                "subset": "diagonal_same_mode" if same else "off_diagonal_normal_shift",
+                "cells": len(selected),
+                "healthy_normal_observations": total,
+                "false_alarm_episodes": sum(r["test"]["episodes"] for r in selected),
+                "alarm_active_samples": active,
+                "alarm_active_fraction": round(active / total, 6),
+            })
     return report
 
 
@@ -234,6 +251,19 @@ def render_markdown(report: dict) -> str:
         "Fit [0,720), calibrate [720,1080), score normal tails [1080,end).",
         "Same-mode cells estimate held-out in-mode nuisance alarms; off-diagonal cells",
         "quantify NORMAL mode shift mistaken for anomalies.", "",
+        "## Descriptive same-mode vs cross-mode summary", "",
+        "| Detector | Normal subset | Cells | Total confirmed false-alarm episodes | Alarm-active samples / normal samples | Active fraction |",
+        "|:--|:--|--:|--:|--:|--:|",
+    ]
+    for summary in report["descriptive_summary"]:
+        lines.append(
+            f"| {summary['method']} | {summary['subset']} | {summary['cells']} | "
+            f"{summary['false_alarm_episodes']} | "
+            f"{summary['alarm_active_samples']}/{summary['healthy_normal_observations']} | "
+            f"{summary['alarm_active_fraction']:.2%} |"
+        )
+    lines += [
+        "", "## Full fixed protocol transfer matrix", "",
         "| Trained mode | Test mode | Detector | Same mode? | Normal false-alarm episodes | Normal alarm-active samples | Evaluation samples |",
         "|:--|:--|:--|:--|--:|--:|--:|",
     ]
