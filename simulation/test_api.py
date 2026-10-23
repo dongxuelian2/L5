@@ -107,9 +107,25 @@ class ApiTests(unittest.TestCase):
         with urlopen(request,timeout=10) as response:result=json.load(response)
         self.assertEqual(result['trace'][0]['result']['id'],'TIC-101')
         self.assertEqual(result['provider'],'local')
+        body={'rows':[{'t':i,'pressure':1e308} for i in range(25)]}
+        request=Request(self.base+'/api/investigate',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+        with self.assertRaises(HTTPError) as caught: urlopen(request,timeout=5)
+        self.assertEqual(caught.exception.code,400)
+        caught.exception.close()
 
     def test_schema_rejects_unknown_evidence(self):
         brief = local_brief('test')
         brief['evidenceTags'] = ['invented-signal']
         with self.assertRaises(ValueError):
             validate_brief(brief)
+
+    def test_replay_contract_errors_are_http_400(self):
+        for body in ({'csv':'t,pressure,pressure\n0,1,2'}, {'csv':'t,pressure\n0,1,2'},
+                     {'csv':'t,pressure\n0'}, {'csv':'t,pressure\n0,"unterminated'},
+                     {'signalSchemaId':'tep-classic-52-v1','csv':'t,pressure\n0,2700'},
+                     {'csv':'t,pressure\n'+'\n'.join(f'{i},1e308' for i in range(25))}):
+            request=Request(self.base+'/api/replay',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+            with self.subTest(body=body),self.assertRaises(HTTPError) as caught:
+                urlopen(request,timeout=5)
+            self.assertEqual(caught.exception.code,400)
+            caught.exception.close()

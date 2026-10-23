@@ -1,0 +1,4 @@
+-r requirements.txt
+scipy==1.16.2
+pandas==2.3.3
+pyreadr==0.5.7

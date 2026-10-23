@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from simulation.generate import build_scenario
-from simulation.platform import analyze_rows, parse_csv, run_tools
+from simulation.platform import SYNTHETIC_SCHEMA, analyze_rows, parse_csv, run_tools
 
 ROOT = Path(__file__).resolve().parent
 MAX_BODY = 16_384
@@ -92,7 +92,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT / 'dist'), **kwargs)
 
     def send_json(self, status: int, data: dict):
-        payload = json.dumps(data, ensure_ascii=False).encode()
+        payload = json.dumps(data, ensure_ascii=False, allow_nan=False).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(payload)))
@@ -125,13 +125,15 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 if not isinstance(body, dict):
                     raise ValueError('Request must be a JSON object.')
+                if body.get('signalSchemaId', SYNTHETIC_SCHEMA.id) != SYNTHETIC_SCHEMA.id:
+                    raise ValueError('This API requires the TripLens 18-signal schema; external TEP research is separate.')
                 if self.path == '/api/replay':
                     if not isinstance(body.get('csv'), str):
                         raise ValueError('A CSV string is required.')
                     return self.send_json(200, analyze_rows(parse_csv(body['csv'])))
                 return self.send_json(200, {'schemaVersion': 2, 'provider': 'local',
                                            'trace': run_tools(body.get('rows'), body.get('calls'))})
-            except (ValueError, TypeError) as error:
+            except (ValueError, TypeError, OverflowError) as error:
                 return self.send_json(400, {'error': str(error)})
         if not isinstance(body, dict) or body.get('incidentId') != 'INC-001':
             return self.send_json(400, {"error": "Unknown incident."})

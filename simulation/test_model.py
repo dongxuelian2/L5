@@ -54,7 +54,7 @@ class ProcessModelTests(unittest.TestCase):
     def test_committed_artifact_matches_current_engine(self):
         import json
         from pathlib import Path
-        committed = json.loads((Path(__file__).resolve().parents[1] / 'src/data/scenario.json').read_text())
+        committed = json.loads((Path(__file__).resolve().parents[1] / 'src/data/scenario.json').read_text(encoding='utf-8'))
         self.assertEqual(committed, json.loads(json.dumps(build_scenario())))
 
 

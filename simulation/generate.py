@@ -197,7 +197,7 @@ if __name__ == "__main__":
     destination = Path(__file__).resolve().parents[1] / "src/data/scenario.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
     scenario = build_scenario()
-    destination.write_text(json.dumps(scenario, ensure_ascii=False, indent=2) + "\n")
+    destination.write_text(json.dumps(scenario, ensure_ascii=False, indent=2) + "\n", encoding='utf-8', newline='\n')
     print(f'Generated {destination.name}: {len(scenario["points"])} samples, {len(scenario["alarms"])} alarms, {len(scenario["branches"])} branches')
     print(f'Detections: {scenario["detections"]}')
     print(f'Trip: {scenario["tripTime"]}s. Branch peaks: {[b["peakPressure"] for b in scenario["branches"]]} kPa')

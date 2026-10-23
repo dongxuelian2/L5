@@ -10,8 +10,13 @@ import io
 import json
 import math
 import statistics as stats
+import sys
 from dataclasses import dataclass, asdict
 from pathlib import Path
+
+if __package__ in (None, ''):  # Preserve the original `python simulation/platform.py` entry point.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from l5.contracts import Signal, SignalSchema
 
 DURATION = 240
 THRESHOLD = 3050
@@ -30,6 +35,8 @@ SIGNALS = [
 ]
 KEYS = [s[0] for s in SIGNALS]
 META = {s[0]: dict(key=s[0], tag=s[1], unit=s[2], nominal=s[3], scale=s[4]) for s in SIGNALS}
+SYNTHETIC_SCHEMA = SignalSchema('triplens-synthetic-18-v2', 'TripLens reduced-order simulator',
+                              tuple(Signal(s[0], s[2], s[1]) for s in SIGNALS), 1)
 FAULTS = {
     'cooling_valve': 'Cooling valve sticking', 'feed_valve': 'Feed valve sticking',
     'utility_loss': 'Cooling-water degradation', 'feed_composition': 'Feed composition disturbance',
@@ -69,6 +76,22 @@ class Config:
     operating: float = 0
     seed: int = 1
 
+    def __post_init__(self):
+        if self.fault not in (*FAULTS, 'healthy'):
+            raise ValueError('Unknown simulator hypothesis.')
+        for name in ('start', 'delay', 'seed'):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f'{name} must be a nonnegative integer.')
+        if self.start > DURATION:
+            raise ValueError('Fault start exceeds the simulator horizon.')
+        for name in ('severity', 'noise', 'response', 'operating'):
+            value = getattr(self, name)
+            if not finite(value):
+                raise ValueError(f'{name} must be finite.')
+        if self.severity < 0 or self.noise < 0 or self.response <= 0:
+            raise ValueError('Severity/noise must be nonnegative and response must be positive.')
+
 
 def simulate(config: Config, action: str | None = None, at: int = 90, *, compact=False):
     """Two PI loops, actuator lag/rate limit, shared utility and thermal feedback.
@@ -76,12 +99,16 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
     Measured pressure is distinct from physical pressure; a sensor alarm is not
     an actual physical trip. A hypothetical branch has an identical pre-action prefix.
     """
+    if action is not None and (action not in {a['id'] for a in ACTIONS} or not isinstance(at, int)
+                               or isinstance(at, bool) or not 0 <= at <= DURATION):
+        raise ValueError('Interventions require a known action and an integer second within the horizon.')
     c = config
     temp = 120 + c.operating
     pressure, separator, flow, feed, purity = 2700., 2630., 100., 100., 99.2
     valve, feed_valve, op, feed_op, integral = 62., 50., 62., 50., 0.
     rows, pressure_path = [], []
     trip = None
+    physical_peak = pressure
     prod_loss = quality_loss = utility_cost = 0.
     for t in range(DURATION + 1):
         active = t >= c.start
@@ -130,6 +157,7 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
         purity += (99.2 - .019 * (separator - 2630) - .025 * abs(feed - 100) - purity) / 35
         if pressure >= THRESHOLD and trip is None:
             trip = t
+        physical_peak = max(physical_peak, pressure)
         pressure_path.append(round(pressure, 2))
         prod_loss += max(0, 100 - feed) / 100
         quality_loss += max(0, 99.2 - purity)
@@ -149,7 +177,7 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
             row[key] = round(values[i] + noise, 4)
         rows.append(row)
     if compact:
-        return dict(peak=round(max(pressure_path), 2), trip=trip, pressure=pressure_path,
+        return dict(peak=round(physical_peak, 2), physicalPeak=physical_peak, trip=trip, pressure=pressure_path,
                     productionLoss=round(prod_loss / (DURATION + 1) * 100, 2),
                     qualityLoss=round(quality_loss / (DURATION + 1), 3), utilityCost=round(utility_cost, 2))
     return rows
@@ -182,6 +210,8 @@ def evidence(rows):
             continue
         center = stats.median(base)
         scale = max(META[key]['scale'], stats.median(abs(v-center) for v in base) * 1.4826)
+        if not finite(center) or not finite(scale):
+            raise ValueError('Baseline statistics exceed the supported numerical range for '+key+'.')
         baseline[key] = dict(center=center, scale=scale)
         missing = len(rows) - len(valid)
         tail = [r.get(key) for r in rows[-16:]]
@@ -227,8 +257,10 @@ def propagation(rows, ev):
         if not a or not b:
             continue
         lag = b['onset'] - a['onset']
-        pairs = [(r.get(source), rows[i+int(lag)].get(target)) for i,r in enumerate(rows)
-                 if lag>=0 and i+int(lag)<len(rows)] if ev['clock']['regular'] else []
+        period = stats.median(b['t']-a['t'] for a,b in zip(rows, rows[1:]))
+        offset = round(lag / period)
+        pairs = [(r.get(source), rows[i+offset].get(target)) for i,r in enumerate(rows)
+                 if offset>=0 and i+offset<len(rows)] if ev['clock']['regular'] else []
         pairs = [(x,y) for x,y in pairs if finite(x) and finite(y)]
         corr = correlate([p[0] for p in pairs], [p[1] for p in pairs])
         paths.append(dict(source=source,target=target,kind=kind,lag=lag,correlation=corr,
@@ -335,15 +367,27 @@ def diagnose(rows):
 ALARM_RULES=[('flow','LOW',80,'cooling'),('temperature','HIGH',124,'reactor'),('pressure','HIGH',2900,'reactor'),('pressure','HH',3050,'reactor'),('separator','HIGH',2740,'separation'),('purity','LOW',97,'separation'),('vibration','HIGH',2.5,'cooling'),('feed','LOW',85,'feed')]
 
 def alarm_analysis(rows):
-    events,conditions=[],[]
+    validate_rows(rows)
+    events,conditions,gaps=[],[],[]
+    period=stats.median(b['t']-a['t'] for a,b in zip(rows,rows[1:]))
     for key,level,threshold,chain in ALARM_RULES:
         cid=f'{META[key]["tag"]}.{level}'
         active=False
         starts=[]
         spans=[]
         last_announce=-99
+        last_observed=None
+        missing_count=0
         for r in rows:
-            if not finite(r.get(key)): continue
+            missing=not finite(r.get(key))
+            gap=last_observed is not None and r['t']-last_observed>1.5*period
+            if missing or gap:
+                if active:
+                    spans.append(min(r['t'],last_observed+period)-start)
+                active=False
+                if missing:
+                    missing_count+=1
+                    continue
             hit=r[key]<threshold if level=='LOW' else r[key]>=threshold
             if hit and not active:
                 starts.append(r['t']); start=r['t']
@@ -354,7 +398,11 @@ def alarm_analysis(rows):
                 spans.append(r['t']-start)
                 events.append(dict(t=r['t'],condition=cid,kind='return',chain=chain))
             active=hit
-        if active: spans.append(rows[-1]['t']-start+1)
+            last_observed=r['t']
+        if active: spans.append(rows[-1]['t']-start+period)
+        if missing_count or any(b['t']-a['t']>1.5*period for a,b in zip(rows,rows[1:])):
+            gaps.append(dict(condition=cid,missingSamples=missing_count,
+                             state='abstain' if not finite(rows[-1].get(key)) else 'observable'))
         if starts:
             classification='chattering' if len(starts)>=4 else 'fleeting' if max(spans)<10 else 'persistent'
             conditions.append(dict(id=cid,signal=key,chain=chain,first=starts[0],activations=len(starts),duration=sum(spans),classification=classification,
@@ -369,30 +417,38 @@ def alarm_analysis(rows):
     if flood_start is not None: floods.append(dict(start=flood_start,end=rows[-1]['t']))
     chains=sorted(set(c['chain'] for c in conditions))
     recommendations=[dict(condition=c['id'],kind=c['classification'],recommendation='Review deadband and on-delay; preserve safety priority.' if c['classification']=='chattering' else 'Review repeat annunciation after acknowledgement; preserve independent trip alarms.',repeats=sum(e['condition']==c['id'] and e['kind']=='reannunciation' for e in events)) for c in conditions if c['events']>3]
-    return dict(events=events,conditions=conditions,floods=floods,clusters=chains,
+    return dict(events=events,conditions=conditions,floods=floods,clusters=chains,observationGaps=gaps,
                 eventCount=len(events),uniqueConditions=len(conditions),reannunciations=sum(e['kind']=='reannunciation' for e in events),
                 firstAlarm=events[0]['t'] if events else None,rationalization=recommendations)
 
 
 def fit_hypothesis(rows, diagnosis):
+    validate_rows(rows)
+    if len(rows)>DURATION+1 or any(abs(b['t']-a['t']-1)>1e-6 for a,b in zip(rows,rows[1:])):
+        raise ValueError('The fitted simulator requires consecutive one-second observations within its 240-second horizon.')
+    if diagnosis != diagnose(rows):
+        raise ValueError('Fit diagnosis must be computed from exactly the supplied observation window.')
     leader=diagnosis['candidates'][0]['id']
-    onset=min((v['onset'] for v in diagnosis['detections'].values()),default=30)
+    origin=rows[0]['t']
+    onset=min((v['onset']-origin for v in diagnosis['detections'].values()),default=30)
     best=None
     # Fit numerical parameters to observed traces; never pass the case's ground truth.
-    for start in sorted(set(max(20,int(onset)-d) for d in (0,3,6))):
+    for start in sorted(set(max(20,round(onset)-d) for d in (0,3,6))):
         for severity in (.5,.75,1,1.25):
             c=Config(fault=leader,start=start,severity=severity)
             predicted=simulate(c)
-            errors=[((r[k]-predicted[int(r['t'])][k]) / max(1,abs(META[k]['nominal'])*.05))**2
-                    for r in rows if 0<=r['t']<=DURATION and int(r['t'])==r['t']
+            errors=[((r[k]-predicted[index][k]) / max(1,abs(META[k]['nominal'])*.05))**2
+                    for index,r in enumerate(rows)
                     for k in ('flow','temperature_peer','pressure_peer','separator','feed','utility','pump','composition','pressure','valve')
                     if finite(r.get(k)) and diagnosis['health'][k]['usable']]
-            rmse=math.sqrt(stats.mean(errors)) if errors else math.inf
+            if not errors:
+                raise ValueError('No usable observed channels are available for model fitting.')
+            rmse=math.sqrt(stats.mean(errors))
             if best is None or rmse<best[0]: best=(rmse,c)
     return best[1], round(best[0],4)
 
 
-def interventions(config):
+def interventions(config, *, fit_error=None):
     base=simulate(config,compact=True)
     results=[]
     for action in ACTIONS:
@@ -400,20 +456,23 @@ def interventions(config):
         # Exhaustive 1s grid: no untested monotonicity assumption or binary-search shortcut.
         for t in range(BASELINE,DURATION+1):
             result=simulate(config,action['id'],t,compact=True)
-            trials.append(dict(time=t,peak=result['peak'],safe=result['trip'] is None,
+            trials.append(dict(time=t,peak=result['peak'],physicalPeak=result['physicalPeak'],safe=result['trip'] is None,
                                productionLoss=result['productionLoss'],qualityLoss=result['qualityLoss'],utilityCost=result['utilityCost']))
         safe=[r for r in trials if r['safe']]
-        latest=safe[-1]['time'] if safe else None
+        latest=safe[-1]['time'] if safe and base['trip'] is not None else None
         chosen=latest if latest is not None else 90
         branch=simulate(config,action['id'],chosen,compact=True)
         intervals=[]
         for r in safe:
             if not intervals or r['time']>intervals[-1][1]+1: intervals.append([r['time'],r['time']])
             else: intervals[-1][1]=r['time']
-        results.append(dict(**action,latest=latest,intervals=intervals,selectedTime=chosen,margin=round(THRESHOLD-branch['peak'],2),
+        results.append(dict(**action,latest=latest,intervals=intervals,selectedTime=chosen,margin=round(THRESHOLD-branch['physicalPeak'],2),
                             **branch, trials=trials))
     safe=[r for r in results if r['latest'] is not None]
     return dict(threshold=THRESHOLD,resolution=1,horizon=DURATION,base=base,actions=results,
+                status='model_conditional' if base['trip'] is not None else 'baseline_below_pressure_limit',
+                fitError=fit_error,scope='simulation-only',
+                uncertainty='No predictive intervals; parameter error and model mismatch are not bounded.',
                 evaluated=len(ACTIONS)*(DURATION-BASELINE+1),
                 safest=max(safe,key=lambda r:r['margin'])['id'] if safe else None,
                 lowestLoss=min(safe,key=lambda r:(r['productionLoss'],r['severity'],r['utilityCost']))['id'] if safe else None,
@@ -449,10 +508,20 @@ def tool_trace(rows, diagnosis, alarms, fit=None):
     return trace
 
 
-def analyze_rows(rows):
-    diagnosis=diagnose(rows); alarms=alarm_analysis(rows)
-    return dict(diagnosis=diagnosis,alarms=alarms,sop=sop_alignment(diagnosis),trace=tool_trace(rows,diagnosis,alarms),
-                source='observed rows',schemaVersion=2)
+def analyze_rows(rows, *, schema_id=SYNTHETIC_SCHEMA.id, source_id='observed rows'):
+    if schema_id != SYNTHETIC_SCHEMA.id:
+        raise ValueError('This diagnosis engine accepts only the explicit TripLens 18-signal schema.')
+    try:
+        diagnosis=diagnose(rows); alarms=alarm_analysis(rows)
+    except OverflowError as error:
+        raise ValueError('Observation values exceed the supported numerical range.') from error
+    result=dict(diagnosis=diagnosis,alarms=alarms,sop=sop_alignment(diagnosis),trace=tool_trace(rows,diagnosis,alarms),
+                source=source_id,signalSchema=SYNTHETIC_SCHEMA.metadata(),schemaVersion=2)
+    try:
+        json.dumps(result,allow_nan=False)
+    except ValueError as error:
+        raise ValueError('Observation values produced nonfinite evidence; numerical range is unsupported.') from error
+    return result
 
 
 
@@ -494,16 +563,30 @@ def run_tools(rows, calls=None):
     return trace
 
 def parse_csv(text):
-    reader=csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames or 't' not in reader.fieldnames:
+    if not isinstance(text,str):
+        raise ValueError('CSV input must be text.')
+    reader=csv.reader(io.StringIO(text.removeprefix('\ufeff')),strict=True)
+    try:
+        headers=next(reader,[])
+    except csv.Error as error:
+        raise ValueError('Malformed CSV header.') from error
+    if not headers or 't' not in headers:
         raise ValueError('CSV requires a t column in seconds; signal columns use documented keys.')
-    unknown=set(reader.fieldnames)-{'t',*KEYS}
+    if len(set(headers)) != len(headers):
+        raise ValueError('CSV column names must be unique.')
+    unknown=set(headers)-{'t',*KEYS}
     if unknown: raise ValueError('Unknown CSV columns: '+', '.join(sorted(unknown)))
     rows=[]
-    for record in reader:
-        if len(rows)>=2000: raise ValueError('CSV exceeds 2000 rows.')
-        try: rows.append({key:float(record[key]) if record.get(key,'').strip() else None for key in ['t',*KEYS]})
-        except (ValueError,AttributeError): raise ValueError('CSV contains a nonnumeric value.') from None
+    try:
+        for values in reader:
+            if not values: continue
+            if len(values)!=len(headers): raise ValueError(f'CSV row {reader.line_num} does not match the header width.')
+            if len(rows)>=2000: raise ValueError('CSV exceeds 2000 rows.')
+            record=dict(zip(headers,values))
+            try: rows.append({key:float(record[key]) if record.get(key,'').strip() else None for key in ['t',*KEYS]})
+            except ValueError: raise ValueError(f'CSV row {reader.line_num} contains a nonnumeric value.') from None
+    except csv.Error as error:
+        raise ValueError('Malformed CSV quoting.') from error
     validate_rows(rows)
     return rows
 
@@ -521,7 +604,7 @@ def benchmark():
                 top1=round(sum(r['top1'] for r in records)/len(records),4),top3=round(sum(r['top3'] for r in records)/len(records),4),
                 medianDelay=stats.median(r['delay'] for r in records if r['delay'] is not None),healthyRuns=len(controls),
                 falsePositiveRuns=sum(r['status']!='nominal' for r in controls),records=records,
-                limitation='Internal varied-parameter regression, not independent validation. No Tennessee Eastman dataset has been evaluated.')
+                limitation='Internal varied-parameter diagnosis regression, not independent validation. External TEP anomaly studies are separate and do not validate this diagnosis engine.')
 
 
 def build_platform():
@@ -531,7 +614,7 @@ def build_platform():
         rows=simulate(Config(fault=fid,seed=i+1))
         analyzed=analyze_rows(rows)
         fit=fit_hypothesis(rows,analyzed['diagnosis'])
-        recovery=interventions(fit[0])
+        recovery=interventions(fit[0],fit_error=fit[1])
         snapshots=[]
         for end in (40,70,110,180,240):
             prefix=[r for r in rows if r['t']<=end]
@@ -557,5 +640,5 @@ def build_platform():
 
 if __name__=='__main__':
     target=Path(__file__).resolve().parents[1]/'src/data/platform.json'
-    target.write_text(json.dumps(build_platform(),separators=(',',':'),allow_nan=False)+'\n')
+    target.write_text(json.dumps(build_platform(),separators=(',',':'),allow_nan=False)+'\n',encoding='utf-8',newline='\n')
     print(f'Wrote {target}')

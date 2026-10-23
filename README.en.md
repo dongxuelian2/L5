@@ -10,8 +10,36 @@ A modern terminal aesthetic in the browser: character animation, fine process gr
 
 [Recovery search](docs/recovery-v2.png) · [History and verification](docs/learn-v2.png) · [Original incident replay](docs/workstation.png)
 
-## Current capabilities
++## Capabilities and evidence boundaries
 
+### A. Current capabilities
+
+Implemented and regression-tested software includes source-aware ordered signal schemas, strict CSV ingestion, observation quality and alarm records, structured investigation APIs, comparisons at matching observation cutoffs, and Markdown/JSON export. Checks cover simulation/API behavior, research code, frontend exports, TypeScript, production builds and complete generated artifacts. These are software checks; industrial effectiveness remains unvalidated.
+
+### B. Research capabilities
+
+`benchmarks/` retains all 21-fault reference, sensor-stress, abstention, threshold/seed sensitivity, Page CUSUM, EWMA, bounded CUSUM, adaptation/recovery, PCA/DPCA, independently seeded Rieth normal-run and six-mode normal-transfer studies. Normal-only fit/calibration, source hashes and negative outcomes remain auditable. No research detector is promoted into the default investigation or control path.
+
+### C. Demonstration-only capabilities
+
+The 12-class diagnosis, procedure matching, propagation associations, historical similarity and intervention search use the project's own simulators. The six-channel legacy and eighteen-channel process models remain separate. Counterfactuals are conditional on a fitted hypothesis, a finite parameter grid and a 240-second horizon, without predictive intervals. A baseline below the physical pressure limit no longer receives pressure-intervention rankings.
+
+### D. Known limitations
+
+External TEP work validates anomaly monitoring, not fault classification, root causes or interventions. Classic 52-channel, native THUFDD 53-column and synthetic 18-signal schemas remain distinct. Physical names, units and sampling seconds for the native 53 columns are not fully verified. The six-mode source has one normal trajectory per mode; its 99.967% cross-mode alarm-active fraction is descriptive, with reused trajectories. Repeated consultation of the same 21 fault tests can bias research choices. Neither empirical alpha nor calibration workload caps guarantee future false-alarm rates. Evidence scores are not probabilities; propagation correlation is not causation. Fitting requires consecutive one-second samples. Static simulator assets remain large, and long-running industrial validation is absent.
+
+### E. Research roadmap
+
+1. Stabilize versioned data, verified physical schemas, independent normal/fault trajectories and reproducible protocols.
+2. Evaluate mode-conditioned monitoring and unknown-mode abstention on independent frozen holdouts.
+3. Validate external fault identification, root-cause reasoning and counterfactuals, including parameter/model uncertainty.
+4. Improve durable ingestion, evidence storage, observability and operational management.
+
+[Architecture and interfaces](docs/architecture.md) · [Integration audit and reproduced findings](docs/integration-2026-10-23.md) · [Research protocols and historical negative results](benchmarks/README.md)
+
+## Simulator workstation features
+
+- **COMPARE CASES (new):** side-by-side, time-matched evidence across two simulated incidents at +40/70/110/180/240s, with diagnosis, alarm compression, channel trust, and exportable JSON. Full-window recovery stays hidden until +240s. [LaunchPad entry scope and provenance](docs/launchpad-2026-entry.md).
 - **INVESTIGATE:** 12 incident sessions, 18 observed channels and 14 material, energy, control and feedback paths. Diagnosis receives observations, never scenario labels. Each hypothesis exposes supporting, contradictory and unresolved evidence, signed score components and recommended next measurements.
 - **Process versus control:** two loops expose SP / PV / OP / actuator feedback / output limit. Independent pressure and temperature channels help distinguish process changes from sensor faults. Frozen, missing, stale or extreme-step evidence cannot earn strong process-causality credit.
 - **Time boundaries:** +40 / 70 / 110 / 180 / 240-second snapshots are separately recomputed from available samples. Earlier windows cannot display full-window counterfactuals or historical similarity.
@@ -25,7 +53,7 @@ A modern terminal aesthetic in the browser: character animation, fine process gr
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+, npm, and Python 3.10+ for regeneration, tests and the optional backend. No third-party Python packages.
+Requires Node.js 20.19+ or 22.12+ and npm. Simulation/API Python uses only the standard library. Full verification/research recommends Python 3.12 with the pinned NumPy requirement; original MAT/RData readers are optional separate dependencies.
 
 ```bash
 npm ci
@@ -33,6 +61,8 @@ npm run dev
 ```
 
 The app opens INVESTIGATE. The static experience needs no API key or external network; calculated artifacts and fonts are bundled.
+
+Before full verification, run `python -m venv .venv` and `node scripts/python.mjs -m pip install -r benchmarks/requirements.txt`. The runner prefers the project virtual environment; `PYTHON` can specify another executable path.
 
 ```bash
 npm run generate  # recompute both models, 12 sessions and the verification matrix
@@ -65,7 +95,11 @@ Counterfactuals do not receive ground truth: diagnose the observed window, then 
 
 The PROCESS 02 cooling-valve session produces **312 events → 6 conditions → 3 process groups**. Its fitted unmitigated model crosses at +109 seconds. The latest safe cooling-bypass start is **+101 seconds**; emergency cooling remains effective through **+103 seconds**. Different control behavior means these values must not be mixed with the original 656-event PROCESS 01 model.
 
-Internal checks cover **12 families × 3 parameter variants = 36 fault windows**, plus three healthy windows. Current Top-1 / Top-3 are 36/36, median detection delay is 3 seconds and healthy windows flagged are 0/3. These are same-simulator rule regressions, **not independent dataset accuracy**. No Tennessee Eastman benchmark or real factory connection has been evaluated. MQTT / OPC UA, general natural-language SOP import, real Nemotron planning and an independent public benchmark remain future integration work.
+Internal checks cover **12 families × 3 parameter variants = 36 fault windows**, plus three healthy windows. Current Top-1 / Top-3 are 36/36, median detection delay is 3 seconds and healthy windows flagged are 0/3. These are same-simulator rule regressions, **not independent dataset accuracy**. External Tennessee Eastman anomaly studies are now implemented and reproduced in `benchmarks/`; they do not validate these diagnosis or intervention claims. Real factory connections, MQTT / OPC UA, general natural-language SOP import and external model planning remain future work.
+
+## External benchmark: Tennessee Eastman (independent research)
+
+The separate [TEP research modules](benchmarks/README.md) now cover the classic 52-channel, 21-fault reference, sensor stress/coverage, temporal monitors, forward calibration, Rieth independent normal seeds and native 53-column six-mode transfer. All retained protocols have been executed with source hashes and negative outcomes preserved. **This validates external anomaly monitoring, not the workstation's diagnosis or counterfactuals; no automatic mapping to its synthetic process is supplied.**
 
 ## Data and model interfaces
 

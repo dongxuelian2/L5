@@ -71,7 +71,7 @@ class InvestigationTests(unittest.TestCase):
             self.assertEqual(simulate(c,action,90)[:90],base[:90])
 
     def test_generated_recovery_boundary_is_safe_and_next_second_is_not(self):
-        artifact=json.loads((Path(__file__).parents[1]/'src/data/platform.json').read_text())
+        artifact=json.loads((Path(__file__).parents[1]/'src/data/platform.json').read_text(encoding='utf-8'))
         case=artifact['cases'][0];config=Config(**case['fit']['parameters'])
         for action in case['recovery']['actions']:
             latest=action['latest']
@@ -83,7 +83,7 @@ class InvestigationTests(unittest.TestCase):
         self.assertEqual(case['recovery']['evaluated'],1547)
 
     def test_generated_observation_analysis_matches_engine(self):
-        artifact=json.loads((Path(__file__).parents[1]/'src/data/platform.json').read_text())
+        artifact=json.loads((Path(__file__).parents[1]/'src/data/platform.json').read_text(encoding='utf-8'))
         for case in artifact['cases']:
             self.assertEqual(case['diagnosis'],diagnose(case['rows']))
             for snapshot in case['snapshots']:

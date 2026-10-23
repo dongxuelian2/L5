@@ -1,0 +1,50 @@
+name: Tennessee Eastman reference evaluation
+
+on:
+  pull_request:
+    paths:
+      - "l5/**"
+      - "benchmarks/*.py"
+      - "!benchmarks/test_*.py"
+      - "benchmarks/*.json"
+      - "benchmarks/requirements*.txt"
+      - ".github/workflows/tep-reference.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tep-reference-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: benchmarks/requirements.txt
+      - run: python -m pip install -r benchmarks/requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/tep_reference
+          key: tep-braatz-${{ hashFiles('benchmarks/reference_sources.json') }}
+      - name: Verify or download all 23 pinned inputs (including cached hashes)
+        run: python -m benchmarks.fetch_reference --dest "$RUNNER_TEMP/tep_reference"
+      - name: Run every retained reference study with independent process boundaries
+        run: python -m benchmarks.run_suite "$RUNNER_TEMP/tep_reference" --output-dir "$RUNNER_TEMP/tep_report"
+      - name: Check recorded numerical outcomes
+        run: python -m benchmarks.verify_reports reference "$RUNNER_TEMP/tep_report"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: l5-tep-detection-report
+          path: ${{ runner.temp }}/tep_report
+          retention-days: 30
