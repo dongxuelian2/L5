@@ -33,14 +33,15 @@ VERSION = "tep-coverage-gate-v1"
 class CoveragePolicy:
     min_observed_fraction: float = 0.90
     required_channels: tuple[str, ...] = ("xmeas_7", "xmeas_9")
+    feature_names: tuple[str, ...] = VARIABLES
 
     def __post_init__(self):
         if not math.isfinite(self.min_observed_fraction) or not 0 < self.min_observed_fraction <= 1:
             raise ValueError("min_observed_fraction must be in (0, 1].")
         if len(set(self.required_channels)) != len(self.required_channels):
             raise ValueError("Required channels must be unique.")
-        if any(name not in VARIABLES for name in self.required_channels):
-            raise ValueError("Required channels must use canonical TEP feature names.")
+        if any(name not in self.feature_names for name in self.required_channels):
+            raise ValueError("Required channels must belong to the selected feature names.")
 
     def public_metadata(self) -> dict:
         # JSON round-trips should retain stable types rather than a tuple.
@@ -68,13 +69,13 @@ def decide(
     mask = np.asarray(observed_mask)
     if scores.ndim != 1 or mask.ndim != 2 or len(scores) != len(mask):
         raise ValueError("Expected one score and one observed-feature mask per sample.")
-    if mask.shape[1] != len(VARIABLES) or mask.dtype != np.bool_:
-        raise ValueError("Observation mask must be Boolean with exactly 52 TEP features.")
+    if mask.shape[1] != len(policy.feature_names) or mask.dtype != np.bool_:
+        raise ValueError("Observation mask must be Boolean and aligned with the selected features.")
     if not np.isfinite(scores).all() or not math.isfinite(threshold):
         raise ValueError("Scores and decision threshold must be finite.")
     if not isinstance(consecutive, int) or isinstance(consecutive, bool) or consecutive < 1:
         raise ValueError("consecutive must be positive.")
-    critical = [VARIABLES.index(name) for name in policy.required_channels]
+    critical = [policy.feature_names.index(name) for name in policy.required_channels]
     states: list[str] = []
     run = 0
     for score, row in zip(scores, mask):
@@ -100,13 +101,13 @@ def score_with_observation_resets(
     makes invalid rows abstentions. Temporal detectors must *not* ingest a
     missing row as a valid zero-ish value or carry history across it.
     """
-    data = as_matrix(values, features=len(VARIABLES))
+    data = as_matrix(values, features=len(policy.feature_names))
     observed = np.asarray(original_mask)
     if observed.dtype != np.bool_ or observed.shape != data.shape:
         raise ValueError("Observation mask must be Boolean and feature-aligned.")
     if not getattr(monitor, 'history_dependent', False):
         return monitor.score(data)
-    required = [VARIABLES.index(name) for name in policy.required_channels]
+    required = [policy.feature_names.index(name) for name in policy.required_channels]
     valid = np.mean(observed, axis=1) >= policy.min_observed_fraction
     if required:
         valid &= np.all(observed[:, required], axis=1)

@@ -8,7 +8,47 @@ import numpy as np
 
 from .monitoring import MaxZMonitor, PCAMonitor, calibrate, split_normal_training
 
-ALGORITHMS = {'robust-maxz': 'Robust Max-Z', 'pca-q': 'PCA-Q', 'pca-t2': 'PCA-T²'}
+ALGORITHMS = {'robust-maxz': 'Robust Max-Z', 'pca-q': 'PCA-Q', 'pca-t2': 'PCA-T²',
+              'ewma': 'EWMA', 'cusum': 'Page CUSUM', 'window-cusum': 'Finite-window CUSUM',
+              'dpca-q': 'Dynamic PCA-Q', 'dpca-t2': 'Dynamic PCA-T²',
+              'adaptive-maxz': 'Adaptive Max-Z · Experimental'}
+
+
+def build_monitor(algorithm, config):
+    from benchmarks.temporal import EWMAMonitor, CUSUMMonitor
+    from benchmarks.window_cusum import WindowCUSUMMonitor
+    from benchmarks.dynamic_pca import DynamicPCAMonitor
+    from benchmarks.adaptive import AdaptiveMaxZMonitor
+    if algorithm == 'robust-maxz':
+        return MaxZMonitor()
+    if algorithm in ('pca-q', 'pca-t2'):
+        return PCAMonitor(algorithm.split('-')[1], variance=float(config.get('variance', .9)))
+    if algorithm == 'ewma':
+        return EWMAMonitor(smoothing=float(config.get('smoothing', .25)))
+    if algorithm == 'cusum':
+        return CUSUMMonitor(reference=float(config.get('reference', .5)))
+    if algorithm == 'window-cusum':
+        return WindowCUSUMMonitor(window=config.get('window', 12), reference=float(config.get('reference', .5)))
+    if algorithm in ('dpca-q', 'dpca-t2'):
+        return DynamicPCAMonitor(algorithm.split('-')[1], lags=config.get('lags', 2), variance=float(config.get('variance', .9)))
+    return AdaptiveMaxZMonitor(rate=float(config.get('rate', .02)), guard_z=float(config.get('guard', 2.5)), max_center_shift_z=float(config.get('maxShift', 1.5)))
+
+
+def contribution_matrix(monitor, target):
+    if hasattr(monitor, '_features_at_each_time'):
+        return monitor._features_at_each_time(target)
+    if hasattr(monitor, '_contributions'):
+        return monitor._contributions(target)
+    if hasattr(monitor, '_lag_matrix'):
+        projected, residual = monitor._decompose(target)
+        weights = residual ** 2 if monitor.mode == 'q' else np.abs((projected / np.sqrt(monitor.eigenvalues)) @ monitor.components)
+        return weights.reshape(len(target), monitor.lags + 1, monitor.features).sum(axis=1)
+    z = (target - monitor.center) / monitor.scale
+    if isinstance(monitor, MaxZMonitor):
+        return np.abs(z)
+    projected = z @ monitor.components.T
+    return (z - projected @ monitor.components) ** 2 if monitor.mode == 'q' else np.abs((projected / np.sqrt(monitor.eigenvalues)) @ monitor.components)
+
 
 
 def signal_contributions(monitor, sample: np.ndarray, names: list[str]) -> list[dict]:
@@ -28,12 +68,18 @@ def signal_contributions(monitor, sample: np.ndarray, names: list[str]) -> list[
 
 def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], config: dict) -> dict:
     started = perf_counter()
+    config = dict(config)
     signals = config.get('signals')
     if not isinstance(signals, list) or not signals or len(set(signals)) != len(signals) or any(s not in columns for s in signals):
         raise ValueError('Select one or more unique numeric signals from this dataset.')
     algorithm = config.get('algorithm', 'robust-maxz')
     if algorithm not in ALGORITHMS:
-        raise ValueError('Choose Max-Z, PCA-Q or PCA-T².')
+        raise ValueError('Choose an available detection algorithm.')
+    defaults = {'ewma':{'smoothing':.25}, 'cusum':{'reference':.5},
+                'window-cusum':{'window':12,'reference':.5}, 'dpca-q':{'lags':2}, 'dpca-t2':{'lags':2},
+                'adaptive-maxz':{'rate':.02,'guard':2.5,'maxShift':1.5}}
+    for key, value in defaults.get(algorithm, {}).items():
+        config.setdefault(key, value)
     data = values[:, [columns.index(s) for s in signals]]
 
     def window(key: str):
@@ -53,57 +99,110 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
     if config['baselineRange'][1] >= config['analysisRange'][0]:
         raise ValueError('The normal baseline must finish before the analysis window starts.')
     normal, target = data[normal_mask].copy(), data[target_mask].copy()
-    if len(normal) < 100:
-        raise ValueError('Select at least 100 normal samples (70% fit / 30% calibration).')
-    split = int(len(normal) * .7)
+    fit_fraction = float(config.get('fitFraction', .7))
+    if not .5 <= fit_fraction <= .9:
+        raise ValueError('Fit fraction must be between 0.5 and 0.9.')
+    split = int(len(normal) * fit_fraction)
+    if split < 30 or len(normal)-split < 30:
+        raise ValueError('Select enough normal samples for at least 30 fit and 30 calibration observations.')
     # Fit preprocessing only on the fit partition, never the calibration or target rows.
     if not np.isfinite(normal[:split]).any(axis=0).all():
-        raise ValueError('Every selected signal needs measurements in the first 70% of the normal baseline.')
+        raise ValueError('Every selected signal needs measurements in the fit partition of the normal baseline.')
     medians = np.nanmedian(normal[:split], axis=0)
+    # Artificial stress affects the target only; fit and calibration stay unchanged.
+    stress = config.get('stress') or {}
+    if not isinstance(stress, dict):
+        raise ValueError('Stress parameters must be an object.')
+    probability, noise, offset = (float(stress.get(k, 0)) for k in ('missingFraction', 'noise', 'offset'))
+    if not np.isfinite([probability, noise, offset]).all() or not 0 <= probability <= 1 or noise < 0:
+        raise ValueError('Missing fraction must be in [0,1]; noise must be nonnegative; stress values must be finite.')
+    missing_signals = stress.get('missingSignals', [])
+    if not isinstance(missing_signals, list) or any(s not in signals for s in missing_signals):
+        raise ValueError('Stress signals must be selected analysis signals.')
+    seed = stress.get('seed', 1)
+    if not isinstance(seed, int) or isinstance(seed, bool) or seed < 0:
+        raise ValueError('Stress seed must be a nonnegative integer.')
+    rng = np.random.default_rng(seed)
+    healthy_scale = np.nanstd(normal[:split], axis=0)
+    target += rng.normal(size=target.shape) * healthy_scale * noise + healthy_scale * offset
+    target[rng.random(target.shape) < probability] = np.nan
+    for signal in missing_signals:
+        target[:, signals.index(signal)] = np.nan
+    original_mask = np.isfinite(target)
     imputed = {'baseline': int(np.isnan(normal).sum()), 'analysis': int(np.isnan(target).sum())}
     normal = np.where(np.isfinite(normal), normal, medians)
     target = np.where(np.isfinite(target), target, medians)
-    fit, calibration = split_normal_training(normal)
+    fit, calibration = split_normal_training(normal, fit_fraction)
     alpha = float(config.get('alpha', .01))
     variance = float(config.get('variance', .9))
     if not 0 < alpha < .5:
         raise ValueError('Calibration alpha must be between 0 and 0.5.')
-    monitor = MaxZMonitor() if algorithm == 'robust-maxz' else PCAMonitor(algorithm.split('-')[1], variance=variance)
+    monitor = build_monitor(algorithm, config)
+    if getattr(monitor, 'history_dependent', False):
+        for sequence in (times[normal_mask], times[target_mask]):
+            periods = np.diff(sequence)
+            if len(periods) and (np.any(periods <= 0) or not np.allclose(periods, periods[0], rtol=1e-5, atol=1e-7)):
+                raise ValueError('Temporal algorithms require regular, strictly increasing sample times.')
     monitor.fit(fit)
     threshold = calibrate(monitor, calibration, alpha)
-    scores = monitor.score(target)
+    from benchmarks.coverage import CoveragePolicy, decide, score_with_observation_resets
+    required = config.get('requiredSignals', [])
+    if not isinstance(required, list):
+        raise ValueError('Required signals must be a list.')
+    policy = CoveragePolicy(float(config.get('minCoverage', .9)), tuple(required), tuple(signals))
+    persistence = config.get('persistence', 1)
+    scores = score_with_observation_resets(monitor, target, original_mask, policy)
+    states = decide(scores, original_mask, threshold=threshold, consecutive=persistence, policy=policy)
+    weights = np.zeros_like(target)
+    valid = np.array([state != 'abstain' for state in states])
+    # Explanations restart at the same observation gaps as temporal scores.
+    begin = 0
+    while begin < len(target):
+        if not valid[begin]:
+            begin += 1
+            continue
+        end = begin + 1
+        while end < len(target) and valid[end]:
+            end += 1
+        weights[begin:end] = contribution_matrix(monitor, target[begin:end])
+        begin = end
+    def contributions_at(index):
+        order = sorted(range(len(signals)), key=lambda i: (-float(weights[index,i]), i))
+        return [dict(signal=signals[i], value=float(weights[index,i])) for i in order]
+
     if not np.isfinite(scores).all():
         raise ValueError('Signal magnitudes produced nonfinite scores; check the selected measurements.')
-    flags = scores > threshold
+    flags = np.array([s == 'alarm' for s in states])
     target_times = times[target_mask]
     starts = np.flatnonzero(flags & ~np.r_[False, flags[:-1]])
     ends = np.flatnonzero(flags & ~np.r_[flags[1:], False])
     intervals = []
     for a, b in zip(starts, ends):
         peak = int(a + np.argmax(scores[a:b + 1]))
-        contributions = signal_contributions(monitor, target[peak], signals)
+        contributions = contributions_at(peak)
         intervals.append({'start': float(target_times[a]), 'end': float(target_times[b]),
                           'samples': int(b - a + 1), 'peakScore': float(scores[peak]),
                           'peakTime': float(target_times[peak]),
                           'signals': [item['signal'] for item in contributions[:5]],
                           'contributions': contributions})
-    peak_index = int(np.argmax(scores))
-    contributions = signal_contributions(monitor, target[peak_index], signals)
+    peak_index = int(np.argmax(np.where(valid, scores, -np.inf))) if valid.any() else 0
+    contributions = contributions_at(peak_index)
     config = {**config, 'algorithm': algorithm, 'alpha': alpha, 'variance': variance,
-              'missingValues': 'fit-partition median', 'fitFraction': .7}
+              'missingValues': 'fit-partition median', 'fitFraction': fit_fraction, 'minCoverage': policy.min_observed_fraction, 'requiredSignals': required, 'persistence': persistence}
     return {'config': config, 'algorithmLabel': ALGORITHMS[algorithm], 'times': target_times.tolist(),
-            'scores': scores.tolist(), 'threshold': threshold, 'intervals': intervals,
+            'scores': scores.tolist(), 'states': list(states), 'observedFraction': original_mask.mean(axis=1).tolist(), 'threshold': threshold, 'intervals': intervals,
             'relatedSignals': [item['signal'] for item in contributions[:10]],
             'signalContributions': contributions, 'peakTime': float(target_times[peak_index]),
             'contributionMetric': {'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
-                                   'pca-t2': 'model-leverage'}[algorithm],
+                                   'pca-t2': 'model-leverage', 'dpca-q': 'squared-residual', 'dpca-t2': 'model-leverage'}.get(algorithm, 'history-contribution'),
             'summary': {'analysisSamples': len(target), 'baselineSamples': len(normal),
                         'fitSamples': len(fit), 'calibrationSamples': len(calibration),
                         'flaggedSamples': int(flags.sum()), 'peakScore': float(scores[peak_index]),
                         'firstDetection': float(target_times[starts[0]]) if len(starts) else None,
-                        'imputedValues': imputed},
+                        'imputedValues': imputed, 'abstainedSamples': int(sum(s == 'abstain' for s in states)), 'coverageFraction': float(valid.mean())},
             'model': {**monitor.metadata(), 'center': monitor.center.tolist(), 'scale': monitor.scale.tolist(),
                       'imputationMedians': medians.tolist(),
                       **({'loadings': monitor.components.tolist(), 'eigenvalues': monitor.eigenvalues.tolist()}
-                         if isinstance(monitor, PCAMonitor) else {})},
+                         if hasattr(monitor, 'components') else {}),
+                      **({'lagPaddingCenter': monitor.pad_center.tolist()} if hasattr(monitor, 'pad_center') else {})},
             'completedAt': datetime.now(timezone.utc).isoformat(), 'durationMs': round((perf_counter() - started) * 1000, 2)}

@@ -73,6 +73,10 @@ class WorkspaceWorkflowTests(unittest.TestCase):
                     expected = np.abs(loadings.T @ ((z @ loadings.T) / np.sqrt(model['eigenvalues'])))
                     for contribution in pca['signalContributions']:
                         self.assertAlmostEqual(contribution['value'], expected[signals.index(contribution['signal'])])
+            for algorithm in ('ewma','cusum','window-cusum','dpca-q','adaptive-maxz'):
+                research = restored.analyze(workspace['id'], {**request,'algorithm':algorithm})
+                self.assertGreater(research['summary']['flaggedSamples'],0)
+                self.assertEqual(WorkspaceStore(Path(folder)).result(research['id']),research)
             restored.rename_workspace(workspace['id'], 'Campaign 2')
             self.assertEqual(restored.list_workspaces()[0]['name'], 'Campaign 2')
             restored.delete_workspace(workspace['id'])

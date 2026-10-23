@@ -76,39 +76,11 @@ export const localAnalyst: AnalystProvider = {
   },
 };
 
-export const modelAnalyst: AnalystProvider = {
-  async analyze(prompt, signal) {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ incidentId: scenario.id, prompt }),
-      signal,
-    });
-    if (!response.ok)
-      throw new Error(
-        `Analyst unavailable (${response.status}). Please retry.`,
-      );
-    return validateBrief(await response.json());
-  },
-};
+// Recorded six-channel teaching example. Runtime assistants use the selected
+// session and real Python tools in RuntimeWorkbench.
+export const analyst = localAnalyst;
 
-export const analyst =
-  import.meta.env.VITE_ANALYST_PROVIDER === "http"
-    ? modelAnalyst
-    : localAnalyst;
-
-export function downloadFile(
-  name: string,
-  data: string,
-  type = "application/json",
-) {
-  const url = URL.createObjectURL(new Blob([data], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+export { downloadFile } from "./download";
 
 export function briefMarkdown(brief: IncidentBrief): string {
   return (

@@ -8,6 +8,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from server import Handler, local_brief, validate_brief
+from simulation.platform import Config, simulate
 
 
 class QuietHandler(Handler):
@@ -17,6 +18,7 @@ class QuietHandler(Handler):
 
 class ApiTests(unittest.TestCase):
     def setUp(self):
+        self.context = {'id':'user-case-37', 'rows':simulate(Config())}
         self.env = patch.dict(os.environ, {'TRIPLENS_MODEL_ENDPOINT': ''})
         self.env.start()
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), QuietHandler)
@@ -40,23 +42,24 @@ class ApiTests(unittest.TestCase):
             return response.status, json.load(response)
 
     def test_local_contract_over_http(self):
-        status, brief = self.post(json.dumps({'incidentId': 'INC-001', 'prompt': 'Why is reactor pressure rising?'}).encode())
+        status, brief = self.post(json.dumps({'incidentId': self.context['id'], 'rows':self.context['rows'], 'prompt': 'Why is reactor pressure rising?'}).encode())
         self.assertEqual(status, 200)
-        validate_brief(brief)
+        validate_brief(brief, self.context)
         self.assertEqual(brief['provider'], 'local')
-        self.assertEqual(brief['candidateId'], 'valve')
+        self.assertEqual(brief['candidateId'], 'cooling_valve')
 
     def test_invalid_input_is_rejected(self):
-        for payload, expected in [(b'{', 400), (b'[]', 400), (b'{}', 400), (b'x' * 17000, 413)]:
+        for payload, expected in [(b'{', 400), (b'[]', 400), (b'{}', 400), (b'x' * 17000, 400)]:
             with self.subTest(payload=payload[:12]):
                 self.assertEqual(self.post(payload)[0], expected)
 
-    def test_local_scope_is_explicit(self):
-        status, _ = self.post(json.dumps({'incidentId': 'INC-001', 'prompt': 'An unrelated question'}).encode())
-        self.assertEqual(status, 422)
+    def test_arbitrary_local_questions_execute_real_tools(self):
+        status, _ = self.post(json.dumps({'incidentId': self.context['id'], 'rows':self.context['rows'], 'prompt': 'An unrelated question'}).encode())
+        self.assertEqual(status, 200)
 
     def test_http_model_adapter_with_loopback_fixture(self):
         received = []
+        fixture = local_brief('test', self.context)
 
         class ModelHandler(BaseHTTPRequestHandler):
             def log_message(self, *args):
@@ -64,7 +67,7 @@ class ApiTests(unittest.TestCase):
 
             def do_POST(self):
                 received.append(json.loads(self.rfile.read(int(self.headers['Content-Length']))))
-                data = json.dumps({'choices': [{'message': {'content': json.dumps(local_brief('test'))}}]}).encode()
+                data = json.dumps({'choices': [{'message': {'content': json.dumps(fixture)}}]}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(data)))
@@ -76,7 +79,7 @@ class ApiTests(unittest.TestCase):
         worker.start()
         try:
             with patch.dict(os.environ, {'TRIPLENS_MODEL_ENDPOINT': f'http://127.0.0.1:{upstream.server_port}/v1/chat/completions', 'TRIPLENS_MODEL': 'fixture-model'}):
-                status, brief = self.post(json.dumps({'incidentId': 'INC-001', 'prompt': 'Why is reactor pressure rising?'}).encode())
+                status, brief = self.post(json.dumps({'incidentId': self.context['id'], 'rows':self.context['rows'], 'prompt': 'Why is reactor pressure rising?'}).encode())
             self.assertEqual(status, 200)
             self.assertEqual(brief['provider'], 'model')
             self.assertEqual(received[0]['response_format'], {'type': 'json_object'})
@@ -114,10 +117,10 @@ class ApiTests(unittest.TestCase):
         caught.exception.close()
 
     def test_schema_rejects_unknown_evidence(self):
-        brief = local_brief('test')
+        brief = local_brief('test', self.context)
         brief['evidenceTags'] = ['invented-signal']
         with self.assertRaises(ValueError):
-            validate_brief(brief)
+            validate_brief(brief, self.context)
 
     def test_replay_contract_errors_are_http_400(self):
         for body in ({'csv':'t,pressure,pressure\n0,1,2'}, {'csv':'t,pressure\n0,1,2'},

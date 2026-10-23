@@ -224,3 +224,6 @@
   .ws-footer span:last-child, .ws-example-banner span { display:none; }
   .ws-home-error { margin:12px 18px 0; }
 }
+
+.ws-option-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:12px 0; }
+.ws-shell .ws-option-grid label { display:flex; flex-direction:row; align-items:center; gap:8px; }

@@ -36,6 +36,8 @@ class WorkspaceStore:
                     name TEXT NOT NULL, config TEXT NOT NULL, summary TEXT NOT NULL,
                     created_at TEXT NOT NULL);
             ''')
+        from .runtime import SimulationService
+        self.runtime = SimulationService(self)
 
     @contextmanager
     def connect(self):
@@ -82,11 +84,20 @@ class WorkspaceStore:
 
     def delete_workspace(self, identity: str):
         self.workspace(identity)
+        simulations = {s['id'] for s in self.runtime.list(identity)}
+        simulations.update(d['metadata']['model']['simulationId'] for d in self.datasets(identity) if d['metadata'].get('model'))
         with self.connect() as db:
             db.execute('DELETE FROM workspaces WHERE id=?', (identity,))
+            remaining = [self.dataset_row(r) for r in db.execute('SELECT * FROM datasets')]
         folder = self.root / identity  # identity has been resolved against an existing generated ID.
         if folder.is_dir():
             shutil.rmtree(folder)
+        for simulation_id in simulations:
+            reference = next((d for d in remaining if d['metadata'].get('model', {}).get('simulationId') == simulation_id), None)
+            session = self.runtime.get(simulation_id)
+            session.update(workspaceId=reference['workspace_id'] if reference else None,
+                           datasetId=reference['id'] if reference else None)
+            self.runtime.write(self.runtime.folder(simulation_id) / 'session.json', session)
 
     def datasets(self, workspace_id: str) -> list[dict]:
         self.workspace(workspace_id)
@@ -104,12 +115,20 @@ class WorkspaceStore:
             raise KeyError('Dataset not found.')
         return self.dataset_row(row)
 
-    def import_dataset(self, workspace_id: str, body: dict) -> dict:
+    def import_dataset(self, workspace_id: str, body: dict, *, model=None) -> dict:
         self.workspace(workspace_id)
         metadata, times, values = prepare_csv(body.get('csv'), body)
         identity, stamp = uuid4().hex, now()
         name = self.name(body.get('name') or body.get('filename') or 'Imported CSV')
         metadata['filename'] = str(body.get('filename', name))
+        if model:
+            metadata['model'] = model
+            config = self.runtime.get(model['simulationId'])['config']
+            healthy = times[times < min(config['start'], 20)]
+            if len(healthy) and np.any(times > healthy[-1]):
+                metadata['suggestedRanges'] = {'baselineRange':[float(times[0]), float(healthy[-1])],
+                                               'analysisRange':[float(times[times > healthy[-1]][0]), float(times[-1])]}
+
         folder = self.root / workspace_id / 'datasets' / identity
         folder.mkdir(parents=True)
         try:

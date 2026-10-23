@@ -57,7 +57,7 @@ EDGES = [
 ]
 ACTIONS = [
     dict(id='bypass', name='Open cooling bypass', severity=2, cost=2),
-    dict(id='feed_reduce', name='Reduce feed 30%', severity=2, cost=1),
+    dict(id='feed_reduce', name='Reduce feed', severity=2, cost=1),
     dict(id='backup_pump', name='Start backup pump', severity=1, cost=2),
     dict(id='setpoint', name='Lower cooling setpoint', severity=1, cost=1),
     dict(id='emergency', name='Emergency cooling', severity=3, cost=4),
@@ -68,22 +68,31 @@ ACTIONS = [
 @dataclass(frozen=True)
 class Config:
     fault: str = 'cooling_valve'
-    start: int = 30
+    start: float = 30
     severity: float = 1
-    delay: int = 5
+    delay: float = 5
     noise: float = 1
     response: float = 1
     operating: float = 0
     seed: int = 1
+    duration: float = DURATION
+    step: float = 1
 
     def __post_init__(self):
         if self.fault not in (*FAULTS, 'healthy'):
             raise ValueError('Unknown simulator hypothesis.')
-        for name in ('start', 'delay', 'seed'):
+        for name in ('seed',):
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 raise ValueError(f'{name} must be a nonnegative integer.')
-        if self.start > DURATION:
+        for name in ('start', 'delay', 'duration', 'step'):
+            if not finite(getattr(self, name)):
+                raise ValueError(f'{name} must be finite.')
+        if self.duration <= 0 or not .05 <= self.step <= 1:
+            raise ValueError('Duration must be positive; the stable integration step is 0.05–1 second.')
+        if math.ceil(self.duration / self.step) > 100000:
+            raise ValueError('Use at most 100,000 integration steps per run.')
+        if not 0 <= self.start <= self.duration or self.delay < 0:
             raise ValueError('Fault start exceeds the simulator horizon.')
         for name in ('severity', 'noise', 'response', 'operating'):
             value = getattr(self, name)
@@ -93,15 +102,16 @@ class Config:
             raise ValueError('Severity/noise must be nonnegative and response must be positive.')
 
 
-def simulate(config: Config, action: str | None = None, at: int = 90, *, compact=False):
+def simulate(config: Config, action: str | None = None, at: float = 90, *, compact=False, parameters=None):
     """Two PI loops, actuator lag/rate limit, shared utility and thermal feedback.
 
     Measured pressure is distinct from physical pressure; a sensor alarm is not
     an actual physical trip. A hypothetical branch has an identical pre-action prefix.
     """
-    if action is not None and (action not in {a['id'] for a in ACTIONS} or not isinstance(at, int)
-                               or isinstance(at, bool) or not 0 <= at <= DURATION):
-        raise ValueError('Interventions require a known action and an integer second within the horizon.')
+    if action is not None and (action not in {a['id'] for a in ACTIONS} or not finite(at)
+                               or not 0 <= at <= config.duration):
+        raise ValueError('Interventions require a known action and a start within the horizon.')
+    p = action_parameters(parameters)
     c = config
     temp = 120 + c.operating
     pressure, separator, flow, feed, purity = 2700., 2630., 100., 100., 99.2
@@ -110,7 +120,10 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
     trip = None
     physical_peak = pressure
     prod_loss = quality_loss = utility_cost = 0.
-    for t in range(DURATION + 1):
+    count = math.ceil(c.duration / c.step)
+    for index in range(count + 1):
+        t = round(min(index * c.step, c.duration), 9)
+        dt = c.step if index == 0 else t - min((index - 1) * c.step, c.duration)
         active = t >= c.start
         s = c.severity if active else 0
         enabled = action is not None and t >= at
@@ -119,49 +132,50 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
         vibration = 1 + (3.2 * s if c.fault == 'pump_loss' else 0)
         composition = 1 + (.45 * s if c.fault == 'feed_composition' else 0)
         measured_temp = temp + (min(8, (t - c.start) * .065) * s if c.fault == 'temperature_drift' else 0)
-        sp = 120 + c.operating - (5 if enabled and action == 'setpoint' else 0)
+        sp = 120 + c.operating - (p['setpointDrop'] if enabled and action == 'setpoint' else 0)
         error = measured_temp - sp
-        integral = max(-25, min(30, integral + error * .024 * c.response))
+        integral = max(-25, min(30, integral + error * .024 * c.response * dt))
         limit = 100 - (55 * s if c.fault == 'controller_limit' else 0)
         target_op = max(10, min(limit, 62 + 2.4 * c.response * error + integral))
         if c.fault == 'loop_oscillation' and active:
             target_op = max(10, min(100, 62 + 27 * s * math.sin((t - c.start) / 6)))
-        op += max(-2.5, min(2.5, target_op - op))
+        op += max(-2.5 * dt, min(2.5 * dt, target_op - op))
         target_valve = max(3, 62 - 40 * s) if c.fault == 'cooling_valve' and active else op
-        valve += (target_valve - valve) / 2
-        feed_sp = 70 if enabled and action in ('feed_reduce', 'combined') else 100
+        valve += (target_valve - valve) / 2 * dt
+        feed_sp = 100 * (1 - p['feedReduction']) if enabled and action in ('feed_reduce', 'combined') else 100
         if enabled and action == 'shutdown':
             feed_sp = 0
-        feed_op = max(0, min(100, feed_op + .03 * (feed_sp - feed)))
+        feed_op = max(0, min(100, feed_op + .03 * (feed_sp - feed) * dt))
         target_feed_valve = max(5, 50 - 27 * s) if c.fault == 'feed_valve' and active else feed_op
-        feed_valve += (target_feed_valve - feed_valve) / 3
-        feed += (2 * feed_valve - feed) / 10
+        feed_valve += (target_feed_valve - feed_valve) / 3 * dt
+        feed += (2 * feed_valve - feed) / 10 * dt
         if enabled and action == 'backup_pump':
-            pump = max(pump, 115)
+            pump = max(pump, p['pumpSpeed'])
         effective_valve = valve if t >= c.start + c.delay else 62
         cooling = max(0, 100 * effective_valve / 62 * pump / 100 * (1 - (utility - 25) * .035))
         if enabled and action in ('bypass', 'combined'):
-            cooling = max(cooling, 110)
+            cooling = max(cooling, p['bypassFlow'])
         if enabled and action == 'emergency':
-            cooling = max(cooling, 145)
-        flow += (cooling - flow) / 10
+            cooling = max(cooling, p['emergencyFlow'])
+        flow += (cooling - flow) / 10 * dt
         reaction = 10 * s if c.fault == 'reaction_rate' else 0
         thermal_target = 120 + c.operating + .23 * (100 - flow) + .12 * (feed - 100) + 18 * (composition - 1) + reaction
-        temp += (thermal_target - temp) / 33
+        temp += (thermal_target - temp) / 33 * dt
         restriction = 260 * s if c.fault == 'separator_restriction' else 0
         recycle = max(0, separator - 2630 - .58 * (pressure - 2700)) * .15
         # A normal pressure test ramp exposes a frozen transmitter independently.
         test_ramp = min(180, max(0, t - c.start) * 2) if c.fault == 'sensor_freeze' else 0
-        pressure += (2700 + 35 * (temp - 120 - c.operating) + recycle + test_ramp - pressure) / 24
-        separator += (2630 + .58 * (pressure - 2700) + restriction - separator) / 27
-        purity += (99.2 - .019 * (separator - 2630) - .025 * abs(feed - 100) - purity) / 35
+        pressure += (2700 + 35 * (temp - 120 - c.operating) + recycle + test_ramp - pressure) / 24 * dt
+        separator += (2630 + .58 * (pressure - 2700) + restriction - separator) / 27 * dt
+        purity += (99.2 - .019 * (separator - 2630) - .025 * abs(feed - 100) - purity) / 35 * dt
         if pressure >= THRESHOLD and trip is None:
             trip = t
         physical_peak = max(physical_peak, pressure)
         pressure_path.append(round(pressure, 2))
-        prod_loss += max(0, 100 - feed) / 100
-        quality_loss += max(0, 99.2 - purity)
-        utility_cost += max(0, flow - 100) / 100
+        weight = 0 if index == 0 else dt
+        prod_loss += max(0, 100 - feed) / 100 * weight
+        quality_loss += max(0, 99.2 - purity) * weight
+        utility_cost += max(0, flow - 100) / 100 * weight
         if compact:
             continue
         primary_p = pressure + (180 * s if c.fault == 'pressure_bias' else 0)
@@ -178,8 +192,9 @@ def simulate(config: Config, action: str | None = None, at: int = 90, *, compact
         rows.append(row)
     if compact:
         return dict(peak=round(physical_peak, 2), physicalPeak=physical_peak, trip=trip, pressure=pressure_path,
-                    productionLoss=round(prod_loss / (DURATION + 1) * 100, 2),
-                    qualityLoss=round(quality_loss / (DURATION + 1), 3), utilityCost=round(utility_cost, 2))
+                    times=[round(min(i * c.step, c.duration), 9) for i in range(count + 1)],
+                    productionLoss=round(prod_loss / c.duration * 100, 2),
+                    qualityLoss=round(quality_loss / c.duration, 3), utilityCost=round(utility_cost, 2))
     return rows
 
 
@@ -187,9 +202,30 @@ def finite(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+ACTION_PARAMETERS = {
+    'feedReduction': (.3, 0, 1), 'setpointDrop': (5, 0, 20),
+    'bypassFlow': (110, 0, 180), 'pumpSpeed': (115, 0, 150),
+    'emergencyFlow': (145, 0, 200),
+}
+
+
+def action_parameters(parameters=None):
+    if parameters is None:
+        parameters = {}
+    if not isinstance(parameters, dict) or set(parameters) - ACTION_PARAMETERS.keys():
+        raise ValueError('Unknown intervention parameters.')
+    result = {}
+    for key, (default, low, high) in ACTION_PARAMETERS.items():
+        value = parameters.get(key, default)
+        if not finite(value) or not low <= value <= high:
+            raise ValueError(f'{key} must be between {low} and {high}.')
+        result[key] = value
+    return result
+
+
 def validate_rows(rows):
-    if not isinstance(rows, list) or not 25 <= len(rows) <= 2000:
-        raise ValueError('Supply 25–2000 samples including 20 stable baseline samples.')
+    if not isinstance(rows, list) or len(rows) < 2:
+        raise ValueError('Supply at least two timestamped observations.')
     previous = -math.inf
     for row in rows:
         if not isinstance(row, dict) or not finite(row.get('t')) or row['t'] <= previous:
@@ -201,11 +237,14 @@ def validate_rows(rows):
 
 def evidence(rows):
     validate_rows(rows)
+    period = stats.median(b['t']-a['t'] for a,b in zip(rows, rows[1:]))
+    base_rows = [r for r in rows if r['t'] < rows[0]['t'] + BASELINE]
+    enough = rows[-1]['t'] - rows[0]['t'] >= BASELINE + 4
     detections, health, baseline, changes = {}, {}, {}, {}
     for key in KEYS:
         valid = [(r['t'], r[key]) for r in rows if finite(r.get(key))]
-        base = [r[key] for r in rows[:BASELINE] if finite(r.get(key))]
-        if len(base) < BASELINE * .8 or len(valid) < 25:
+        base = [r[key] for r in base_rows if finite(r.get(key))]
+        if not enough or len(base) < max(3, len(base_rows) * .8) or len(valid) < 4:
             health[key] = dict(status='missing', usable=False, missing=len(rows)-len(valid), detail='Insufficient baseline or signal samples.', freshness=None)
             continue
         center = stats.median(base)
@@ -214,7 +253,7 @@ def evidence(rows):
             raise ValueError('Baseline statistics exceed the supported numerical range for '+key+'.')
         baseline[key] = dict(center=center, scale=scale)
         missing = len(rows) - len(valid)
-        tail = [r.get(key) for r in rows[-16:]]
+        tail = [r.get(key) for r in rows if r['t'] > rows[-1]['t'] - 16]
         frozen = all(finite(v) for v in tail) and max(tail) == min(tail) and key not in ('cooling_sp', 'cooling_limit')
         gap = rows[-1]['t'] - valid[-1][0]
         status = 'frozen' if frozen else 'stale' if gap > 3 else 'missing' if missing else 'healthy'
@@ -224,21 +263,21 @@ def evidence(rows):
         health[key] = dict(status=status, usable=status=='healthy', missing=missing,
                            detail=f'{len(valid)}/{len(rows)} samples · age {gap:g}s' + (' · extreme step' if jumps else ''), freshness=gap)
         streak = []
-        for row in rows[BASELINE:]:
+        for row in rows[len(base_rows):]:
             value = row.get(key)
             if finite(value) and abs(value - center) / scale >= 6:
-                if streak and row['t'] - streak[-1] > 1.5:
+                if streak and row['t'] - streak[-1] > period * 1.5:
                     streak = []
                 streak.append(row['t'])
-                if len(streak) == 4:
+                if row['t'] - streak[0] >= 3 - 1e-7:
                     detections[key] = dict(onset=streak[0], time=row['t'], direction=1 if value>center else -1)
                     break
             else:
                 streak = []
-        changes[key] = round(stats.median(v for _, v in valid[-20:]) - center, 4)
+        changes[key] = round(stats.median(v for t, v in valid if t >= max(valid[0][0], valid[-1][0] - 19)) - center, 4)
     periods = [b['t']-a['t'] for a,b in zip(rows, rows[1:])]
     return dict(detections=detections, health=health, baseline=baseline, changes=changes,
-                clock=dict(regular=all(abs(p-1)<.001 for p in periods), gaps=sum(p>1.5 for p in periods)))
+                clock=dict(regular=all(abs(p-period)<.001 for p in periods), gaps=sum(p>period*1.5 for p in periods), step=period))
 
 
 def correlate(a, b):
@@ -274,14 +313,14 @@ def diagnose(rows):
     d, h = ev['changes'], ev['health']
     def delta(key): return d.get(key, 0)
     def median_diff(a,b):
-        vals=[r[a]-r[b] for r in rows[-30:] if finite(r.get(a)) and finite(r.get(b))]
+        vals=[r[a]-r[b] for r in rows if r['t'] > rows[-1]['t'] - 30 and finite(r.get(a)) and finite(r.get(b))]
         return stats.median(vals) if vals else None
     mismatch=median_diff('cooling_op','valve')
     feed_mismatch=median_diff('feed_op','feed_valve')
     p_disagreement=median_diff('pressure','pressure_peer')
     t_disagreement=median_diff('temperature','temperature_peer')
     oscillations=0
-    values=[r['cooling_op'] for r in rows[BASELINE:] if finite(r.get('cooling_op'))]
+    values=[r['cooling_op'] for r in rows if r['t'] >= rows[0]['t'] + BASELINE and finite(r.get('cooling_op'))]
     if len(values)>10:
         mid=(max(values)+min(values))/2
         oscillations=sum((a-mid)*(b-mid)<0 for a,b in zip(values,values[1:])) if max(values)-min(values)>15 else 0
@@ -349,6 +388,8 @@ def diagnose(rows):
         status='ambiguous'
     else:
         status='investigating'
+    if rows[-1]['t'] - rows[0]['t'] < BASELINE + 4:
+        status='insufficient_data'
     next_checks=[]
     top=candidates[:2]
     for key in KEYS:
@@ -409,8 +450,14 @@ def alarm_analysis(rows):
                                    events=sum(e['condition']==cid for e in events),actionable=level=='HH' or key in ('flow','vibration','feed')))
     events.sort(key=lambda e:(e['t'],e['condition']))
     floods=[]; flood_start=None
+    left=right=rate=0
     for r in rows:
-        rate=sum(r['t']-30<e['t']<=r['t'] and e['kind']!='return' for e in events)
+        while right < len(events) and events[right]['t'] <= r['t']:
+            rate += events[right]['kind'] != 'return'
+            right += 1
+        while left < right and events[left]['t'] <= r['t']-30:
+            rate -= events[left]['kind'] != 'return'
+            left += 1
         if rate>=10 and flood_start is None: flood_start=r['t']
         if rate<10 and flood_start is not None:
             floods.append(dict(start=flood_start,end=r['t'])); flood_start=None
@@ -422,20 +469,30 @@ def alarm_analysis(rows):
                 firstAlarm=events[0]['t'] if events else None,rationalization=recommendations)
 
 
-def fit_hypothesis(rows, diagnosis):
+def fit_hypothesis(rows, diagnosis, *, hypothesis=None, duration=None):
     validate_rows(rows)
-    if len(rows)>DURATION+1 or any(abs(b['t']-a['t']-1)>1e-6 for a,b in zip(rows,rows[1:])):
-        raise ValueError('The fitted simulator requires consecutive one-second observations within its 240-second horizon.')
+    step = stats.median(b['t']-a['t'] for a,b in zip(rows,rows[1:]))
+    if not .05 <= step <= 1 or any(abs(b['t']-a['t']-step)>1e-6 for a,b in zip(rows,rows[1:])):
+        raise ValueError('Model fitting needs regular observations with a 0.05–1 second step.')
+    if diagnosis['status'] == 'insufficient_data':
+        raise ValueError('Model fitting needs at least 24 seconds including a stable initial 20-second baseline.')
     if diagnosis != diagnose(rows):
         raise ValueError('Fit diagnosis must be computed from exactly the supplied observation window.')
-    leader=diagnosis['candidates'][0]['id']
+    leader=hypothesis or diagnosis['candidates'][0]['id']
+    if leader not in FAULTS:
+        raise ValueError('Select an existing fault hypothesis.')
     origin=rows[0]['t']
-    onset=min((v['onset']-origin for v in diagnosis['detections'].values()),default=30)
+    observed_duration = rows[-1]['t'] - origin
+    horizon = observed_duration if duration is None else duration
+    if horizon < observed_duration:
+        raise ValueError('Prediction horizon cannot end before the observations.')
+    onset=min((v['onset']-origin for v in diagnosis['detections'].values()),default=observed_duration)
+    operating = stats.median(r['temperature_peer'] for r in rows if r['t'] < origin + BASELINE and finite(r.get('temperature_peer'))) - 120 if any(finite(r.get('temperature_peer')) for r in rows if r['t'] < origin + BASELINE) else 0
     best=None
     # Fit numerical parameters to observed traces; never pass the case's ground truth.
-    for start in sorted(set(max(20,round(onset)-d) for d in (0,3,6))):
-        for severity in (.5,.75,1,1.25):
-            c=Config(fault=leader,start=start,severity=severity)
+    for start in sorted(set(max(0, min(observed_duration, onset-d)) for d in (0,3,6))):
+        for severity in (.25,.5,.75,1,1.25,1.5,2):
+            c=Config(fault=leader,start=start,severity=severity,operating=operating,duration=observed_duration,step=step)
             predicted=simulate(c)
             errors=[((r[k]-predicted[index][k]) / max(1,abs(META[k]['nominal'])*.05))**2
                     for index,r in enumerate(rows)
@@ -445,35 +502,40 @@ def fit_hypothesis(rows, diagnosis):
                 raise ValueError('No usable observed channels are available for model fitting.')
             rmse=math.sqrt(stats.mean(errors))
             if best is None or rmse<best[0]: best=(rmse,c)
-    return best[1], round(best[0],4)
+    return Config(**{**asdict(best[1]), 'duration': horizon}), round(best[0],4)
 
 
-def interventions(config, *, fit_error=None):
+def interventions(config, *, fit_error=None, from_time=BASELINE, resolution=None, parameters=None, actions=None):
     base=simulate(config,compact=True)
     results=[]
-    for action in ACTIONS:
+    resolution = max(config.step, (config.duration - from_time) / 60) if resolution is None else resolution
+    if not finite(from_time) or not 0 <= from_time <= config.duration or not finite(resolution) or resolution <= 0:
+        raise ValueError('Search start and resolution must be inside the prediction horizon.')
+    times = sorted({round(min(config.duration, from_time + i * resolution), 9)
+                    for i in range(math.ceil((config.duration - from_time) / resolution) + 1)})
+    selected = [a for a in ACTIONS if actions is None or a['id'] in actions]
+    for action in selected:
         trials=[]
-        # Exhaustive 1s grid: no untested monotonicity assumption or binary-search shortcut.
-        for t in range(BASELINE,DURATION+1):
-            result=simulate(config,action['id'],t,compact=True)
+        for t in times:
+            result=simulate(config,action['id'],t,compact=True,parameters=parameters)
             trials.append(dict(time=t,peak=result['peak'],physicalPeak=result['physicalPeak'],safe=result['trip'] is None,
                                productionLoss=result['productionLoss'],qualityLoss=result['qualityLoss'],utilityCost=result['utilityCost']))
         safe=[r for r in trials if r['safe']]
         latest=safe[-1]['time'] if safe and base['trip'] is not None else None
-        chosen=latest if latest is not None else 90
-        branch=simulate(config,action['id'],chosen,compact=True)
+        chosen=latest if latest is not None else from_time
+        branch=simulate(config,action['id'],chosen,compact=True,parameters=parameters)
         intervals=[]
         for r in safe:
-            if not intervals or r['time']>intervals[-1][1]+1: intervals.append([r['time'],r['time']])
+            if not intervals or r['time']>intervals[-1][1]+resolution+1e-7: intervals.append([r['time'],r['time']])
             else: intervals[-1][1]=r['time']
         results.append(dict(**action,latest=latest,intervals=intervals,selectedTime=chosen,margin=round(THRESHOLD-branch['physicalPeak'],2),
                             **branch, trials=trials))
     safe=[r for r in results if r['latest'] is not None]
-    return dict(threshold=THRESHOLD,resolution=1,horizon=DURATION,base=base,actions=results,
+    return dict(threshold=THRESHOLD,resolution=resolution,horizon=config.duration,base=base,actions=results,
                 status='model_conditional' if base['trip'] is not None else 'baseline_below_pressure_limit',
                 fitError=fit_error,scope='simulation-only',
                 uncertainty='No predictive intervals; parameter error and model mismatch are not bounded.',
-                evaluated=len(ACTIONS)*(DURATION-BASELINE+1),
+                evaluated=len(selected)*len(times),
                 safest=max(safe,key=lambda r:r['margin'])['id'] if safe else None,
                 lowestLoss=min(safe,key=lambda r:(r['productionLoss'],r['severity'],r['utilityCost']))['id'] if safe else None,
                 latest=max(safe,key=lambda r:r['latest'])['id'] if safe else None)
@@ -497,11 +559,11 @@ def tool_trace(rows, diagnosis, alarms, fit=None):
     trace=[]
     def add(tool,args,result): trace.append(dict(index=len(trace)+1,tool=tool,args=args,result=result,status='completed'))
     add('inspect_signal_window',dict(start=rows[0]['t'],end=rows[-1]['t']),dict(samples=len(rows),health=diagnosis['health']))
-    add('find_change_point',dict(baselineSamples=BASELINE,confirmation=4,zThreshold=6),diagnosis['detections'])
+    add('find_change_point',dict(baselineSeconds=BASELINE,confirmationSeconds=3,zThreshold=6),diagnosis['detections'])
     add('inspect_controller',dict(controller='TIC-101'),diagnosis['controllers'][0])
     add('trace_downstream',dict(edgeTypes=['material','energy','control','feedback']),diagnosis['paths'])
     add('inspect_alarm_history',dict(windowSeconds=30,floodEvents=10),{k:alarms[k] for k in ('eventCount','uniqueConditions','clusters','floods')})
-    add('compare_hypotheses',dict(candidateCount=len(FAULTS)),[dict(id=c['id'],score=c['score'],against=c['against']) for c in diagnosis['candidates'][:4]])
+    add('compare_hypotheses',dict(candidateCount=len(FAULTS)),diagnosis['candidates'])
     if fit: add('simulate_fault',dict(hypothesis=leader['id'],parameters=asdict(fit[0])),dict(normalizedRMSE=fit[1]))
     add('query_sop',dict(procedure='EOP-CW-01'),sop_alignment(diagnosis))
     add('recommend_next_measurement',dict(competing=[c['id'] for c in diagnosis['candidates'][:2]]),diagnosis['nextMeasurements'])
@@ -515,8 +577,9 @@ def analyze_rows(rows, *, schema_id=SYNTHETIC_SCHEMA.id, source_id='observed row
         diagnosis=diagnose(rows); alarms=alarm_analysis(rows)
     except OverflowError as error:
         raise ValueError('Observation values exceed the supported numerical range.') from error
+    schema = {**SYNTHETIC_SCHEMA.metadata(), 'sample_interval_seconds':diagnosis['clock']['step'] if diagnosis['clock']['regular'] else None, 'time_unit':'seconds'}
     result=dict(diagnosis=diagnosis,alarms=alarms,sop=sop_alignment(diagnosis),trace=tool_trace(rows,diagnosis,alarms),
-                source=source_id,signalSchema=SYNTHETIC_SCHEMA.metadata(),schemaVersion=2)
+                source=source_id,signalSchema=schema,schemaVersion=2)
     try:
         json.dumps(result,allow_nan=False)
     except ValueError as error:
@@ -526,41 +589,78 @@ def analyze_rows(rows, *, schema_id=SYNTHETIC_SCHEMA.id, source_id='observed row
 
 
 def run_tools(rows, calls=None):
-    """Validated structured tool boundary for a future model-authored plan.
-
-    Native callers and a model can use the same {tool, args} objects. The caller
-    cannot pass fault labels or replace numerical results. No external I/O tools.
-    """
+    """Run requested tools against an explicit observed prefix and time window."""
     validate_rows(rows)
-    diagnosis=diagnose(rows)
-    alarms=alarm_analysis(rows)
-    defaults=tool_trace(rows, diagnosis, alarms)
     if calls is None:
-        return defaults
-    if not isinstance(calls,list) or not 1<=len(calls)<=16:
+        d = diagnose(rows)
+        return tool_trace(rows, d, alarm_analysis(rows))
+    if not isinstance(calls, list) or not 1 <= len(calls) <= 16:
         raise ValueError('calls must contain 1–16 structured tool requests.')
-    allowed={step['tool']:step for step in defaults}
-    trace=[]
+    allowed = {
+        'inspect_signal_window': {'signal'}, 'analyze_window': set(),
+        'find_change_point': set(), 'inspect_controller': {'controller'},
+        'trace_downstream': {'signal'}, 'inspect_alarm_history': set(),
+        'compare_hypotheses': {'hypotheses'}, 'sensor_consistency': set(),
+        'recommend_next_measurement': set(), 'query_sop': set(),
+        'simulate_fault': {'hypothesis', 'duration'},
+    }
+    trace = []
     for call in calls:
-        if not isinstance(call,dict) or call.get('tool') not in allowed:
-            raise ValueError('Unknown or unavailable investigation tool.')
-        args=call.get('args',{})
-        if not isinstance(args,dict):
-            raise ValueError('Tool args must be an object.')
-        name=call['tool']
-        # Only signal-window inspection accepts a parameter in this version.
-        if name=='inspect_signal_window':
-            if set(args)-{'signal'} or args.get('signal') not in KEYS:
-                raise ValueError('inspect_signal_window requires a known signal key.')
-            key=args['signal']
-            result={'signal':key,'samples':[{'t':r['t'],'value':r.get(key)} for r in rows],
-                    'health':diagnosis['health'][key]}
+        if not isinstance(call, dict) or call.get('tool') not in allowed:
+            raise ValueError('Unknown investigation tool.')
+        name, args = call['tool'], call.get('args', {})
+        if not isinstance(args, dict) or set(args) - (allowed[name] | {'start', 'end'}):
+            raise ValueError('Unknown arguments for ' + name + '.')
+        start, end = args.get('start', rows[0]['t']), args.get('end', rows[-1]['t'])
+        if not finite(start) or not finite(end) or not rows[0]['t'] <= start <= end <= rows[-1]['t']:
+            raise ValueError('Tool window must lie within the current observations.')
+        window = [r for r in rows if start <= r['t'] <= end]
+        validate_rows(window)
+        d, alarms = diagnose(window), alarm_analysis(window)
+        if name == 'inspect_signal_window':
+            key = args.get('signal')
+            if key not in KEYS:
+                raise ValueError('Select a known signal.')
+            result = dict(signal=key, samples=[dict(t=r['t'], value=r.get(key)) for r in window], health=d['health'][key], change=d['changes'].get(key))
+        elif name == 'analyze_window':
+            result = analyze_rows(window)
+        elif name == 'find_change_point':
+            result = d['detections']
+        elif name == 'inspect_controller':
+            controller = args.get('controller', 'TIC-101')
+            result = next((c for c in d['controllers'] if c['id'] == controller), None)
+            if result is None:
+                raise ValueError('Unknown controller.')
+        elif name == 'trace_downstream':
+            key = args.get('signal')
+            if key is not None and key not in KEYS:
+                raise ValueError('Unknown propagation source.')
+            reachable = {key} if key else set(KEYS)
+            for _ in KEYS:
+                reachable.update(b for a,b,_ in EDGES if a in reachable)
+            result = [p for p in d['paths'] if p['source'] in reachable]
+        elif name == 'inspect_alarm_history':
+            result = alarms
+        elif name == 'compare_hypotheses':
+            ids = args.get('hypotheses', list(FAULTS))
+            if not isinstance(ids, list) or not ids or any(h not in FAULTS for h in ids):
+                raise ValueError('Choose existing fault hypotheses.')
+            result = [dict(c, paths=[p for p in d['paths'] if any(part['signal'] in (p['source'],p['target']) for part in c['parts'])]) for c in d['candidates'] if c['id'] in ids]
+        elif name == 'sensor_consistency':
+            result = []
+            for a,b in [('pressure','pressure_peer'), ('temperature','temperature_peer')]:
+                diffs = [r[a]-r[b] for r in window if finite(r.get(a)) and finite(r.get(b))]
+                result.append(dict(primary=a, peer=b, pairedSamples=len(diffs), medianDifference=stats.median(diffs) if diffs else None, primaryHealth=d['health'][a], peerHealth=d['health'][b]))
+        elif name == 'recommend_next_measurement':
+            result = d['nextMeasurements']
+        elif name == 'query_sop':
+            result = sop_alignment(d)
         else:
-            if args:
-                raise ValueError('This tool accepts an empty args object.')
-            result=allowed[name]['result']
-        trace.append(dict(index=len(trace)+1,tool=name,args=args,result=result,status='completed'))
+            fit, error = fit_hypothesis(window, d, hypothesis=args.get('hypothesis'), duration=args.get('duration'))
+            result = dict(parameters=asdict(fit), normalizedRMSE=error, observedThrough=end, prediction=simulate(fit, compact=True))
+        trace.append(dict(index=len(trace)+1, tool=name, args={**args, 'start':start, 'end':end}, result=result, status='completed'))
     return trace
+
 
 def parse_csv(text):
     if not isinstance(text,str):
@@ -581,7 +681,6 @@ def parse_csv(text):
         for values in reader:
             if not values: continue
             if len(values)!=len(headers): raise ValueError(f'CSV row {reader.line_num} does not match the header width.')
-            if len(rows)>=2000: raise ValueError('CSV exceeds 2000 rows.')
             record=dict(zip(headers,values))
             try: rows.append({key:float(record[key]) if record.get(key,'').strip() else None for key in ['t',*KEYS]})
             except ValueError: raise ValueError(f'CSV row {reader.line_num} contains a nonnumeric value.') from None

@@ -11,6 +11,6 @@ export default function App() {
     return () => window.removeEventListener("hashchange", update);
   }, []);
   const path = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-  if (path[0] === "examples") return <><div className="ws-example-banner"><a href="#/">← L5 Workspaces</a><span>TRIPLENS / 12 BUILT-IN SIMULATED INCIDENTS</span></div><Suspense fallback={<p className="ws-main">Loading TripLens examples…</p>}><ExamplesApp /></Suspense></>;
+  if (path[0] === "examples") return <><div className="ws-example-banner"><a href="#/">← L5 Workspaces</a><span>TRIPLENS / PROCESS MODELS & EXAMPLES</span></div><Suspense fallback={<p className="ws-main">Loading TripLens examples…</p>}><ExamplesApp /></Suspense></>;
   return <WorkspaceApp path={path} />;
 }

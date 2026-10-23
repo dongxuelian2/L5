@@ -83,11 +83,11 @@ class DecisionBoundaryTests(unittest.TestCase):
                 self.assertTrue(all(action['latest'] is None for action in recovery['actions']))
 
     def test_search_includes_both_endpoints_and_uses_physical_trip(self):
-        def fake(config,action=None,at=90,*,compact=False):
+        def fake(config,action=None,at=90,*,compact=False,parameters=None):
             safe=action is not None and at==DURATION
             return dict(peak=3050,physicalPeak=THRESHOLD-.001 if safe else THRESHOLD+.001,
                         trip=None if safe else 118,pressure=[2700]*241,productionLoss=0,qualityLoss=0,utilityCost=0)
-        with patch('simulation.platform.simulate',side_effect=fake): recovery=interventions(Config())
+        with patch('simulation.platform.simulate',side_effect=fake): recovery=interventions(Config(), resolution=1)
         self.assertEqual(recovery['evaluated'],len(ACTIONS)*(DURATION-BASELINE+1))
         for action in recovery['actions']:
             self.assertEqual(action['trials'][0]['time'],BASELINE)
@@ -96,8 +96,8 @@ class DecisionBoundaryTests(unittest.TestCase):
             self.assertTrue(action['trials'][-1]['safe'])
             self.assertLess(action['trials'][-1]['physicalPeak'],THRESHOLD)
 
-    def test_unknown_actions_and_fractional_action_times_fail_explicitly(self):
-        for action,at in (('unknown',90),('bypass',90.5),('bypass',-1),('bypass',241)):
+    def test_unknown_actions_and_out_of_range_times_fail_explicitly(self):
+        for action,at in (('unknown',90),('bypass',float('nan')),('bypass',-1),('bypass',241)):
             with self.subTest(action=action,at=at),self.assertRaises(ValueError): simulate(Config(),action,at)
 
 

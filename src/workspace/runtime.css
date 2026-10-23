@@ -1,0 +1,18 @@
+.ws-runtime { min-height:0; background:transparent; }
+.runtime-config summary { font-size:13px; }
+.runtime-config form { margin-top:24px; }
+.runtime-sessionbar { display:flex; gap:18px; align-items:end; flex-wrap:wrap; }
+.runtime-sessionbar label { flex:1; min-width:200px; }
+.runtime-tabs { display:flex; gap:6px; margin:24px 0; flex-wrap:wrap; border-bottom:1px solid #394333; padding-bottom:12px; }
+.runtime-tabs button { border:1px solid #394333; color:#9eae93; border-radius:3px; }
+.runtime-tabs button.active { color:#101410; background:#b5ed9a; }
+.runtime-timeline .ws-form-grid { margin-top:18px; }
+.ws-shell .runtime-timeline input[type=range] { padding:0; width:100%; accent-color:#b5ed9a; margin:15px 0; }
+.runtime-hypothesis { max-width:650px; margin-bottom:20px; }
+.runtime-forecast { margin-top:25px; }
+.runtime-forecast th { white-space:normal; min-width:120px; }
+.ws-runtime .p-candidates { max-height:440px; overflow:auto; }
+.ws-runtime .p-trace-layout { margin-top:28px; }
+.ws-runtime .p-signal-list { max-height:420px; overflow:auto; }
+.ws-runtime .p-evidence-grid { margin-bottom:18px; }
+@media(max-width:750px) { .runtime-sessionbar { display:grid; grid-template-columns:1fr; } .runtime-tabs button { flex:1; } }
