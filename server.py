@@ -1,4 +1,4 @@
-"""Optional API and static server. Standard library only; no credentials in React.
+"""Local L5 Workspace API, analysis engine, example APIs and static server.
 
 python3 server.py                            local evidence provider
 TRIPLENS_MODEL_ENDPOINT=... python3 server.py compatible structured-JSON model
@@ -17,6 +17,8 @@ from urllib.request import Request, urlopen
 
 from simulation.generate import build_scenario
 from simulation.platform import SYNTHETIC_SCHEMA, analyze_rows, parse_csv, run_tools
+from l5.api import dispatch
+from l5.workspace import WorkspaceStore
 
 ROOT = Path(__file__).resolve().parent
 MAX_BODY = 16_384
@@ -101,6 +103,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
+        if dispatch(self, 'GET'):
+            return
         if self.path == '/api/health':
             return self.send_json(200, {"ok": True, "provider": "model" if os.environ.get('TRIPLENS_MODEL_ENDPOINT') else "local", "schemaVersion": 1})
         if self.path.startswith('/api/'):
@@ -108,6 +112,8 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if dispatch(self, 'POST'):
+            return
         if self.path not in ('/api/analyze', '/api/replay', '/api/investigate'):
             return self.send_json(404, {"error": "Unknown endpoint."})
         try:
@@ -150,14 +156,24 @@ class Handler(SimpleHTTPRequestHandler):
         except (ValueError, KeyError, IndexError, TypeError):
             return self.send_json(502, {"error": "Model response did not match the incident brief contract."})
 
+    def do_PATCH(self):
+        if not dispatch(self, 'PATCH'):
+            self.send_json(404, {'error': 'Unknown endpoint.'})
+
+    def do_DELETE(self):
+        if not dispatch(self, 'DELETE'):
+            self.send_json(404, {'error': 'Unknown endpoint.'})
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='TripLens API and static server')
+    parser = argparse.ArgumentParser(description='L5 Workspace API and static server')
     parser.add_argument('--port', type=int, default=8787)
     parser.add_argument('--host', default='127.0.0.1')
+    parser.add_argument('--data-dir', type=Path, default=Path(os.environ.get('L5_DATA_DIR', ROOT / 'data')))
     args = parser.parse_args()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f'TripLens available at http://{args.host}:{args.port}', flush=True)
+    server.workspace_store = WorkspaceStore(args.data_dir)
+    print(f'L5 available at http://{args.host}:{args.port} · data: {server.workspace_store.root}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

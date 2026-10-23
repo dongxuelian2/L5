@@ -1,6 +1,6 @@
 import unittest
 
-from generate import FAULT_TIME, alarms, build_scenario, correlation, detect, simulate
+from simulation.generate import FAULT_TIME, alarms, build_scenario, correlation, detect, simulate
 
 
 class ProcessModelTests(unittest.TestCase):

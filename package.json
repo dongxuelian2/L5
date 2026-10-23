@@ -1,7 +1,7 @@
 {
-  "name": "triplens",
+  "name": "l5",
   "private": true,
-  "version": "0.2.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,12 +9,15 @@
     "preview": "vite preview --host 0.0.0.0",
     "generate": "node scripts/python.mjs simulation/generate.py && node scripts/python.mjs -m simulation.platform",
     "serve": "node scripts/python.mjs server.py",
-    "test:python": "node scripts/python.mjs -m unittest discover -s simulation -p test_*.py -v && node scripts/python.mjs -m unittest discover -s benchmarks -p test_*.py -v",
+    "test:python": "npm run test:workspace && npm run test:examples",
+    "test:examples": "node scripts/python.mjs -m unittest discover -s simulation -t . -p test_*.py -v",
+    "test:research": "node scripts/python.mjs -m unittest discover -s benchmarks -t . -p test_*.py -v",
     "test:ui": "node --test tests/comparison.test.mjs",
+    "test:workspace": "node scripts/python.mjs -m unittest discover -s tests -p test_workspace.py -v",
     "test": "npm run test:python && npm run test:ui",
     "typecheck": "tsc --noEmit",
     "verify:artifacts": "node scripts/python.mjs -m simulation.verify_artifacts",
-    "check": "npm run test && npm run build && npm run verify:artifacts"
+    "check": "npm run test && npm run build"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
