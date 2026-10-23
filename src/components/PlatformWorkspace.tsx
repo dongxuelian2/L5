@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BlockBar, Count, Panel, ScrambleText } from "./Primitives";
+import { CaseComparator } from "./CaseComparator";
 import { downloadFile } from "../lib/engine";
 import {
   csvFor,
@@ -1242,7 +1243,7 @@ export function PlatformWorkspace({
   onModeChange: (mode: "investigate" | "learn") => void;
 }) {
   const [incidentId, setIncidentId] = useState(platform.cases[0].id),
-    [tab, setTab] = useState<"evidence" | "recovery" | "trace" | "alarms">(
+    [tab, setTab] = useState<"evidence" | "recovery" | "trace" | "alarms" | "compare">(
       "evidence",
     ),
     [time, setTime] = useState(240);
@@ -1426,6 +1427,7 @@ export function PlatformWorkspace({
                   ["recovery", "⑂", "Interventions"],
                   ["trace", "≡", "Tool audit"],
                   ["alarms", "≋", "Alarm journal"],
+                  ["compare", "⥂", "Compare cases"],
                 ] as const
               ).map(([id, icon, label]) => (
                 <button
@@ -1479,6 +1481,15 @@ export function PlatformWorkspace({
                 <RecoveryLab incident={incident} />
               ) : tab === "alarms" ? (
                 <AlarmView analysis={analysis} />
+              ) : tab === "compare" ? (
+                <CaseComparator
+                  reference={incident}
+                  time={time}
+                  onOpenCase={(id) => {
+                    setIncidentId(id);
+                    setTab("evidence");
+                  }}
+                />
               ) : (
                 <TraceView analysis={analysis} />
               )}
