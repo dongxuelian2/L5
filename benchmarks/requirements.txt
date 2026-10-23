@@ -1,0 +1,3 @@
+# NumPy is used only by the optional statistical benchmark layer.
+# The original L5 web app and simulation remain dependency-free in Python.
+numpy==2.3.5

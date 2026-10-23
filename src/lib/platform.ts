@@ -131,6 +131,10 @@ export type Action = {
   trials: Trial[];
 };
 export type Recovery = {
+  status: "model_conditional" | "baseline_below_pressure_limit";
+  fitError: number | null;
+  scope: "simulation-only";
+  uncertainty: string;
   threshold: number;
   resolution: number;
   horizon: number;

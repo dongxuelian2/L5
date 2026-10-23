@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BlockBar, Count, Panel, ScrambleText } from "./Primitives";
+import { CaseComparator } from "./CaseComparator";
 import { downloadFile } from "../lib/engine";
 import {
   csvFor,
@@ -238,7 +239,7 @@ function RecoveryLab({ incident }: { incident: Incident }) {
       <div className="p-recovery-intro">
         <span className="p-large-glyph">⑂</span>
         <div>
-          <div className="eyebrow text-mint">PHYSICS VERIFIES</div>
+          <div className="eyebrow text-mint">FITTED MODEL / SIMULATION ONLY</div>
           <h2>
             Find the last recoverable second<span className="text-mint">.</span>
           </h2>
@@ -282,8 +283,10 @@ function RecoveryLab({ incident }: { incident: Incident }) {
             ))}
           </div>
           <div className="p-panel-note">
-            Rankings compare each action at its own latest safe start. Loss =
-            integrated feed deficit; quality = mean purity deficit.
+            {recovery.status === "baseline_below_pressure_limit"
+              ? "The fitted baseline stays below the pressure limit; no pressure intervention is ranked. "
+              : "Rankings compare actions at their own latest modeled start. "}
+            Parameter and model errors are unbounded; these are conditional simulations.
           </div>
         </Panel>
         <Panel
@@ -312,7 +315,7 @@ function RecoveryLab({ incident }: { incident: Incident }) {
               </b>
               <small>
                 {recovery.base.trip === null
-                  ? "horizon limit"
+                  ? "no pressure recovery required"
                   : "last recoverable start"}
               </small>
             </div>
@@ -1242,7 +1245,7 @@ export function PlatformWorkspace({
   onModeChange: (mode: "investigate" | "learn") => void;
 }) {
   const [incidentId, setIncidentId] = useState(platform.cases[0].id),
-    [tab, setTab] = useState<"evidence" | "recovery" | "trace" | "alarms">(
+    [tab, setTab] = useState<"evidence" | "recovery" | "trace" | "alarms" | "compare">(
       "evidence",
     ),
     [time, setTime] = useState(240);
@@ -1426,6 +1429,7 @@ export function PlatformWorkspace({
                   ["recovery", "⑂", "Interventions"],
                   ["trace", "≡", "Tool audit"],
                   ["alarms", "≋", "Alarm journal"],
+                  ["compare", "⥂", "Compare cases"],
                 ] as const
               ).map(([id, icon, label]) => (
                 <button
@@ -1479,6 +1483,15 @@ export function PlatformWorkspace({
                 <RecoveryLab incident={incident} />
               ) : tab === "alarms" ? (
                 <AlarmView analysis={analysis} />
+              ) : tab === "compare" ? (
+                <CaseComparator
+                  reference={incident}
+                  time={time}
+                  onOpenCase={(id) => {
+                    setIncidentId(id);
+                    setTab("evidence");
+                  }}
+                />
               ) : (
                 <TraceView analysis={analysis} />
               )}

@@ -1733,6 +1733,8 @@
 @media (max-width: 680px) {
   .p-tabs {
     gap: 11px;
+    max-width: 100%;
+    flex-wrap: wrap;
   }
   .p-tabs button {
     font-size: 8px;

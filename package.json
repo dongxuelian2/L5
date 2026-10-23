@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "generate": "python3 simulation/generate.py && python3 simulation/platform.py",
-    "serve": "python3 server.py",
-    "test": "python3 -m unittest discover -s simulation -p 'test_*.py' -v",
-    "check": "npm run test && npm run build"
+    "generate": "node scripts/python.mjs simulation/generate.py && node scripts/python.mjs -m simulation.platform",
+    "serve": "node scripts/python.mjs server.py",
+    "test:python": "node scripts/python.mjs -m unittest discover -s simulation -p test_*.py -v && node scripts/python.mjs -m unittest discover -s benchmarks -p test_*.py -v",
+    "test:ui": "node --test tests/comparison.test.mjs",
+    "test": "npm run test:python && npm run test:ui",
+    "typecheck": "tsc --noEmit",
+    "verify:artifacts": "node scripts/python.mjs -m simulation.verify_artifacts",
+    "check": "npm run test && npm run build && npm run verify:artifacts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
@@ -26,6 +30,6 @@
     "@vitejs/plugin-react": "^5.1.0",
     "tailwindcss": "^4.1.16",
     "typescript": "~5.9.3",
-    "vite": "^7.2.2"
+    "vite": "^7.3.7"
   }
 }
