@@ -12,6 +12,7 @@ A modern terminal aesthetic in the browser: character animation, fine process gr
 
 ## Current capabilities
 
+- **COMPARE CASES (new):** side-by-side, time-matched evidence across two simulated incidents at +40/70/110/180/240s, with diagnosis, alarm compression, channel trust, and exportable JSON. Full-window recovery stays hidden until +240s. [LaunchPad entry scope and provenance](docs/launchpad-2026-entry.md).
 - **INVESTIGATE:** 12 incident sessions, 18 observed channels and 14 material, energy, control and feedback paths. Diagnosis receives observations, never scenario labels. Each hypothesis exposes supporting, contradictory and unresolved evidence, signed score components and recommended next measurements.
 - **Process versus control:** two loops expose SP / PV / OP / actuator feedback / output limit. Independent pressure and temperature channels help distinguish process changes from sensor faults. Frozen, missing, stale or extreme-step evidence cannot earn strong process-causality credit.
 - **Time boundaries:** +40 / 70 / 110 / 180 / 240-second snapshots are separately recomputed from available samples. Earlier windows cannot display full-window counterfactuals or historical similarity.
