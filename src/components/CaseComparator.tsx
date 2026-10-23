@@ -91,6 +91,7 @@ export function CaseComparator({
   }
 
   function exportComparison() {
+    if (!first || !second) return;
     const report = {
       schemaVersion: 1,
       kind: "time-bounded-simulator-case-comparison",
