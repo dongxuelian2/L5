@@ -42,6 +42,14 @@ class WorkspaceWorkflowTests(unittest.TestCase):
             request = {'datasetId': dataset['id'], 'signals': signals, 'baselineRange': [0, 199],
                        'analysisRange': [200, 599], 'algorithm': 'robust-maxz', 'alpha': .01}
             result = store.analyze(workspace['id'], request)
+            self.assertEqual(result['contributionMetric'], 'absolute-robust-z')
+            self.assertAlmostEqual(result['signalContributions'][0]['value'], result['summary']['peakScore'])
+            peak_time = result['peakTime']
+            times, values = store.load_data(dataset)
+            sample = values[np.flatnonzero(times == peak_time)[0]]
+            z = np.abs((sample - result['model']['center']) / result['model']['scale'])
+            for contribution in result['signalContributions']:
+                self.assertAlmostEqual(contribution['value'], z[signals.index(contribution['signal'])])
             self.assertTrue(any(i['start'] <= 400 and i['end'] >= 459 for i in result['intervals']))
             self.assertEqual(result['intervals'][np.argmax([i['peakScore'] for i in result['intervals']])]['signals'][0], 'reactor_temp')
             restored = WorkspaceStore(Path(folder))
@@ -52,6 +60,19 @@ class WorkspaceWorkflowTests(unittest.TestCase):
                 pca = restored.analyze(workspace['id'], {**request, 'algorithm': algorithm})
                 self.assertTrue(np.isfinite(pca['scores']).all())
                 self.assertGreater(pca['summary']['flaggedSamples'], 0)
+                self.assertEqual(len(pca['signalContributions']), len(signals))
+                if algorithm == 'pca-q':
+                    self.assertAlmostEqual(sum(c['value'] for c in pca['signalContributions']), pca['summary']['peakScore'])
+                else:
+                    self.assertEqual(pca['contributionMetric'], 'model-leverage')
+                    model = pca['model']
+                    peak = values[np.flatnonzero(times == pca['peakTime'])[0]]
+                    peak = np.where(np.isfinite(peak), peak, model['imputationMedians'])
+                    z = (peak - model['center']) / model['scale']
+                    loadings = np.asarray(model['loadings'])
+                    expected = np.abs(loadings.T @ ((z @ loadings.T) / np.sqrt(model['eigenvalues'])))
+                    for contribution in pca['signalContributions']:
+                        self.assertAlmostEqual(contribution['value'], expected[signals.index(contribution['signal'])])
             restored.rename_workspace(workspace['id'], 'Campaign 2')
             self.assertEqual(restored.list_workspaces()[0]['name'], 'Campaign 2')
             restored.delete_workspace(workspace['id'])

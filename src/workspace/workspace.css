@@ -87,8 +87,10 @@
 .ws-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin:18px 0; }
 .ws-three { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .ws-file { border:1px dashed #4b5c40; background:#121910; padding:18px; border-radius:3px; color:#b5ed9a!important; }
-.ws-file input { margin:8px 0; color:#a9b4a1; font-size:11px; }
-.ws-file input::file-selector-button { background:#273520; color:#c6e6b4; border:1px solid #526745; font:inherit; padding:8px 12px; margin-right:16px; border-radius:2px; cursor:pointer; }
+.ws-file { display:flex; flex-direction:column; gap:12px; }
+.ws-file-button { background:#273520!important; color:#c6e6b4!important; border:1px solid #526745!important; border-radius:3px; }
+.ws-file-button:hover { background:#33462a!important; }
+.ws-file .ws-file-name { color:#b8c7ac; overflow-wrap:anywhere; }
 .ws-file span { font-size:10px; color:#84907f; }
 .ws-import>.ws-section-heading { margin-top:0; }
 .ws-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid #30392d; margin:22px 0 16px; border-radius:3px; }
@@ -112,8 +114,32 @@
 .ws-plot figcaption>span:first-child { display:flex; align-items:center; gap:8px; }
 .ws-plot figcaption i { width:5px; height:5px; display:inline-block; }
 .ws-plot svg { width:100%; display:block; touch-action:pan-y; }
+.ws-signal-plots { overflow-anchor:none; }
+.ws-plot-placeholder { aspect-ratio:960 / 190; display:grid; place-items:center; padding:18px; color:#84907f; font-size:10px; }
+.ws-plot-placeholder>div { max-width:100%; overflow-wrap:anywhere; }
 .ws-plot text { font:9px 'IBM Plex Mono',monospace; fill:#84907f; }
 .ws-results { margin-top:40px; padding-top:12px; border-top:1px solid #4f5f43; }
+.ws-result-anchor { scroll-margin-top:24px; }
+.ws-finding-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:18px 0 28px; }
+.ws-finding { border:1px solid #4d5c41; background:#192115; border-radius:4px; padding:18px; min-width:0; }
+.ws-finding-active { border-color:#b5ed9a; }
+.ws-finding .ws-inline strong { color:#e2bc75; font-size:11px; font-weight:500; }
+.ws-finding h4 { margin:16px 0 12px; font-size:12px; font-weight:500; line-height:1.8; overflow-wrap:anywhere; }
+.ws-finding h4 span { color:#84907f; }
+.ws-finding p { font-size:10px; margin:10px 0; overflow-wrap:anywhere; }
+.ws-finding p b { color:#e9927d; font-weight:500; }
+.ws-finding button { margin-top:8px; width:100%; white-space:normal; }
+.ws-interval-detail { scroll-margin-top:24px; outline:none; }
+.ws-interval-detail:focus-visible { outline:1px solid #6d845c; outline-offset:12px; }
+.ws-contributions { background:#141b12; border:1px solid #30392d; border-radius:4px; margin:18px 0; padding:18px; }
+.ws-contributions>p { margin-top:8px; line-height:1.8; }
+.ws-contributions ol { list-style:none; margin:14px 0 0; padding:0; }
+.ws-contributions li { display:grid; grid-template-columns:20px minmax(120px,1fr) minmax(50px,.7fr) 80px; align-items:center; gap:12px; padding:9px 0; border-top:1px solid #293324; font-size:11px; }
+.ws-contribution-rank { color:#687461; font-size:9px; }
+.ws-contribution-name { overflow-wrap:anywhere; }
+.ws-contribution-bar { display:block; background:#263120; height:5px; }
+.ws-contribution-bar i { display:block; height:100%; background:#b5ed9a; }
+.ws-contributions strong { color:#b5ed9a; font-weight:500; text-align:right; }
 .ws-result-stats>div:last-child strong { font-size:12px; line-height:2.4; letter-spacing:-.4px; }
 .ws-saved { color:#b5ed9a!important; font-size:10px; margin:8px 0 20px!important; }
 .ws-tags { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
@@ -139,6 +165,7 @@
   .ws-sidebar { padding:32px 28px; }
 }
 @media(max-width:1000px) {
+  .ws-finding-grid { grid-template-columns:1fr; }
   .ws-header { padding:0 22px; gap:20px; }
   .ws-connection { display:none; }
   .ws-main { padding:32px 24px 50px; }
@@ -152,6 +179,10 @@
   .ws-footer { padding:15px 22px; }
 }
 @media(max-width:700px) {
+  .ws-file .ws-inline { align-items:flex-start; flex-wrap:wrap; }
+  .ws-contributions li { grid-template-columns:16px minmax(80px,1fr) 65px; gap:8px; }
+  .ws-contribution-bar { display:none; }
+  .ws-plot-placeholder { min-height:130px; }
   .ws-header { height:auto; min-height:72px; flex-wrap:wrap; padding:14px 18px; gap:14px; }
   .ws-brand span { font-size:9px; }
   .ws-header nav { gap:16px; }

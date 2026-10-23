@@ -14,6 +14,7 @@
     "test:research": "node scripts/python.mjs -m unittest discover -s benchmarks -t . -p test_*.py -v",
     "test:ui": "node --test tests/comparison.test.mjs",
     "test:workspace": "node scripts/python.mjs -m unittest discover -s tests -p test_workspace.py -v",
+    "test:workspace-ui": "node --test tests/workspace-ui.test.mjs",
     "test": "npm run test:python && npm run test:ui",
     "typecheck": "tsc --noEmit",
     "verify:artifacts": "node scripts/python.mjs -m simulation.verify_artifacts",
@@ -31,6 +32,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.16",
     "typescript": "~5.9.3",
     "vite": "^7.3.7"

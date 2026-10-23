@@ -11,6 +11,21 @@ from .monitoring import MaxZMonitor, PCAMonitor, calibrate, split_normal_trainin
 ALGORITHMS = {'robust-maxz': 'Robust Max-Z', 'pca-q': 'PCA-Q', 'pca-t2': 'PCA-T²'}
 
 
+def signal_contributions(monitor, sample: np.ndarray, names: list[str]) -> list[dict]:
+    z = (sample - monitor.center) / monitor.scale
+    if isinstance(monitor, MaxZMonitor):
+        weights = np.abs(z)
+    else:
+        projected = z @ monitor.components.T
+        if monitor.mode == 'q':
+            weights = (z - projected @ monitor.components) ** 2
+        else:
+            # Same descriptive leverage used by PCAMonitor.explain (not additive T²).
+            weights = np.abs(monitor.components.T @ (projected / np.sqrt(monitor.eigenvalues)))
+    order = sorted(range(len(names)), key=lambda i: (-float(weights[i]), i))
+    return [{'signal': names[i], 'value': float(weights[i])} for i in order]
+
+
 def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], config: dict) -> dict:
     started = perf_counter()
     signals = config.get('signals')
@@ -66,16 +81,22 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
     intervals = []
     for a, b in zip(starts, ends):
         peak = int(a + np.argmax(scores[a:b + 1]))
+        contributions = signal_contributions(monitor, target[peak], signals)
         intervals.append({'start': float(target_times[a]), 'end': float(target_times[b]),
                           'samples': int(b - a + 1), 'peakScore': float(scores[peak]),
                           'peakTime': float(target_times[peak]),
-                          'signals': monitor.explain(target[peak], signals, count=min(5, len(signals)))})
+                          'signals': [item['signal'] for item in contributions[:5]],
+                          'contributions': contributions})
     peak_index = int(np.argmax(scores))
+    contributions = signal_contributions(monitor, target[peak_index], signals)
     config = {**config, 'algorithm': algorithm, 'alpha': alpha, 'variance': variance,
               'missingValues': 'fit-partition median', 'fitFraction': .7}
     return {'config': config, 'algorithmLabel': ALGORITHMS[algorithm], 'times': target_times.tolist(),
             'scores': scores.tolist(), 'threshold': threshold, 'intervals': intervals,
-            'relatedSignals': monitor.explain(target[peak_index], signals, count=min(10, len(signals))),
+            'relatedSignals': [item['signal'] for item in contributions[:10]],
+            'signalContributions': contributions, 'peakTime': float(target_times[peak_index]),
+            'contributionMetric': {'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
+                                   'pca-t2': 'model-leverage'}[algorithm],
             'summary': {'analysisSamples': len(target), 'baselineSamples': len(normal),
                         'fitSamples': len(fit), 'calibrationSamples': len(calibration),
                         'flaggedSamples': int(flags.sum()), 'peakScore': float(scores[peak_index]),

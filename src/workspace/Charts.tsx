@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { api, message } from "./api";
-import { number, timeLabel, type Interval, type Series, type TimeAxis } from "./types";
+import { memo, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { cachedSeries } from "./seriesCache";
+import { number, timeLabel, type Dataset, type Interval, type TimeAxis } from "./types";
 
 const W = 960, H = 190, L = 76, R = 18, T = 18, B = 32;
 function plotIndexes(values: (number | null)[]) {
@@ -18,7 +18,7 @@ function plotIndexes(values: (number | null)[]) {
   return [...result].sort((a, b) => a - b);
 }
 
-export function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a" }: {
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a" }: {
   times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -59,27 +59,28 @@ export function Plot({ times, values, title, axis, threshold, intervals = [], co
       <text x={L} y={H - 5}>{timeLabel(axis, first)}</text><text x={W - R} y={H - 5} textAnchor="end">{timeLabel(axis, last)}</text>
     </svg>
   </figure>;
-}
+});
 
-export function SignalPlots({ datasetId, signals, axis, range, intervals }: { datasetId: string; signals: string[]; axis: TimeAxis; range?: [number, number]; intervals?: Interval[] }) {
-  const [series, setSeries] = useState<Series | null>(null), [error, setError] = useState("");
-  const [loadedKey, setLoadedKey] = useState("");
-  const signature = JSON.stringify(signals), start = range?.[0], end = range?.[1];
-  const requestKey = JSON.stringify([datasetId, signature, start, end]);
+export function SignalPlots({ dataset, signals, range, intervals }: { dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[] }) {
+  const start = range?.[0], end = range?.[1];
+  const cache = useMemo(() => cachedSeries(dataset.id, start === undefined || end === undefined ? undefined : [start, end]), [dataset.id, start, end]);
+  useSyncExternalStore(cache.subscribe, cache.snapshot, cache.snapshot);
+  const allNames = dataset.metadata.columns.map(column => column.name);
+  const small = dataset.metadata.rowCount <= 1600 && allNames.length <= 24;
+  const wanted = JSON.stringify(signals.length && small ? allNames : signals);
   useEffect(() => {
-    setSeries(null); setError("");
-    if (!signals.length) return;
-    const controller = new AbortController(), params = new URLSearchParams();
-    signals.forEach(s => params.append("signal", s));
-    if (start !== undefined) params.set("start", String(start));
-    if (end !== undefined) params.set("end", String(end));
-    api<Series>(`/datasets/${datasetId}/series?${params}`, undefined, "GET", controller.signal).then(data => { setSeries(data); setLoadedKey(requestKey); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
-    return () => controller.abort();
-  }, [datasetId, signature, start, end]);
-  if (error) return <p role="alert" className="ws-error">{error}</p>;
+    // Finish requests even if a signal is hidden meanwhile: the result warms its cache.
+    void cache.load(JSON.parse(wanted));
+  }, [cache, wanted]);
   if (!signals.length) return <p className="ws-muted">Select signals to plot.</p>;
-  if (!series || loadedKey !== requestKey) return <p className="ws-muted" role="status">Loading measurements…</p>;
-  return <div>{signals.map(s => <Plot key={s} times={series.times} values={series.values[s]} title={s} axis={axis} intervals={intervals} />)}
-    {series.displayRows < series.sourceRows && <p className="ws-muted">Overview preserves extrema · {series.sourceRows.toLocaleString()} source rows. Analysis uses every selected row.</p>}
+  const preview = signals.map(name => cache.signals.get(name)).find(data => data && data.displayRows < data.sourceRows);
+  return <div className="ws-signal-plots">{signals.map(name => {
+    const data = cache.signals.get(name), error = cache.errors.get(name);
+    return data ? <Plot key={name} times={data.times} values={data.values} title={name} axis={dataset.metadata.time} intervals={intervals} /> :
+      <figure className="ws-plot ws-plot-pending" key={name}><figcaption>{name}</figcaption><div className="ws-plot-placeholder">
+        {error ? <div role="alert"><p>{error}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>Retry signal</button></div> : <span role="status">Loading {name}…</span>}
+      </div></figure>;
+  })}
+    {preview && <p className="ws-muted">Overview preserves extrema · {preview.sourceRows.toLocaleString()} source rows. Analysis uses every selected row.</p>}
   </div>;
 }

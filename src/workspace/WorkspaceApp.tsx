@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, go, message } from "./api";
 import { Plot, SignalPlots } from "./Charts";
+import { ResultView } from "./Results";
 import { dateLabel, number, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
 
@@ -48,7 +49,8 @@ function WorkspaceHome({ workspaces, refresh }: { workspaces: Workspace[]; refre
   </main>;
 }
 
-function ImportDataset({ workspaceId, onImport }: { workspaceId: string; onImport: (dataset: Dataset) => void }) {
+export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; onImport: (dataset: Dataset) => void }) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [csv, setCsv] = useState(""), [filename, setFilename] = useState(""), [name, setName] = useState("");
   const [timeColumn, setTimeColumn] = useState("__auto"), [timeKind, setTimeKind] = useState("auto"), [timeUnit, setTimeUnit] = useState("seconds"), [interval, setInterval] = useState("1");
   const [preview, setPreview] = useState<{ metadata: Metadata; series: Series } | null>(null), [columns, setColumns] = useState<string[]>([]);
@@ -86,7 +88,10 @@ function ImportDataset({ workspaceId, onImport }: { workspaceId: string; onImpor
   }
   return <form className="ws-import ws-panel" onSubmit={save}>
     <div className="ws-section-heading"><h2>Import a CSV</h2><span className="ws-kicker">01 / DATA IN</span></div>
-    <label className="ws-file">Choose CSV file<input aria-label="Choose CSV file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange={e => void chooseFile(e.target.files?.[0])} /><span>{filename || "CSV / TSV · named numeric signals · up to 45 MiB"}</span></label>
+    <div className="ws-file"><input ref={fileInput} aria-label="Choose CSV file" type="file" hidden accept=".csv,.tsv,.txt,text/csv" onChange={e => void chooseFile(e.target.files?.[0])} />
+      <div className="ws-inline"><button type="button" className="ws-file-button" onClick={() => fileInput.current?.click()} aria-describedby="csv-filename csv-help">Choose file</button><span id="csv-filename" className="ws-file-name" aria-live="polite">{filename || "No file selected"}</span></div>
+      <span id="csv-help">CSV / TSV · named numeric signals · up to 45 MiB</span>
+    </div>
     {csv && <>
       <div className="ws-form-grid"><label>Dataset name<input value={name} onChange={e => setName(e.target.value)} required maxLength={160} /></label><label>Time axis<select value={timeColumn} onChange={e => setTimeColumn(e.target.value)}><option value="__auto">Auto-detect time column</option><option value="__generated">Generate from sampling interval</option>{columns.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         {timeColumn === "__generated" ? <label>Sampling interval (seconds)<input type="number" min="0.000001" step="any" value={interval} onChange={e => setInterval(e.target.value)} required /></label> : <><label>Time format<select value={timeKind} onChange={e => setTimeKind(e.target.value)}><option value="auto">Auto · numeric or date/time</option><option value="numeric">Numeric</option><option value="datetime">Date / timestamp</option></select></label><label>Numeric time unit<select value={timeUnit} onChange={e => setTimeUnit(e.target.value)}>{["seconds", "milliseconds", "minutes", "hours"].map(v => <option key={v}>{v}</option>)}</select></label></>}
@@ -117,34 +122,11 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
       <div className="ws-section-heading"><h2>Saved datasets <span className="ws-muted">/ {datasets.length}</span></h2><label className="ws-inline">Dataset<select aria-label="Saved dataset" value={dataset.id} onChange={e => setSelected(e.target.value)}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label></div>
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title="Signals to plot and analyze" />
-        <SignalPlots datasetId={dataset.id} signals={chosen} axis={dataset.metadata.time} />
+        <SignalPlots dataset={dataset} signals={chosen} />
         <div className="ws-inline ws-between"><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
       </section>
     </>}
   </>;
-}
-
-function ResultView({ result, dataset }: { result: AnalysisResult; dataset: Dataset }) {
-  const [plotted, setPlotted] = useState(result.relatedSignals.slice(0, 3)), [allIntervals, setAllIntervals] = useState(false);
-  const { summary } = result;
-  function exportResult() {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }));
-    const a = document.createElement("a"); a.href = url; a.download = `l5-analysis-${result.id}.json`; a.click(); URL.revokeObjectURL(url);
-  }
-  return <section className="ws-results" aria-label="Analysis result">
-    <div className="ws-section-heading"><div><span className="ws-kicker">RESULT / {result.algorithmLabel}</span><h2>{result.name}</h2></div><button className="ws-outlined" onClick={exportResult}>Export result JSON ↓</button></div>
-    <p className="ws-saved" role="status">● Saved to workspace · {dateLabel(result.completedAt)} · {number(result.durationMs)} ms</p>
-    <div className="ws-stats ws-result-stats"><div><strong className={result.intervals.length ? "ws-coral" : "ws-accent"}>{result.intervals.length}</strong><span>anomaly intervals</span></div><div><strong>{summary.flaggedSamples.toLocaleString()} / {summary.analysisSamples.toLocaleString()}</strong><span>samples above threshold</span></div><div><strong>{number(result.threshold)}</strong><span>fixed threshold</span></div><div><strong>{summary.firstDetection === null ? "None" : timeLabel(dataset.metadata.time, summary.firstDetection)}</strong><span>first detected sample</span></div></div>
-    <Plot title={`${result.algorithmLabel} anomaly score`} times={result.times} values={result.scores} axis={dataset.metadata.time} threshold={result.threshold} intervals={result.intervals} color="#e9927d" />
-    <div className="ws-notice">{summary.fitSamples} assumed-normal samples fitted the model; {summary.calibrationSamples} subsequent normal samples calibrated the threshold at α={result.config.alpha}. The target window did not select the threshold. Shading marks score &gt; threshold.</div>
-    <div className="ws-section-heading"><h3>Related signals</h3><span className="ws-muted">Ranked at the highest-score sample</span></div><div className="ws-tags">{result.relatedSignals.map((signal, i) => <span key={signal}>{i + 1} / {signal}</span>)}</div>
-    <p className="ws-muted">Statistical contributors to the deviation. Missing target measurements use medians fitted on normal data ({summary.imputedValues.analysis} values filled).</p>
-    <SignalPicker title="Raw signals in the analysis window" columns={dataset.metadata.columns.filter(c => result.config.signals.includes(c.name))} selected={plotted} onChange={setPlotted} />
-    <SignalPlots datasetId={dataset.id} signals={plotted} axis={dataset.metadata.time} range={result.config.analysisRange} intervals={result.intervals} />
-    <h3>Above-threshold intervals</h3>
-    {result.intervals.length ? <div className="ws-table-scroll"><table><thead><tr><th>Start</th><th>End</th><th>Samples</th><th>Peak score</th><th>Related signals at peak</th></tr></thead><tbody>{(allIntervals ? result.intervals : result.intervals.slice(0, 30)).map((interval, i) => <tr key={i}><td>{timeLabel(dataset.metadata.time, interval.start)}</td><td>{timeLabel(dataset.metadata.time, interval.end)}</td><td>{interval.samples}</td><td className="ws-coral">{number(interval.peakScore)}</td><td>{interval.signals.join(" · ")}</td></tr>)}</tbody></table>{result.intervals.length > 30 && <button onClick={() => setAllIntervals(!allIntervals)}>{allIntervals ? "Show first 30" : `Show all ${result.intervals.length} intervals`}</button>}</div> : <p className="ws-notice">No samples exceeded the normal-data threshold in this analysis window.</p>}
-    <details><summary>Saved model and parameters</summary><pre>{JSON.stringify({ config: result.config, model: result.model, summary: result.summary }, null, 2)}</pre></details>
-  </section>;
 }
 
 function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh }: {
@@ -153,6 +135,7 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
   const dataset = datasets.find(d => d.id === selected) || datasets[0];
   const [config, setConfig] = useState<Config | null>(null), [result, setResult] = useState<AnalysisResult | null>(null);
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
+  const resultPanel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!dataset || jobId) return;
     const ranges = dataset.metadata.suggestedRanges || { baselineRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number], analysisRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number] };
@@ -160,11 +143,14 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
     setResult(null); setError("");
   }, [dataset?.id, jobId]);
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId || result?.id === jobId) return;
     const controller = new AbortController(); setLoading(true); setError(""); setResult(null);
     api<AnalysisResult>(`/analyses/${jobId}`, undefined, "GET", controller.signal).then(data => { setResult(data); setConfig(data.config); setSelected(data.datasetId); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [jobId]);
+  useEffect(() => {
+    if (jobId && result?.id === jobId) resultPanel.current?.scrollIntoView({ behavior: "instant", block: "start" });
+  }, [jobId, result?.id]);
   async function run(e: FormEvent) {
     e.preventDefault(); if (!config) return; setBusy(true); setError("");
     try { const data = await api<AnalysisResult>(`/workspaces/${workspaceId}/analyses`, config); setResult(data); refresh(); go(`workspaces/${workspaceId}/analysis/${data.id}`); }
@@ -184,7 +170,7 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
       <ErrorText error={error} /><div className="ws-inline ws-between"><span className="ws-muted">Every completed run is saved automatically to History.</span><button className="ws-primary" disabled={busy || loading || !config.signals.length}>{busy ? "Computing and saving…" : result ? "Run again with these parameters ↗" : "Run analysis and save ↗"}</button></div>
     </form>}
     {!config && <ErrorText error={error} />}
-    {result && resultDataset && <ResultView key={result.id} result={result} dataset={resultDataset} />}
+    {result && resultDataset && <div ref={resultPanel} className="ws-result-anchor"><ResultView key={result.id} result={result} dataset={resultDataset} signalPicker={(selected, onChange) => <SignalPicker title="Raw signals in view" columns={resultDataset.metadata.columns.filter(c => result.config.signals.includes(c.name))} selected={selected} onChange={onChange} />} /></div>}
   </>;
 }
 
