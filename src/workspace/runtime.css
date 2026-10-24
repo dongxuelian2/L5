@@ -16,4 +16,6 @@
 .ws-runtime .p-trace-layout { margin-top:28px; }
 .ws-runtime .p-signal-list { max-height:420px; overflow:auto; }
 .ws-runtime .p-evidence-grid { margin-bottom:18px; }
+.runtime-evidence-result { position:relative; }
+.runtime-evidence-updating { position:absolute; top:8px; left:0; right:0; margin:0; color:#9eae93; font-size:12px; line-height:1.6; }
 @media(max-width:750px) { .runtime-sessionbar { display:grid; grid-template-columns:1fr; } .runtime-tabs button { flex:1; } }

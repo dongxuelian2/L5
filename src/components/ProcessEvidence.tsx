@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { BlockBar, Count, Panel } from "./Primitives";
 import { downloadFile } from "../lib/download";
@@ -29,6 +29,13 @@ const EDGE_COLOR: Record<string, string> = {
   control: "#b4a0db",
   feedback: "#71858e",
 };
+
+export function EvidenceResult({ pending, children, pendingLabel = "Updating evidence for the selected window…" }: { pending: boolean; children: ReactNode; pendingLabel?: string }) {
+  return <div className="runtime-evidence-result" aria-busy={pending}>
+    <div className="runtime-evidence-content" style={{ visibility: pending ? "hidden" : undefined }} aria-hidden={pending || undefined} inert={pending}>{children}</div>
+    {pending && <p className="runtime-evidence-updating" role="status">{pendingLabel}</p>}
+  </div>;
+}
 
 function MiniPlot({
   rows,
@@ -72,7 +79,7 @@ function Topology({
   onSelect,
 }: {
   incident: { rows: Row[] };
-  analysis: Analysis;
+  analysis: Analysis | null;
   time: number;
   selected: string;
   onSelect: (s: string) => void;
@@ -110,7 +117,7 @@ function Topology({
             const path = feedback
               ? `M${x - 40},${y - 30} Q${(x + x2) / 2},${y - 104} ${x2 + 40},${y2 + 30}`
               : `M${x},${y} L${x2},${y2}`;
-            const active = analysis.diagnosis.paths.some(
+            const active = analysis?.diagnosis.paths.some(
               (p) =>
                 p.source === edge.source &&
                 p.target === edge.target &&
@@ -143,8 +150,8 @@ function Topology({
             );
           })}
           {Object.entries(POS).map(([key, [x, y]]) => {
-            const detection = analysis.diagnosis.detections[key],
-              bad = !analysis.diagnosis.health[key]?.usable;
+            const detection = analysis?.diagnosis.detections[key],
+              bad = Boolean(analysis && !analysis.diagnosis.health[key]?.usable);
             return (
               <g
                 key={key}
@@ -173,11 +180,11 @@ function Topology({
                   {bad ? "!" : detection ? "◆" : "·"}
                 </text>
                 <text x="10" y="40" className="p-node-value">
-                  {num(row[key], key === "composition" ? 2 : 1)}
+                  {num(row?.[key], key === "composition" ? 2 : 1)}
                   <tspan className="p-node-unit"> {signalMeta[key].unit}</tspan>
                 </text>
                 <text x="10" y="56" className="p-node-sub">
-                  {bad
+                  {!analysis ? "EVIDENCE UPDATING" : bad
                     ? "EVIDENCE CHECK"
                     : detection
                       ? `ONSET +${detection.onset}s`
@@ -204,13 +211,14 @@ function Topology({
 export function EvidenceView({
   incident,
   analysis,
-  time, hypothesis, onHypothesis,
+  time, hypothesis, onHypothesis, updating = false,
 }: {
   incident: { rows: Row[] };
   analysis: Analysis;
   time: number;
   hypothesis: string;
   onHypothesis: (id: string) => void;
+  updating?: boolean;
 }) {
   const d = analysis.diagnosis;
   const [selected, setSelected] = useState("valve");
@@ -222,7 +230,7 @@ export function EvidenceView({
       <div className="p-evidence-grid">
         <Topology
           incident={incident}
-          analysis={analysis}
+          analysis={updating ? null : analysis}
           time={time}
           selected={selected}
           onSelect={setSelected}
@@ -232,76 +240,78 @@ export function EvidenceView({
           code="02"
           action={<span className="p-tag">12 CANDIDATES</span>}
         >
-          <div className="p-candidates">
-            {d.candidates.map((c, i) => (
-              <button
-                className={c.id === candidateId ? "active" : ""}
-                key={c.id}
-                onClick={() => onHypothesis(c.id)}
-                aria-pressed={c.id === candidateId}
-              >
-                <span className="p-rank">{String(i + 1).padStart(2, "0")}</span>
-                <span className="p-candidate-name">
-                  <strong>{c.name}</strong>
-                  <BlockBar
-                    value={c.score / 100}
-                    count={22}
-                    color={i === 0 ? "mint" : "amber"}
-                  />
-                </span>
-                <span className="p-score">
-                  {c.score}
-                  <small>/ 100</small>
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="p-score-note">
-            Evidence support ≠ calibrated probability
-          </div>
-          <div className="p-candidate-detail" key={candidate.id}>
-            <div className="p-subtitle">
-              <span>{candidate.confidence.toUpperCase()} SUPPORT</span>
-              <span>topology +{candidate.topology}</span>
-            </div>
-            {candidate.support.map((s) => (
-              <p key={s}>
-                <span className="text-mint">+</span>
-                {s}
-              </p>
-            ))}
-            {candidate.against.map((s) => (
-              <p key={s}>
-                <span className="text-coral">−</span>
-                {s}
-              </p>
-            ))}
-            {candidate.unresolved.map((s) => (
-              <p key={s}>
-                <span className="text-amber">?</span>
-                {s}
-              </p>
-            ))}
-            <details><summary>Observed paths involving this hypothesis</summary>{d.paths.filter(path=>candidate.parts.some(p=>p.signal===path.source||p.signal===path.target)).map((path,i)=><p key={i}>{signalMeta[path.source].tag} → {signalMeta[path.target].tag} · lag {path.lag}s · correlation {path.correlation} · {path.trusted ? "usable" : "unreliable evidence"}</p>)}</details>
-            <details className="p-score-detail">
-              <summary>Inspect score components ＋</summary>
-              {candidate.parts.map((p) => (
-                <div key={p.signal}>
-                  <span>{signalMeta[p.signal].tag}</span>
-                  <span>weight {p.weight}</span>
-                  <b
-                    className={p.contribution >= 0 ? "text-mint" : "text-coral"}
-                  >
-                    {p.contribution >= 0 ? "+" : ""}
-                    {p.contribution}
-                  </b>
-                </div>
+          <EvidenceResult pending={updating}>
+            <div className="p-candidates">
+              {d.candidates.map((c, i) => (
+                <button
+                  className={c.id === candidateId ? "active" : ""}
+                  key={c.id}
+                  onClick={() => onHypothesis(c.id)}
+                  aria-pressed={c.id === candidateId}
+                >
+                  <span className="p-rank">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="p-candidate-name">
+                    <strong>{c.name}</strong>
+                    <BlockBar
+                      value={c.score / 100}
+                      count={22}
+                      color={i === 0 ? "mint" : "amber"}
+                    />
+                  </span>
+                  <span className="p-score">
+                    {c.score}
+                    <small>/ 100</small>
+                  </span>
+                </button>
               ))}
-              <small>
-                Sum of signed evidence + topology; clipped to 0–100.
-              </small>
-            </details>
-          </div>
+            </div>
+            <div className="p-score-note">
+              Evidence support ≠ calibrated probability
+            </div>
+            <div className="p-candidate-detail" key={candidate.id}>
+              <div className="p-subtitle">
+                <span>{candidate.confidence.toUpperCase()} SUPPORT</span>
+                <span>topology +{candidate.topology}</span>
+              </div>
+              {candidate.support.map((s) => (
+                <p key={s}>
+                  <span className="text-mint">+</span>
+                  {s}
+                </p>
+              ))}
+              {candidate.against.map((s) => (
+                <p key={s}>
+                  <span className="text-coral">−</span>
+                  {s}
+                </p>
+              ))}
+              {candidate.unresolved.map((s) => (
+                <p key={s}>
+                  <span className="text-amber">?</span>
+                  {s}
+                </p>
+              ))}
+              <details><summary>Observed paths involving this hypothesis</summary>{d.paths.filter(path=>candidate.parts.some(p=>p.signal===path.source||p.signal===path.target)).map((path,i)=><p key={i}>{signalMeta[path.source].tag} → {signalMeta[path.target].tag} · lag {path.lag}s · correlation {path.correlation} · {path.trusted ? "usable" : "unreliable evidence"}</p>)}</details>
+              <details className="p-score-detail">
+                <summary>Inspect score components ＋</summary>
+                {candidate.parts.map((p) => (
+                  <div key={p.signal}>
+                    <span>{signalMeta[p.signal].tag}</span>
+                    <span>weight {p.weight}</span>
+                    <b
+                      className={p.contribution >= 0 ? "text-mint" : "text-coral"}
+                    >
+                      {p.contribution >= 0 ? "+" : ""}
+                      {p.contribution}
+                    </b>
+                  </div>
+                ))}
+                <small>
+                  Sum of signed evidence + topology; clipped to 0–100.
+                </small>
+              </details>
+            </div>
+          </EvidenceResult>
         </Panel>
       </div>
       <div className="p-controls-grid">
@@ -310,56 +320,58 @@ export function EvidenceView({
           code="03"
           action={<span className="p-tag">SP / PV / OP / FEEDBACK</span>}
         >
-          <div className="p-controllers">
-            {d.controllers.map((c) => (
-              <div className="p-controller" key={c.id}>
-                <div className="p-controller-top">
-                  <strong>{c.id}</strong>
-                  <span
-                    className={
-                      c.mismatch != null && Math.abs(c.mismatch) > 12
-                        ? "text-amber"
-                        : "text-mint"
-                    }
-                  >
-                    {c.mismatch == null
-                      ? "EVIDENCE MISSING"
-                      : Math.abs(c.mismatch) > 12
-                        ? "ACTUATOR MISMATCH"
-                        : "TRACKING"}
-                  </span>
+          <EvidenceResult pending={updating}>
+            <div className="p-controllers">
+              {d.controllers.map((c) => (
+                <div className="p-controller" key={c.id}>
+                  <div className="p-controller-top">
+                    <strong>{c.id}</strong>
+                    <span
+                      className={
+                        c.mismatch != null && Math.abs(c.mismatch) > 12
+                          ? "text-amber"
+                          : "text-mint"
+                      }
+                    >
+                      {c.mismatch == null
+                        ? "EVIDENCE MISSING"
+                        : Math.abs(c.mismatch) > 12
+                          ? "ACTUATOR MISMATCH"
+                          : "TRACKING"}
+                    </span>
+                  </div>
+                  <div className="p-controller-values">
+                    {[
+                      ["SP", c.sp],
+                      ["PV", c.pv],
+                      ["OP", c.op],
+                      ["FB", c.feedback],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <span>{label}</span>
+                        <b>{num(value as number | null)}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-controller-footer">
+                    <span>Output ceiling {num(c.limit, 0)}%</span>
+                    <span>
+                      Demand − feedback <strong>{num(c.mismatch)}%</strong>
+                    </span>
+                  </div>
                 </div>
-                <div className="p-controller-values">
-                  {[
-                    ["SP", c.sp],
-                    ["PV", c.pv],
-                    ["OP", c.op],
-                    ["FB", c.feedback],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <span>{label}</span>
-                      <b>{num(value as number | null)}</b>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-controller-footer">
-                  <span>Output ceiling {num(c.limit, 0)}%</span>
-                  <span>
-                    Demand − feedback <strong>{num(c.mismatch)}%</strong>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </EvidenceResult>
         </Panel>
         <Panel
           title="Signal evidence"
           code="04"
           action={
             <span
-              className={`p-tag ${health?.usable ? "text-mint" : "text-amber"}`}
+              className={`p-tag ${!updating && health?.usable ? "text-mint" : "text-amber"}`}
             >
-              {health?.status.toUpperCase()}
+              {updating ? "UPDATING" : health?.status.toUpperCase()}
             </span>
           }
         >
@@ -367,7 +379,7 @@ export function EvidenceView({
             <div>
               <span>{signalMeta[selected].tag}</span>
               <b>
-                {num(incident.rows.filter(r => r.t <= time).at(-1)![selected])}
+                {num(incident.rows.filter(r => r.t <= time).at(-1)?.[selected])}
                 <small>{signalMeta[selected].unit}</small>
               </b>
             </div>
@@ -378,116 +390,124 @@ export function EvidenceView({
               height={70}
             />
           </div>
-          <div className="p-signal-facts">
-            <p>
-              First confirmed deviation{" "}
-              <strong>
-                {d.detections[selected]
-                  ? `+${d.detections[selected].time}s`
-                  : "none"}
-              </strong>
-            </p>
-            <p>
-              Baseline-relative change{" "}
-              <strong>{num(d.changes[selected])}</strong>
-            </p>
-            <p>
-              Freshness{" "}
-              <strong>
-                {health?.freshness == null ? "missing" : `${health.freshness}s`}
-              </strong>
-            </p>
-          </div>
-          <div className="p-panel-note">
-            {health?.detail}.{" "}
-            {health?.usable
-              ? "Available to the evidence scorer."
-              : "Excluded from strong process-causality evidence."}
-          </div>
+          <EvidenceResult pending={updating}>
+            <div className="p-signal-facts">
+              <p>
+                First confirmed deviation{" "}
+                <strong>
+                  {d.detections[selected]
+                    ? `+${d.detections[selected].time}s`
+                    : "none"}
+                </strong>
+              </p>
+              <p>
+                Baseline-relative change{" "}
+                <strong>{num(d.changes[selected])}</strong>
+              </p>
+              <p>
+                Freshness{" "}
+                <strong>
+                  {health?.freshness == null ? "missing" : `${health.freshness}s`}
+                </strong>
+              </p>
+            </div>
+            <div className="p-panel-note">
+              {health?.detail}.{" "}
+              {health?.usable
+                ? "Available to the evidence scorer."
+                : "Excluded from strong process-causality evidence."}
+            </div>
+          </EvidenceResult>
         </Panel>
       </div>
       <div className="p-triple">
         <Panel title="Next best observation" code="05" tone="violet">
-          <div className="p-next">
-            <div className="p-subtitle">DISCRIMINATOR PRIORITY · HEURISTIC</div>
-            {d.nextMeasurements.map((m, i) => (
-              <div key={m.signal}>
-                <span className="text-violet">{String(i + 1).padStart(2, "0")}</span>
-                <div>
-                  <strong>{m.tag}</strong>
-                  <p>{m.reason}</p>
+          <EvidenceResult pending={updating}>
+            <div className="p-next">
+              <div className="p-subtitle">DISCRIMINATOR PRIORITY · HEURISTIC</div>
+              {d.nextMeasurements.map((m, i) => (
+                <div key={m.signal}>
+                  <span className="text-violet">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <strong>{m.tag}</strong>
+                    <p>{m.reason}</p>
+                  </div>
+                  <b>{m.value}</b>
                 </div>
-                <b>{m.value}</b>
-              </div>
-            ))}
-            <p className="p-panel-note">
-              Distinguishes{" "}
-              {d.candidates
-                .slice(0, 2)
-                .map((c) => c.name)
-                .join(" / ")}
-              . Scores are uncalibrated inspection priorities.
-            </p>
-          </div>
+              ))}
+              <p className="p-panel-note">
+                Distinguishes{" "}
+                {d.candidates
+                  .slice(0, 2)
+                  .map((c) => c.name)
+                  .join(" / ")}
+                . Scores are uncalibrated inspection priorities.
+              </p>
+            </div>
+          </EvidenceResult>
         </Panel>
         <Panel title="Procedure alignment" code="06">
-          <div className="p-sop">
-            <div className="p-subtitle">
-              {analysis.sop.id} · REV {analysis.sop.revision}
+          <EvidenceResult pending={updating}>
+            <div className="p-sop">
+              <div className="p-subtitle">
+                {analysis.sop.id} · REV {analysis.sop.revision}
+              </div>
+              <h3>{analysis.sop.title}</h3>
+              {analysis.sop.preconditions.map((p) => (
+                <p key={p.name}>
+                  <span className={p.satisfied ? "text-mint" : "text-coral"}>
+                    {p.satisfied ? "[✓]" : "[×]"}
+                  </span>
+                  {p.name}
+                </p>
+              ))}
+              <div
+                className={`p-procedure-status ${analysis.sop.applicable ? "text-mint" : "text-amber"}`}
+              >
+                {analysis.sop.applicable
+                  ? "PRECONDITIONS SATISFIED"
+                  : "PRECONDITIONS NOT SATISFIED"}
+              </div>
+              <small>{analysis.sop.status}</small>
             </div>
-            <h3>{analysis.sop.title}</h3>
-            {analysis.sop.preconditions.map((p) => (
-              <p key={p.name}>
-                <span className={p.satisfied ? "text-mint" : "text-coral"}>
-                  {p.satisfied ? "[✓]" : "[×]"}
-                </span>
-                {p.name}
-              </p>
-            ))}
-            <div
-              className={`p-procedure-status ${analysis.sop.applicable ? "text-mint" : "text-amber"}`}
-            >
-              {analysis.sop.applicable
-                ? "PRECONDITIONS SATISFIED"
-                : "PRECONDITIONS NOT SATISFIED"}
-            </div>
-            <small>{analysis.sop.status}</small>
-          </div>
+          </EvidenceResult>
         </Panel>
         <Panel title="Evidence health" code="07">
-          <div className="p-health-summary">
-            <b>
-              <Count
-                value={Object.values(d.health).filter((h) => h.usable).length}
-              />
-              <small>/18</small>
-            </b>
-            <span>
-              channels available
-              <br />
-              for causal evidence
-            </span>
-          </div>
-          <div className="p-health-grid">
-            {platform.signals.map((s) => (
-              <button
-                key={s.key}
-                title={`${s.tag}: ${d.health[s.key]?.status}`}
-                onClick={() => setSelected(s.key)}
-                className={d.health[s.key]?.usable ? "healthy" : "degraded"}
-              >
-                <span>{s.tag}</span>
-                <i>{d.health[s.key]?.usable ? "·" : "!"}</i>
-              </button>
-            ))}
-          </div>
-          <div className="p-panel-note">
-            Clock:{" "}
-            {d.clock.regular
-              ? `regular ${d.clock.step ?? 1}s cadence`
-              : `${d.clock.gaps} gaps detected`}{" "}
-            · sustained deviation confirmed over 3 seconds.
-          </div>
+          <EvidenceResult pending={updating}>
+            <div className="p-health-summary">
+              <b>
+                <Count
+                  value={Object.values(d.health).filter((h) => h.usable).length}
+                />
+                <small>/18</small>
+              </b>
+              <span>
+                channels available
+                <br />
+                for causal evidence
+              </span>
+            </div>
+            <div className="p-health-grid">
+              {platform.signals.map((s) => (
+                <button
+                  key={s.key}
+                  title={`${s.tag}: ${d.health[s.key]?.status}`}
+                  onClick={() => setSelected(s.key)}
+                  className={d.health[s.key]?.usable ? "healthy" : "degraded"}
+                >
+                  <span>{s.tag}</span>
+                  <i>{d.health[s.key]?.usable ? "·" : "!"}</i>
+                </button>
+              ))}
+            </div>
+            <div className="p-panel-note">
+              Clock:{" "}
+              {d.clock.regular
+                ? `regular ${d.clock.step ?? 1}s cadence`
+                : `${d.clock.gaps} gaps detected`}{" "}
+              · sustained deviation confirmed over 3 seconds.
+            </div>
+          </EvidenceResult>
         </Panel>
       </div>
     </>
