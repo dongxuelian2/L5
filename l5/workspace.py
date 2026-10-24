@@ -38,6 +38,8 @@ class WorkspaceStore:
             ''')
         from .runtime import SimulationService
         self.runtime = SimulationService(self)
+        from .incidents import IncidentService
+        self.incidents = IncidentService(self)
 
     @contextmanager
     def connect(self):

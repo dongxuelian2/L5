@@ -119,6 +119,15 @@ class SimulationService:
         self.get(identity)
         return sorted([json.loads(p.read_text(encoding='utf-8')) for p in (self.folder(identity)/'runs').glob('*.json')], key=lambda r:r['createdAt'], reverse=True)
 
+    def run(self, identity, run_id):
+        self.get(identity)
+        if not isinstance(run_id, str) or not re.fullmatch('[a-f0-9]{32}', run_id):
+            raise KeyError('Simulation experiment not found.')
+        path = self.folder(identity) / 'runs' / f'{run_id}.json'
+        if not path.exists():
+            raise KeyError('Simulation experiment not found.')
+        return json.loads(path.read_text(encoding='utf-8'))
+
     def tools(self, identity, body):
         _, rows = self.window(identity, body)
         result = dict(asOf=rows[-1]['t'], trace=run_tools(rows, body.get('calls')))

@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,33 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts[1] == 'simulations':
+        if parts[1] == 'incidents':
+            incidents = store.incidents
+            if len(parts) == 3:
+                if method == 'GET':
+                    result = incidents.get(parts[2])
+                elif method == 'PATCH':
+                    result = incidents.update(parts[2], body)
+            elif len(parts) == 4:
+                if parts[3] == 'entries':
+                    if method == 'GET':
+                        result = {'entries': incidents.entries(parts[2])}
+                    elif method == 'POST':
+                        result, status = incidents.save_entry(parts[2], body), 201
+                elif parts[3] == 'links':
+                    if method == 'GET':
+                        result = {'links': incidents.links(parts[2])}
+                    elif method == 'POST':
+                        result, status = incidents.add_link(parts[2], body), 201
+            elif len(parts) == 5:
+                if parts[3] == 'entries':
+                    if method == 'PATCH':
+                        result = incidents.save_entry(parts[2], body, parts[4])
+                    elif method == 'DELETE':
+                        result = incidents.remove_entry(parts[2], parts[4])
+                elif parts[3] == 'links' and method == 'DELETE':
+                    result = incidents.remove_link(parts[2], parts[4])
+        elif parts[1] == 'simulations':
             runtime = store.runtime
             if parts == ['api', 'simulations', 'catalog'] and method == 'GET':
                 from .runtime import catalog
@@ -49,6 +75,8 @@ def dispatch(handler, method: str) -> bool:
                                   'interventions':runtime.intervene, 'save':runtime.save}
                     if operation in operations:
                         result = operations[operation](identity, body)
+            elif len(parts) == 5 and parts[3] == 'runs' and method == 'GET':
+                result = runtime.run(parts[2], parts[4])
         elif parts == ['api', 'workspaces']:
             if method == 'GET':
                 result = {'workspaces': store.list_workspaces()}
@@ -63,7 +91,15 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'datasets':
+            if parts[3] == 'incidents':
+                if method == 'GET':
+                    query = parse_qs(url.query)
+                    result = {'incidents': store.incidents.list(parts[2], status=query.get('status', [None])[0],
+                        start=float(query['start'][0]) if 'start' in query else None,
+                        end=float(query['end'][0]) if 'end' in query else None, q=query.get('q', [''])[0])}
+                elif method == 'POST':
+                    result, status = store.incidents.create(parts[2], body), 201
+            elif parts[3] == 'datasets':
                 if method == 'GET':
                     result = {'datasets': store.datasets(parts[2])}
                 elif method == 'POST':
