@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals', 'transformations', 'units'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,14 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'units'] and method == 'GET':
+        if parts[1] == 'experiments' and len(parts) == 4 and parts[3] == 'report.html' and method == 'GET':
+            from .experiment_routes import report
+            report(handler, store, parts[2], url.query)
+            return True
+        elif parts[1] in ('experiments', 'experiment-runs'):
+            from .experiment_routes import route
+            result, status = route(store, method, parts, body)
+        elif parts == ['api', 'units'] and method == 'GET':
             from .units import catalog
             result = {'units': catalog()}
         elif parts[1] == 'transformations':
@@ -125,7 +132,12 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'transformations':
+            if parts[3] == 'experiments':
+                if method == 'GET':
+                    result = {'experiments': store.experiments.list(parts[2])}
+                elif method == 'POST':
+                    result, status = store.experiments.save(parts[2], body), 201
+            elif parts[3] == 'transformations':
                 if method == 'GET':
                     result = {'transformations': store.transformations.list(parts[2])}
                 elif method == 'POST':
@@ -159,6 +171,8 @@ def dispatch(handler, method: str) -> bool:
                     result = {'jobs': store.jobs(parts[2])}
                 elif method == 'POST':
                     result, status = store.analyze(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['experiments', 'preview'] and method == 'POST':
+            result = store.experiments.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['transformations', 'preview'] and method == 'POST':
             result = store.transformations.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3] == 'views' and method == 'PATCH':
@@ -169,6 +183,13 @@ def dispatch(handler, method: str) -> bool:
             result = {'metadata': metadata, 'series': series_preview(times, values[:, :4], names)}
         elif len(parts) == 3 and parts[1] == 'datasets' and method == 'GET':
             result = store.dataset(parts[2])
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'labels':
+            if method == 'GET':
+                result = {'labels': store.experiments.label_sets(parts[2])}
+            elif method == 'POST':
+                result, status = store.experiments.save_labels(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'datasets' and parts[3:] == ['labels', 'triplens'] and method == 'POST':
+            result, status = store.experiments.triplens_labels(parts[2], body), 201
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'quality' and method == 'GET':
             result = store.dataset(parts[2])['metadata']['quality']
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'time-reference':

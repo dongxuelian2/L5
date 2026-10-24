@@ -1,4 +1,4 @@
-# L5 / Signal & Time-Series Workspace
+# L5 / Analysis & Experiment Workspace
 
 **Turn your industrial time series into a lasting analysis project.**
 
@@ -16,6 +16,8 @@ L5 opens a local Workspace where you can import your own CSV, run anomaly detect
 - Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, Dynamic PCA-Q/T² and experimental Adaptive Max-Z against an explicitly chosen normal baseline. Max-Z also supports one signal.
 - Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
 - Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
+- Save, edit and duplicate formal experiments; batch the nine existing detectors and finite parameter studies with task progress, individual errors and independently saved AnalysisResults.
+- Evaluate reviewed normal/anomaly intervals or known TripLens simulation truth, compare alarm timing and independent score scales, retain research records with run references, and export offline experiment reports.
 - Create, edit, find and archive incidents. Associate multiple datasets, analyses and detection intervals; inspect source-window curves, peaks and contributions; maintain hypotheses with supporting or opposing evidence.
 - Store metadata in SQLite and keep original CSV, numeric arrays and result files on disk.
 
@@ -48,6 +50,18 @@ For development, run `npm run serve` and `npm run dev` in separate terminals. Vi
 9. Restart the service, open **事件** (incidents) in the Workspace sidebar and continue the same investigation.
 
 The configured chronological split needs at least 30 fit and 30 calibration observations (default 70%/30%). The first partition fits preprocessing and the model; the second calibrates a fixed empirical threshold. Target data never select that threshold. Raw missing measurements remain missing in plots and are filled with fit-partition medians for computation. The original observation mask gates decisions: insufficient coverage or missing required channels produces abstain and resets temporal history. Configure persistence, sensor loss, noise and offset experiments, then compare saved runs in History. Review the baseline and choose data you believe are healthy.
+
+## Experiment workflow
+
+Open **Experiments**, or start from a saved Dataset. Choose signals, a normal baseline, a later analysis window, alpha, coverage policy and one or more methods. Method-specific controls reuse the existing analysis controls. **Parameter study** accepts comma-separated candidates: at most eight per parameter and 64 Cartesian-product tasks per batch. Preview the concrete plan, then **Save & run all tasks**.
+
+A local sequential worker saves progress, timing and individual AnalysisResults. Successful tasks survive other failures. Restarting marks unfinished work as interrupted; **Retry unfinished tasks** starts a new run using the original input snapshot. Editing or rerunning never replaces previous results. Snapshots include dataset/CSV hashes, source lineage, signal metadata, clock, effective configuration, engine source hashes and the full immutable label version.
+
+Labels explicitly declare native dataset seconds and their time source. Create closed normal/anomaly intervals in the editor, import JSON with `timeBasis: "dataset-seconds"`, `timeSource` and `intervals`, or use saved TripLens truth. Intervals must not overlap or share endpoints. Unlabelled and abstained samples are excluded from TP/FP/TN/FN. Precision, recall and F1 describe only reviewed intervals; positive-only labels cannot establish false-alarm behavior outside them. A zero denominator produces an undefined metric. Event recall, unobserved truth events, normal-only false alarm events and onset delay are reported separately from sample metrics.
+
+Filter tasks by method, parameter text, run or status. Select up to 12 successful tasks to compare common/unique alarm spans, exact-timestamp agreement, separate score scales and variable contributions. A shared cursor reads full-resolution dataset measurements. Different clocks remain separate; different windows, coverage, inputs/baselines or truth versions are identified. Duration is last minus first timestamp within each contiguous alarm span, excluding acquisition gaps.
+
+Save notes and conclusions with explicit run references; revisions remain available. Associate one run’s selected analyses or specific intervals with a new or existing Incident, and return from its sources to the experiment. **Experiment report** previews persisted evidence, provenance, real measurement and detection plots, parameters, evaluation, notes and result IDs. Download independent HTML or print with A4 browser styles. The same data directory restores the research after restarting. See [validation and boundaries](docs/experiment-validation.md).
 
 ## Multi-source signal workflow
 
