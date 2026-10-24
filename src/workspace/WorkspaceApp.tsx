@@ -5,8 +5,9 @@ import { ResultView } from "./Results";
 import { AlgorithmControls } from "./AlgorithmControls";
 import { AnalysisComparison } from "./AnalysisComparison";
 import { IncidentsPage } from "./Incidents";
+import { SignalWorkspace } from "./SignalWorkspace";
 const RuntimeWorkbench = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.RuntimeWorkbench })));
-import { dateLabel, number, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
+import { dateLabel, number, signalLabel, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
 
 function ErrorText({ error }: { error: string }) { return error ? <p className="ws-error" role="alert">{error}</p> : null; }
@@ -19,7 +20,7 @@ function SignalPicker({ columns, selected, onChange, title = "Analysis signals" 
   const [search, setSearch] = useState("");
   return <fieldset className="ws-signal-picker"><legend>{title} <span className="ws-muted">{selected.length} / {columns.length}</span></legend>
     <div className="ws-inline"><input aria-label={`Filter ${title.toLowerCase()}`} placeholder="Filter signals…" value={search} onChange={e => setSearch(e.target.value)} /><button type="button" onClick={() => onChange(columns.map(c => c.name))}>Select all</button><button type="button" onClick={() => onChange([])}>Clear</button></div>
-    <div className="ws-signal-list">{columns.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map(c => <label key={c.name}><input type="checkbox" checked={selected.includes(c.name)} onChange={e => onChange(e.target.checked ? [...selected, c.name] : selected.filter(s => s !== c.name))} /><span>{c.name}</span>{c.missing > 0 && <small>{c.missing} missing</small>}</label>)}</div>
+    <div className="ws-signal-list">{columns.filter(c => `${c.name} ${c.displayName}`.toLowerCase().includes(search.toLowerCase())).map(c => <label key={c.name}><input type="checkbox" checked={selected.includes(c.name)} onChange={e => onChange(e.target.checked ? [...selected, c.name] : selected.filter(s => s !== c.name))} /><span>{signalLabel(c)}</span>{c.missing > 0 && <small>{c.missing} missing</small>}</label>)}</div>
   </fieldset>;
 }
 
@@ -57,9 +58,10 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   const fileInput = useRef<HTMLInputElement>(null);
   const [csv, setCsv] = useState(""), [filename, setFilename] = useState(""), [name, setName] = useState("");
   const [timeColumn, setTimeColumn] = useState("__auto"), [timeKind, setTimeKind] = useState("auto"), [timeUnit, setTimeUnit] = useState("seconds"), [interval, setInterval] = useState("1");
+  const [timezone, setTimezone] = useState("UTC");
   const [preview, setPreview] = useState<{ metadata: Metadata; series: Series } | null>(null), [columns, setColumns] = useState<string[]>([]);
   const [error, setError] = useState(""), [loading, setLoading] = useState(false), [saving, setSaving] = useState(false);
-  const options = { ...(timeColumn === "__auto" ? {} : { timeColumn: timeColumn === "__generated" ? null : timeColumn }), timeKind, timeUnit, sampleInterval: Number(interval) };
+  const options = { ...(timeColumn === "__auto" ? {} : { timeColumn: timeColumn === "__generated" ? null : timeColumn }), timeKind, timeUnit, timezone, sampleInterval: Number(interval) };
   const optionKey = JSON.stringify(options);
   useEffect(() => {
     setPreview(null); setError("");
@@ -75,7 +77,7 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   }, [csv, optionKey]);
   async function chooseFile(file?: File) {
     if (!file) return;
-    setFilename(file.name); setName(file.name); setColumns([]); setCsv(""); setError(""); setTimeColumn("__auto");
+    setFilename(file.name); setName(file.name); setColumns([]); setCsv(""); setError(""); setTimeColumn("__auto"); setTimeKind("auto"); setTimeUnit("seconds"); setTimezone("UTC");
     try {
       const data = await file.arrayBuffer();
       let text: string;
@@ -97,12 +99,12 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
     </div>
     {csv && <>
       <div className="ws-form-grid"><label>Dataset name<input value={name} onChange={e => setName(e.target.value)} required maxLength={160} /></label><label>Time axis<select value={timeColumn} onChange={e => setTimeColumn(e.target.value)}><option value="__auto">Auto-detect time column</option><option value="__generated">Generate from sampling interval</option>{columns.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-        {timeColumn === "__generated" ? <label>Sampling interval (seconds)<input type="number" min="0.000001" step="any" value={interval} onChange={e => setInterval(e.target.value)} required /></label> : <><label>Time format<select value={timeKind} onChange={e => setTimeKind(e.target.value)}><option value="auto">Auto · numeric or date/time</option><option value="numeric">Numeric</option><option value="datetime">Date / timestamp</option></select></label><label>Numeric time unit<select value={timeUnit} onChange={e => setTimeUnit(e.target.value)}>{["seconds", "milliseconds", "minutes", "hours"].map(v => <option key={v}>{v}</option>)}</select></label></>}
+        {timeColumn === "__generated" ? <label>Sampling interval (seconds)<input type="number" min="0.000001" step="any" value={interval} onChange={e => setInterval(e.target.value)} required /></label> : <><label>Time format<select value={timeKind} onChange={e => setTimeKind(e.target.value)}><option value="auto">Auto · numeric or date/time</option><option value="numeric">Relative numeric time</option><option value="datetime">ISO date / timestamp</option><option value="unix">Unix epoch time</option></select></label><label>Numeric time unit<select value={timeUnit} onChange={e => setTimeUnit(e.target.value)}>{["seconds", "milliseconds", "minutes", "hours"].map(v => <option key={v}>{v}</option>)}</select></label>{(timeKind === "auto" || timeKind === "datetime") && <label>Timezone for dates without timezone<input value={timezone} onChange={e => setTimezone(e.target.value)} placeholder="UTC or Asia/Shanghai" /></label>}</>}
       </div>
       {loading && <p role="status">Parsing and previewing CSV…</p>}
-      {preview && <><Stats metadata={preview.metadata} /><p className="ws-muted">Time: {preview.metadata.time.column || "generated"} · {timeLabel(preview.metadata.time, preview.metadata.time.start)} → {timeLabel(preview.metadata.time, preview.metadata.time.end)}</p>
+      {preview && <><Stats metadata={preview.metadata} /><p className="ws-muted">Time interpretation: {preview.metadata.time.kind} · {preview.metadata.time.sourceUnit || preview.metadata.time.naiveTimezone || "seconds"} · {preview.metadata.time.column || "generated"} · {timeLabel(preview.metadata.time, preview.metadata.time.start)} → {timeLabel(preview.metadata.time, preview.metadata.time.end)}</p><p className="ws-muted">Numeric time is relative unless you explicitly choose Unix epoch time. Relative sources are independent until a time relationship is saved.</p>
         {preview.metadata.notes.map(note => <p key={note} className="ws-notice">{note}</p>)}
-        <details><summary>Inspect columns and sample rows</summary><div className="ws-table-scroll"><table><thead><tr><th>Signal</th><th>Minimum</th><th>Maximum</th><th>Missing</th></tr></thead><tbody>{preview.metadata.columns.map(c => <tr key={c.name}><td>{c.name}</td><td>{number(c.min)}</td><td>{number(c.max)}</td><td>{c.missing}</td></tr>)}</tbody></table><table><thead><tr><th>Time (s)</th>{Object.keys(preview.series.values).map(s => <th key={s}>{s}</th>)}</tr></thead><tbody>{preview.series.times.slice(0, 5).map((t, i) => <tr key={i}><td>{number(t)}</td>{Object.keys(preview.series.values).map(s => <td key={s}>{preview.series.values[s][i] == null ? "missing" : number(preview.series.values[s][i]!)}</td>)}</tr>)}</tbody></table></div>{preview.metadata.ignoredColumns.length > 0 && <p className="ws-muted">Non-numeric columns: {preview.metadata.ignoredColumns.join(", ")}</p>}</details>
+        <details><summary>Inspect columns and sample rows</summary><div className="ws-table-scroll"><table><thead><tr><th>Signal</th><th>Minimum</th><th>Maximum</th><th>Missing</th></tr></thead><tbody>{preview.metadata.columns.map(c => <tr key={c.name}><td>{c.name}</td><td>{c.min == null ? "—" : number(c.min)}</td><td>{c.max == null ? "—" : number(c.max)}</td><td>{c.missing}</td></tr>)}</tbody></table><table><thead><tr><th>Time (s)</th>{Object.keys(preview.series.values).map(s => <th key={s}>{s}</th>)}</tr></thead><tbody>{preview.series.times.slice(0, 5).map((t, i) => <tr key={i}><td>{number(t)}</td>{Object.keys(preview.series.values).map(s => <td key={s}>{preview.series.values[s][i] == null ? "missing" : number(preview.series.values[s][i]!)}</td>)}</tr>)}</tbody></table></div>{preview.metadata.ignoredColumns.length > 0 && <p className="ws-muted">Non-numeric columns: {preview.metadata.ignoredColumns.join(", ")}</p>}</details>
         <Plot times={preview.series.times} values={Object.values(preview.series.values)[0]} title={preview.metadata.columns[0].name} axis={preview.metadata.time} />
       </>}
       <ErrorText error={error} /><button className="ws-primary" disabled={!preview || loading || saving || !name.trim()}>{saving ? "Saving dataset…" : "Import and save dataset ↗"}</button>
@@ -127,14 +129,14 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title="Signals to plot and analyze" />
         <SignalPlots dataset={dataset} signals={chosen} />
         {dataset.metadata.model && <a className="ws-primary" href={`#/workspaces/${workspaceId}/simulations/${dataset.metadata.model.simulationId}`}>Open process investigation & interventions ↗</a>}
-        <div className="ws-inline ws-between"><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
+        <div className="ws-inline ws-between"><a className="ws-link" href={`#/workspaces/${workspaceId}/explorer/${dataset.metadata.columns.filter(c => chosen.includes(c.name)).map(c => c.id).filter(Boolean).join(",")}`}>Open Signal Explorer ↗</a><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
       </section>
     </>}
   </>;
 }
 
-function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex }: {
-  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number;
+function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex, initialRange }: {
+  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number; initialRange?: [number, number];
 }) {
   const dataset = datasets.find(d => d.id === selected) || datasets[0];
   const [config, setConfig] = useState<Config | null>(null), [result, setResult] = useState<AnalysisResult | null>(null);
@@ -143,9 +145,9 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
   useEffect(() => {
     if (!dataset || jobId) return;
     const ranges = dataset.metadata.suggestedRanges || { baselineRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number], analysisRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number] };
-    setConfig({ datasetId: dataset.id, signals: preferences[dataset.id] ?? dataset.metadata.columns.map(c => c.name), algorithm: "robust-maxz", alpha: .01, variance: .9, ...ranges });
+    setConfig({ datasetId: dataset.id, signals: preferences[dataset.id] ?? dataset.metadata.columns.map(c => c.name), algorithm: "robust-maxz", alpha: .01, variance: .9, ...ranges, ...(initialRange ? { analysisRange: initialRange, baselineRange: [dataset.metadata.time.start, Math.max(dataset.metadata.time.start, Math.min(ranges.baselineRange[1], initialRange[0]-(dataset.metadata.time.typicalInterval || 1)))] as [number, number] } : {}) });
     setResult(null); setError("");
-  }, [dataset?.id, jobId]);
+  }, [dataset?.id, jobId, initialRange]);
   useEffect(() => {
     if (!jobId || result?.id === jobId) return;
     const controller = new AbortController(); setLoading(true); setError(""); setResult(null);
@@ -189,6 +191,7 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
   const workspaceId = path[0] === "workspaces" ? path[1] : undefined, tab = path[2] || "datasets", jobId = path[3];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]), [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]), [jobs, setJobs] = useState<Job[]>([]), [selected, setSelected] = useState("");
+  const [analysisDraft, setAnalysisDraft] = useState<{ datasetId: string; range: [number, number] } | null>(null);
   const [preferences, setPreferences] = useState<Record<string, string[]>>({}), [error, setError] = useState(""), [loading, setLoading] = useState(true), [revision, setRevision] = useState(0);
   function refresh() { setRevision(v => v + 1); }
   useEffect(() => {
@@ -205,10 +208,19 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
       .catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [workspaceId, revision]);
+  const dataMode = tab === "signals" || tab === "quality" || tab === "explorer" ? tab : null;
+  const content = loading ? <p role="status">Opening workspace…</p> : !workspace ? null :
+    dataMode ? <SignalWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} jobs={jobs} mode={dataMode} initialSignalIds={jobId} onChanged={refresh} onAnalyze={(datasetId, signals, range) => {
+      setSelected(datasetId); setPreferences(p => ({ ...p, [datasetId]: signals })); setAnalysisDraft({ datasetId, range }); go(`workspaces/${workspaceId}/analysis`);
+    }} /> : tab === "incidents" ? <IncidentsPage workspaceId={workspaceId!} incidentId={jobId} datasets={datasets} jobs={jobs} /> :
+    tab === "simulations" ? <Suspense fallback={<p>Opening process simulator…</p>}><RuntimeWorkbench key={workspaceId} workspaceId={workspaceId!} simulationId={jobId} runId={path[4] === "window" ? undefined : path[4]} initialWindow={path[4] === "window" ? { windowStart: Number(path[5]), asOf: Number(path[6]), hypothesis: path[7] } : undefined} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> :
+    tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId!} /> :
+    tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={id => { setSelected(id); setAnalysisDraft(null); }} preferences={preferences} jobId={jobId} initialRange={analysisDraft?.datasetId === selected ? analysisDraft.range : undefined} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
+    <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); setAnalysisDraft(null); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   return <div className="ws-shell">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>WORKSPACE</span><small>2.0</small></a><nav aria-label="Application"><a href="#/" className="ws-active">Workspaces</a><a href="#/examples">TripLens examples ↗</a></nav><span className="ws-connection"><i />LOCAL ENGINE</span></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["analysis", "02", "Analysis", "↗"], ["history", "03", "History", jobs.length], ["simulations", "04", "Process simulator", "↗"], ["incidents", "05", "事件", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
-      <main className="ws-main"><ErrorText error={error} />{loading ? <p role="status">Opening workspace…</p> : workspace && (tab === "incidents" ? <IncidentsPage workspaceId={workspaceId} incidentId={jobId} datasets={datasets} jobs={jobs} /> : tab === "simulations" ? <Suspense fallback={<p>Opening process simulator…</p>}><RuntimeWorkbench key={workspaceId} workspaceId={workspaceId} simulationId={jobId} runId={path[4] === "window" ? undefined : path[4]} initialWindow={path[4] === "window" ? { windowStart: Number(path[5]), asOf: Number(path[6]), hypothesis: path[7] } : undefined} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> : tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId} /> : tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> : <DatasetPage workspaceId={workspaceId} datasets={datasets} refresh={refresh} selected={selected} setSelected={setSelected} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />)}</main>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["signals", "02", "Signal catalog", "↗"], ["quality", "03", "Data quality", "↗"], ["explorer", "04", "Signal Explorer", "↗"], ["analysis", "05", "Analysis", "↗"], ["history", "06", "History", jobs.length], ["simulations", "07", "Process simulator", "↗"], ["incidents", "08", "事件", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
+      <main className="ws-main"><ErrorText error={error} />{content}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>L5 / OPEN INDUSTRIAL ANALYSIS</span><span>CSV → BASELINE → ANALYSIS → HISTORY</span></footer>
   </div>;

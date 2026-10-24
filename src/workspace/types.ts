@@ -1,10 +1,22 @@
 export type Workspace = { id: string; name: string; created_at: string; updated_at: string; dataset_count?: number; analysis_count?: number };
-export type TimeAxis = { kind: "numeric" | "datetime" | "generated"; column: string | null; origin: string | null; start: number; end: number; sampleInterval?: number; sourceUnit?: string };
-export type Signal = { name: string; missing: number; min: number; max: number };
+export type TimeAxis = { kind: "numeric" | "datetime" | "generated" | "unix"; column: string | null; origin: string | null; start: number; end: number; sampleInterval?: number; sourceUnit?: string; naiveTimezone?: string; typicalInterval?: number | null; gapCount?: number; duplicateCount?: number; invalidTimeCount?: number; irregularCount?: number };
+export type Signal = { name: string; missing: number; min: number | null; max: number | null; id?: string; displayName?: string; unit?: string; description?: string; category?: string; device?: string; tags?: string[]; logicalKey?: string };
+export type TimeReference = { mode: "independent" | "reference" | "utc" | "native"; offsetSeconds?: number; referenceDatasetId?: string; utcOrigin?: string };
+export type DatasetClock = { key: string; axisId: string; offset: number; label: string; reference: TimeReference };
+export type QualitySpan = { start: number; end: number; count: number };
+export type SignalQuality = { totalCount: number; validCount: number; finiteCount: number; missing: number; missingFraction: number; invalidTimeMeasurements: number; min: number | null; max: number | null; mean: number | null; std: number | null; missingSpans: QualitySpan[]; availableSpans: QualitySpan[] };
+export type DataQuality = { totalCount: number; timedCount: number; invalidTimeCount: number; invalidTimes: { row: number; raw: string; nearbyTime?: number }[]; start: number; end: number; typicalInterval: number | null; gapThreshold: number | null; gaps: { start: number; end: number; duration: number }[]; gapCount: number; irregularCount: number; irregular: boolean; duplicateCount: number; duplicates: { time: number; count: number }[]; signals: Record<string, SignalQuality> };
+export type CatalogSignal = Signal & { id: string; datasetId: string; workspaceId: string; datasetName: string; source: string; simulationId?: string; time: TimeAxis; clock: DatasetClock; quality: SignalQuality };
+export type ExplorerWindow = { start: number; end: number; at: number };
+export type ExplorerView = { id: string; workspaceId: string; name: string; signalIds: string[]; windows: Record<string, ExplorerWindow>; displayMode: "separate" | "overlay"; updatedAt: string };
+export type ExplorerAxis = { id: string; label: string; origin: string | null; start: number; end: number; window: ExplorerWindow };
+export type ExplorerSeries = { signal: CatalogSignal; times: number[]; nativeTimes: number[]; values: (number | null)[]; segmentIds: number[]; sourceRows: number; displayRows: number };
+export type ExplorerData = { axes: ExplorerAxis[]; series: ExplorerSeries[] };
+export type ExplorerSample = { signalId: string; status: "measured" | "gap" | "outside" | "missing"; value: number | null; time: number; nativeTime: number; sourceIndex: number; deltaSeconds: number; duplicateCount: number };
 export type Ranges = { baselineRange: [number, number]; analysisRange: [number, number] };
-export type Metadata = { rowCount: number; columns: Signal[]; sourceColumns: string[]; ignoredColumns: string[]; missingCount: number; time: TimeAxis; notes: string[]; suggestedRanges?: Ranges; filename?: string; model?: { id: string; simulationId: string; capabilities: string[] } };
+export type Metadata = { rowCount: number; columns: Signal[]; sourceColumns: string[]; ignoredColumns: string[]; missingCount: number; time: TimeAxis; notes: string[]; suggestedRanges?: Ranges; filename?: string; model?: { id: string; simulationId: string; capabilities: string[] }; quality?: DataQuality; clock?: DatasetClock };
 export type Dataset = { id: string; workspace_id: string; name: string; metadata: Metadata; created_at: string };
-export type Series = { times: number[]; values: Record<string, (number | null)[]>; sourceRows: number; displayRows: number };
+export type Series = { times: number[]; values: Record<string, (number | null)[]>; segmentIds?: Record<string, number[]>; sourceRows: number; displayRows: number };
 export type Config = Ranges & { datasetId: string; signals: string[]; algorithm: string; alpha: number; variance: number; name?: string; smoothing?: number; reference?: number; window?: number; lags?: number; rate?: number; guard?: number; maxShift?: number; fitFraction?: number; minCoverage?: number; persistence?: number; requiredSignals?: string[]; stress?: { missingFraction?: number; noise?: number; offset?: number; seed?: number; missingSignals?: string[] } };
 export type Contribution = { signal: string; value: number };
 export type ContributionMetric = "absolute-robust-z" | "squared-residual" | "model-leverage" | "history-contribution";
@@ -31,8 +43,16 @@ export type IncidentView = { incident: Incident; workspace: Workspace; generated
 export type IncidentSelection = { axisId: string; start: number; end: number; at: number; eventId?: string; analysisId?: string; intervalIndex?: number; linkId?: string };
 export function incidentAxis(axis: IncidentAxis): TimeAxis { return { ...axis, kind: axis.origin ? "datetime" : "numeric", column: null }; }
 export function datasetClock(dataset: Dataset) {
+  if (dataset.metadata.clock) return dataset.metadata.clock;
   const origin = dataset.metadata.time.origin;
   return { axisId: origin ? "utc" : dataset.metadata.model ? `simulation:${dataset.metadata.model.simulationId}` : `dataset:${dataset.id}`, offset: origin ? new Date(origin).getTime() / 1000 : 0 };
+}
+
+export function signalLabel(signal: Signal) { return `${signal.displayName || signal.name}${signal.unit ? ` (${signal.unit})` : ""}`; }
+export function namedSignal(dataset: Dataset, name: string) { const signal = dataset.metadata.columns.find(c => c.name === name); return signal ? signalLabel(signal) : name; }
+export function datasetTimeLabel(dataset: Dataset, value: number) {
+  const clock = datasetClock(dataset);
+  return clock.axisId === "utc" ? timeLabel({ ...dataset.metadata.time, origin: "1970-01-01T00:00:00Z" }, value+clock.offset) : timeLabel(dataset.metadata.time, value);
 }
 
 export function number(value: number) {

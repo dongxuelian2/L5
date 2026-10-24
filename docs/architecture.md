@@ -7,6 +7,8 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 | Module | Implementation | Responsibility |
 |---|---|---|
 | Workspace repository | `l5/workspace.py` | Workspace CRUD, dataset metadata, completed analysis jobs; SQLite with cascading ownership |
+| Signal and time-series workspace | `l5/signals.py`, `src/workspace/SignalWorkspace.tsx` | Stable signal semantics, explicit time references, source-aware exploration, raw cursor reads and saved browsing views |
+| Measured data quality | `l5/data_quality.py`, `l5/datasets.py` | Source-row statistics, timestamp issues, cadence policy, measured sample spans and display segment identities |
 | Persistent incident investigation | `l5/incidents.py`, `src/workspace/Incidents.tsx` | User-maintained incidents, source links, editable notes/evidence/hypotheses/conclusions, source-window plots and experiment reopening |
 | Incident timeline and comparison | `l5/incident_timeline.py`, `src/workspace/IncidentTimeline.tsx`, `IncidentComparison.tsx` | Clock-aware event aggregation, linked interval comparison, shared source navigation and observation cursor |
 | Professional incident reports | `l5/reports.py`, `src/workspace/IncidentReport.tsx` | Saved-data Chinese reports, inline SVG figures, offline HTML, preview and A4 browser PDF printing |
@@ -24,6 +26,37 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
 `npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+
+## Signal & Time-Series Workspace
+
+`WorkspaceStore.signals` 管理数据语义和跨源浏览。`signals` 按 `(dataset_id, column_name)` 唯一，使用数据集 ID 和原始列名生成稳定 UUID；用户元数据单独存放，包含显示名称、单位、说明、类别、设备、标签和显式逻辑测点键。读取数据集时将它们投影到 `metadata.columns`，原始 `name` 和分析配置键不改变。TripLens 保存输出经同一个 CSV 导入入口注册信号，从明确的模拟模型元数据取得单位和来源；普通 CSV 不通过列名推断物理含义。
+
+CSV 导入显式区分相对数值时间、生成时间、ISO 日期时间及 Unix 时间。数值单位在转换成秒后保存；Unix 解释由用户选择，不能由数值大小自动推断。日期按时区转换为 UTC，无时区日期采用用户配置的时区（默认 UTC）。绝对数据以首个有效时刻为 UTC 起点，数组中的秒数继续使用原有相对表示。无效时间行的行号、原值和附近有效时刻进入质量记录，原始 CSV 保留这些行；定时数组只保存有效时间行并稳定排序，重复时刻保留全部测量。
+
+`dataset_time_references` 保存相对来源的独立时钟、参考数据集／秒数偏移，或者带时区的源零点。`SignalWorkspace.clock` 递归求出 `{key, axisId, offset, reference}`：原始来源秒数加 `offset` 得到浏览秒数。绝对来源归入 `utc`；没有关联的相对来源保留 `dataset:<id>` 或 `simulation:<id>`。关系必须位于同一 Workspace，写入前检查循环。原始数组与 `metadata.time` 不随参考配置重写。Incident 的 `clock_for_key` 和前端 `datasetClock` 复用该结果；已有显式事件 `time_origin` 仍优先，旧分析和观察记录继续使用原始秒数及原有来源身份。
+
+`data_quality.summarize` 从实际数值生成质量快照，保存在数据集元数据内。它分别记录来源总行数、有效时间行数、有限数值数量、同时具有有效时间及数值的可用数量、缺失比例、无效／重复时间、最小／最大／均值／总体标准差，以及缺测与可用样本分组。有限数值统计包含无效时间行，而可用数量不包含它们。正时间差中位数定义典型间隔；超过 5 倍中位数为采样空档，其余偏离超过 5% 为不规则。样本分组不表示任意两个观测之间持续可观测。Incident 比较的有效观测范围也在长空档处拆分。
+
+`series_preview` 在完整数组上生成每信号的片段 ID，再保留极值及缺测边界采样。`Plot` / 报告 SVG 使用这些 ID 断开隐藏缺测和长空档；显示采样不改变原始文件或分析输入。跨源浏览不生成公共采样网格：每条曲线仍有独立采样时刻。UTC 来源共享横轴，不同单位／类别默认分图，叠加模式只组合非空且完全相同的单位和类别。窗口以相应时钟的秒数保存，UTC 输入框显示相对来源覆盖起点的秒数；游标滑块使用窗口内的小量偏移，避免原生控件处理大 Unix 数值时损失精度。
+
+游标从完整数组读取最近时刻的原始行，显示实际采样时间、来源时间、时间差和数值。空档、窗口外覆盖和缺测分别标记，不插值、不把停止采样前的旧值延伸到后续时刻。重复时间采用该最近时刻稳定排序后的第一行，并返回重复数量。`explorer_views` 保存命名选择、分时钟窗口、游标与布局；React 进入 Explorer 时恢复最近保存的视图。异步曲线和游标请求均拒绝过期响应，游标移动只读取样本，不重新加载显示序列。
+
+启动时增量添加三个表，并为缺少质量信息的旧数据集从现有数组回填。既有信号元数据通过 `INSERT OR IGNORE` 保留。原始 CSV、NPZ、分析结果、事件和模拟实验文件不重写，浏览状态不依赖浏览器存储。
+
+| API | 用途 |
+|---|---|
+| `GET /api/workspaces/:id/signals` | Workspace 全部信号、语义、来源、时钟与质量 |
+| `PATCH /api/signals/:id` | 编辑可变元数据，拒绝修改原始列名和身份 |
+| `GET /api/datasets/:id/quality` | 读取实际来源质量快照 |
+| `GET/PATCH /api/datasets/:id/time-reference` | 查看／保存显式时间参考 |
+| `POST /api/workspaces/:id/explore` | 按信号 ID 和分时钟窗口读取独立原始曲线 |
+| `POST /api/workspaces/:id/cursor` | 按时钟读取完整分辨率样本及观测状态 |
+| `GET/POST /api/workspaces/:id/views` | 恢复／创建命名浏览配置 |
+| `PATCH /api/workspaces/:id/views/:viewId` | 更新本 Workspace 的已有配置 |
+
+`SignalWorkspace.tsx` 提供目录、元数据编辑器、时间关系表单、质量分布、共享窗口、曲线与游标。Explorer 通过已有数据集和原始信号键进入 Monitoring，携带当前窗口；用户仍须选择健康且在分析之前的基线。选中来源窗口可经 `IncidentLinkDialog` 创建事件，也可打开重叠的已有分析。模拟信号带原会话入口，调查与干预继续使用现有运行时。事件曲线、贡献度和独立报告展示保存的名称和单位，报告附录保留原始列名及来源／浏览时钟。
+
+验证覆盖 `tests/test_data_foundation.py` 和真实 React DOM 交互测试；[浏览器及旧库验证记录](signal-workspace-validation.md) 包含重启恢复和原始文件校验。通用单位转换、重采样、插值、融合和派生变量不在该模块内实现。
 
 ## 持久化事件调查
 
@@ -53,7 +86,7 @@ Workspace 侧边栏的「事件」进入列表和详情。`IncidentLinkDialog` �
 
 `incident_timeline.investigation` 从持久化的 Incident、关联分析文件、数据集元数据与模拟实验派生一个调查视图，不重新计算检测。`GET /api/incidents/:id/timeline` 返回时间轴、带真实来源定位器的事件、去重后的分析及区间比较。可重复传入 `analysis=<id>` 选择参与比较的本事件分析，`analysis=` 表示不选；时间线仍保留全部关联记录。只关联异常区间时使用实际保存的区间序号，关联完整分析时使用其全部区间，重复关联不会重复计数。
 
-时间轴拥有明确的身份和秒数偏移。带日期时间起点的数据先加上该起点的 Unix 秒数，归入 UTC 绝对时间轴。数值／生成时间轴使用 `dataset:<id>`；同一过程模型的数据和实验使用 `simulation:<id>`。不同相对时间源不因数值相近而合并。事件新增可选 `time_axis_key`，从来源创建时自动写入；旧事件不推断原点，可由用户指定参考来源。显式 `time_origin` 优先。调查记录新增 `observed_axis_key`，解除来源关联后仍保留观察时刻所属的时钟。状态、结论和事件信息变更以同一事务写入 `incident_history`，保存前后值及记录时间，放在独立的调查操作序列，不冒充设备观察时间。迁移只添加表与可空列。
+时间轴拥有明确的身份和秒数偏移。带日期时间起点的数据先加上该起点的 Unix 秒数，归入 UTC 绝对时间轴。数值／生成时间轴默认使用 `dataset:<id>`；同一过程模型的数据和实验使用 `simulation:<id>`，并可复用数据工作区保存的显式参考与偏移。不同相对时间源不因数值相近而合并。事件新增可选 `time_axis_key`，从来源创建时自动写入；旧事件不推断原点，可由用户指定参考来源。显式 `time_origin` 优先。调查记录新增 `observed_axis_key`，解除来源关联后仍保留观察时刻所属的时钟。状态、结论和事件信息变更以同一事务写入 `incident_history`，保存前后值及记录时间，放在独立的调查操作序列，不冒充设备观察时间。迁移只添加表与可空列。
 
 比较按已关联的闭区间边界分段，保留开始等于结束的单点报警。持续时间是首末样本时间差，不外推采样周期。全部共同检出、独有检出和部分共同检出仅在各所选分析同时有有效观测的时间内判断；abstain 间隙和未覆盖窗口标为「缺少共同观测，未比较」。分数、阈值、峰值与贡献度保留所属算法的原始含义，不做跨算法归一化或分数排名。
 
