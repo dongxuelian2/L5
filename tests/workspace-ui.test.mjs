@@ -37,6 +37,7 @@ const { ImportDataset } = require('../src/workspace/WorkspaceApp.tsx');
 const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
 const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/SignalWorkspace.tsx');
+const { TransformationWorkspace, TransformationLineage } = require('../src/workspace/TransformationWorkspace.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -766,4 +767,112 @@ test('late explorer and cursor responses cannot replace a newer source window', 
   await act(async () => deferred[0].resolve(response({ samples: [{ signalId: fixture.catalog[0].id, value: 11, status: 'measured', time: 1001, nativeTime: 1, deltaSeconds: 0, sourceIndex: 1, duplicateCount: 1 }] })));
   assert.match(container.textContent, /77/);
   assert.equal(container.querySelector('tbody td:nth-child(3)').textContent, '77');
+});
+
+
+const transformCatalog = [
+  { id: 'pressure-id', name: 'p', displayName: 'Feed pressure', unit: 'kPa', datasetId: 'pressure-source', datasetName: 'Pressure recorder' },
+  { id: 'temperature-id', name: 't', displayName: 'Temperature', unit: '°C', datasetId: 'temperature-source', datasetName: 'Temperature recorder' },
+].map(signal => ({ ...signal, workspaceId: 'test', source: 'CSV', time: { kind: 'numeric', start: 0, end: 599, origin: null, typicalInterval: 1 },
+  clock: { key: 'dataset:' + signal.datasetId, axisId: 'test-axis', offset: 0, label: 'Related recorders', reference: { mode: 'independent' } } }));
+function transformPreview(config, marker = 'Computed pressure') {
+  const names = [...config.sources, ...config.derived].map(s => s.key);
+  const metadata = { ...dataset('transform-output').metadata, rowCount: 600, time: { kind: 'numeric', origin: null, start: 0, end: 599, sampleInterval: config.grid.intervalSeconds },
+    columns: [...config.sources, ...config.derived].map(s => ({ name: s.key, displayName: s.displayName || marker, unit: s.unit, min: .3, max: .32, missing: 0 })),
+    transformation: { config, definitionName: marker, grid: { start: 0, end: 599, samples: 600, intervalSeconds: config.grid.intervalSeconds }, sources: [], sourceSimulations: [],
+      quality: names.map(key => ({ key, before: { validCount: 500, missingFraction: 1/6 }, after: { validCount: 600, missingFraction: 0, min: .3, max: .32 }, observedCount: 500, provenance: { measured: 500, interpolated: 100 } })) } };
+  return { metadata, series: { times: [0, 1, 2], values: Object.fromEntries(names.map(name => [name, [.3, .31, .32]])), sourceRows: 600, displayRows: 3 },
+    samples: [{ time: 1, values: Object.fromEntries(names.map(name => [name, .31])), provenance: Object.fromEntries(names.map(name => [name, 'interpolated'])), observed: Object.fromEntries(names.map(name => [name, false])) }] };
+}
+const transformUnits = [{ name: 'Pa', dimension: 'pressure' }, { name: 'kPa', dimension: 'pressure' }, { name: 'MPa', dimension: 'pressure' }, { name: '°C', dimension: 'temperature' }];
+async function previewDebounce() { await act(async () => new Promise(resolve => setTimeout(resolve, 490))); }
+
+test('transformation editor sends stable signal IDs, previews computed curves, saves and generates separate datasets', async () => {
+  const writes = [], generated = [];
+  let savedConfig;
+  globalThis.fetch = async (url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    if (url.endsWith('/signals')) return response({ signals: transformCatalog });
+    if (url.endsWith('/units')) return response({ units: transformUnits });
+    if (url.endsWith('/transformations') && !body) return response({ transformations: [] });
+    if (url.endsWith('/preview')) { writes.push({ url, body }); return response(transformPreview(body.config)); }
+    if (url.endsWith('/transformations') && body) { writes.push({ url, body }); savedConfig = body.config; return response({ id: 'definition-1', workspace_id: 'test', revision: 1, name: body.name, config: body.config, updated_at: '2026-10-24T00:00:00Z' }); }
+    if (url.endsWith('/execute')) { writes.push({ url, body }); const preview = transformPreview(savedConfig); return response({ id: 'generated-' + generated.length, workspace_id: 'test', name: body.name, metadata: preview.metadata }); }
+    throw new Error('Unexpected request ' + url);
+  };
+  await mount(React.createElement(TransformationWorkspace, { workspaceId: 'test', datasets: [], initialSignalIds: 'pressure-id,temperature-id', onGenerated: d => generated.push(d) }));
+  await setField(inputFor('Output unit 1'), 'MPa');
+  await setField(inputFor('Resampling 1'), 'mean');
+  await setField(inputFor('Duplicate timestamps 1'), 'last');
+  await setField(inputFor('Missing values 1'), 'fixed');
+  await setField(inputFor('Fill value 1'), .3);
+  await click(button('+ Add derived signal'));
+  await setField(inputFor('Expression 1'), 'rate(s_1)');
+  await previewDebounce();
+  const latest = writes.filter(w => w.url.endsWith('/preview')).at(-1).body.config;
+  assert.equal(latest.sources[0].signalId, 'pressure-id');
+  assert.equal(latest.sources[0].unit, 'MPa');
+  assert.equal(latest.sources[0].resampling, 'mean');
+  assert.equal(latest.sources[0].missing.value, .3);
+  assert.equal(latest.derived[0].expression, 'rate(s_1)');
+  assert.ok(container.querySelector('svg[aria-label="Feed pressure (MPa) time series"]'));
+  assert.match(container.textContent, /Original observations/);
+  assert.match(container.textContent, /500/);
+  await click(button('Generate new dataset'));
+  assert.equal(generated.length, 1);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/generated-0"]'));
+  assert.equal(writes.filter(w => w.url.endsWith('/transformations')).length, 1);
+  await click(button('Generate new dataset'));
+  assert.equal(generated.length, 2);
+  assert.notEqual(generated[0].id, generated[1].id);
+  assert.equal(writes.filter(w => w.url.endsWith('/transformations')).length, 1, 'unchanged rerun reuses saved revision');
+});
+
+test('transformation preview discards stale success and stale errors; validation blocks generation', async () => {
+  const pending = [];
+  globalThis.fetch = (url, options = {}) => {
+    if (url.endsWith('/signals')) return Promise.resolve(response({ signals: transformCatalog }));
+    if (url.endsWith('/units')) return Promise.resolve(response({ units: transformUnits }));
+    if (url.endsWith('/transformations')) return Promise.resolve(response({ transformations: [] }));
+    if (url.endsWith('/preview')) return new Promise(resolve => pending.push({ config: JSON.parse(options.body).config, resolve }));
+    throw new Error('Unexpected request ' + url);
+  };
+  await mount(React.createElement(TransformationWorkspace, { workspaceId: 'test', datasets: [], initialSignalIds: 'pressure-id', onGenerated: () => {} }));
+  await previewDebounce();
+  await setField(inputFor('Sampling interval (s)'), 2);
+  await previewDebounce();
+  await act(async () => pending[1].resolve(response(transformPreview(pending[1].config, 'Current'))));
+  assert.match(container.textContent, /2 s interval/);
+  await act(async () => pending[0].resolve(new Response(JSON.stringify({ error: 'Obsolete failure' }), { status: 400, headers: { 'Content-Type': 'application/json' } })));
+  assert.ok(!container.textContent.includes('Obsolete failure'));
+  await click(button('+ Add derived signal'));
+  await setField(inputFor('Expression 1'), 'invalid.__class__');
+  await previewDebounce();
+  await act(async () => pending[2].resolve(new Response(JSON.stringify({ error: 'Only arithmetic and selected keys are allowed.' }), { status: 400, headers: { 'Content-Type': 'application/json' } })));
+  assert.match(container.querySelector('[role="alert"]').textContent, /Only arithmetic/);
+  assert.ok(button('Generate new dataset').disabled);
+});
+
+test('saved transformation reopens its source keys and execution lineage links to source and simulation', async () => {
+  const config = { version: 1, grid: { mode: 'intersection', intervalSeconds: 2 }, sources: [{ signalId: 'pressure-id', key: 'stable_pressure', displayName: 'Pressure', sourceUnit: 'kPa', unit: 'MPa', resampling: 'previous', duplicatePolicy: 'mean', maxGapSeconds: 4, missing: { method: 'keep' } }], derived: [] };
+  const definition = { id: 'saved-definition', name: 'Stored pipeline', revision: 3, config, updated_at: '2026-10-24T00:00:00Z' };
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.endsWith('/signals')) return response({ signals: transformCatalog });
+    if (url.endsWith('/units')) return response({ units: transformUnits });
+    if (url.endsWith('/transformations')) return response({ transformations: [definition] });
+    if (url.endsWith('/preview')) return response(transformPreview(JSON.parse(options.body).config));
+    throw new Error('Unexpected request ' + url);
+  };
+  await mount(React.createElement(TransformationWorkspace, { workspaceId: 'test', datasets: [], definitionId: definition.id, onGenerated: () => {} }));
+  assert.equal(inputFor('Signal key 1').value, 'stable_pressure');
+  assert.equal(inputFor('Sampling interval (s)').value, '2');
+  assert.equal(inputFor('Output unit 1').value, 'MPa');
+  assert.match(container.textContent, /Revision 3/);
+  const generated = { id: 'derived-data', workspace_id: 'test', metadata: transformPreview(config).metadata };
+  Object.assign(generated.metadata.transformation, { definitionId: definition.id, revision: 3, executionId: 'frozen-execution', createdAt: '2026-10-24T00:00:00Z', sources: [{ datasetId: 'pressure-source', datasetName: 'Pressure recorder' }], sourceSimulations: ['model-source'] });
+  await act(async () => root.render(React.createElement(TransformationLineage, { dataset: generated })));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/pressure-source"]'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/explorer/pressure-id"]'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/simulations/model-source"]'));
+  assert.match(container.textContent, /frozen-execution/);
 });

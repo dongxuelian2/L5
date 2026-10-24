@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals', 'transformations', 'units'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,23 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts[1] == 'signals' and len(parts) == 3 and method == 'PATCH':
+        if parts == ['api', 'units'] and method == 'GET':
+            from .units import catalog
+            result = {'units': catalog()}
+        elif parts[1] == 'transformations':
+            if len(parts) == 3:
+                definition = store.transformations.get(parts[2])
+                if method == 'GET':
+                    result = definition
+                elif method == 'PATCH':
+                    result = store.transformations.save(definition['workspace_id'], body, parts[2])
+            elif len(parts) == 4 and method == 'POST':
+                if parts[3] == 'execute':
+                    result, status = store.transformations.execute(parts[2], body), 201
+                elif parts[3] == 'preview':
+                    definition = store.transformations.get(parts[2])
+                    result = store.transformations.preview(definition['workspace_id'], definition['config'])
+        elif parts[1] == 'signals' and len(parts) == 3 and method == 'PATCH':
             result = store.signals.update_signal(parts[2], body)
         elif parts[1] == 'incidents':
             incidents = store.incidents
@@ -109,7 +125,12 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'signals' and method == 'GET':
+            if parts[3] == 'transformations':
+                if method == 'GET':
+                    result = {'transformations': store.transformations.list(parts[2])}
+                elif method == 'POST':
+                    result, status = store.transformations.save(parts[2], body), 201
+            elif parts[3] == 'signals' and method == 'GET':
                 result = {'signals': store.signals.catalog(parts[2])}
             elif parts[3] == 'explore' and method == 'POST':
                 result = store.signals.explore(parts[2], body)
@@ -138,6 +159,8 @@ def dispatch(handler, method: str) -> bool:
                     result = {'jobs': store.jobs(parts[2])}
                 elif method == 'POST':
                     result, status = store.analyze(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['transformations', 'preview'] and method == 'POST':
+            result = store.transformations.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3] == 'views' and method == 'PATCH':
             result = store.signals.save_view(parts[2], body, parts[4])
         elif parts == ['api', 'datasets', 'preview'] and method == 'POST':

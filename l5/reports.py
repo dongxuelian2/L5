@@ -340,6 +340,20 @@ def render_report(store, identity):
     evidence = [v for v in entries if v['kind'] == 'evidence']
     parts.append('<p>已保存证据：' + ('、'.join(f'<a href="#entry-{v["id"]}">{e(v["title"])}</a>（{e(STANCE[v["stance"]])}）' for v in evidence) or '尚未记录') + '</p>')
     parts.append('<h2>附录. 数据、参数与关联记录</h2>')
+    for dataset in view['datasets']:
+        lineage = dataset['metadata'].get('transformation')
+        if lineage:
+            parts.append('<h3>派生数据来源与处理步骤：' + e(dataset['name']) + '</h3>')
+            parts.append(prose(f"变换：{lineage['definitionName']}；版本：{lineage['revision']}；执行：{lineage['executionId']}；创建时间：{lineage['createdAt']}。"))
+            parts.append(table(['来源数据集', '标识', '原始数值文件 SHA-256'], [[e(s['datasetName']), e(s['datasetId']), e(s['sha256'])] for s in lineage['sources']]))
+            parts.append(table(['输出变量', '原信号 ID', '单位转换', '重采样 / 最大间隔', '缺失 / 重复时间'], [
+                [e(s['displayName']) + ' / ' + e(s['key']), e(s['signalId']), e(s['sourceUnit'] or '未指定') + ' → ' + e(s['unit'] or '未指定'),
+                 e(s['resampling']) + ' / ' + e(n(s['maxGapSeconds'])) + ' s', e(json.dumps(s['missing'], ensure_ascii=False)) + ' / ' + e(s['duplicatePolicy'])]
+                for s in lineage['config']['sources']]))
+            for output in lineage['config']['derived']:
+                parts.append(prose(output['displayName'] + '：' + output['key'] + ' = ' + output['expression']))
+            parts.append(prose('插值、保持及填充值保留样本来源标记。分析参数中的 observationPolicy 说明是否将处理值计入覆盖率。统计填充值取自输出窗口内原始有效观测，不作为健康基线保证。'))
+            parts.append(technical(dict(grid=lineage['grid'], quality=lineage['quality'], sourceSimulations=lineage['sourceSimulations'], definition=lineage['config'])))
     parts.append(table(['数据集 / 标识', '采样与时间元数据', '变量 / 原始列名'], [[e(d['name']) + '<br>' + e(d['id']), e(json.dumps(dict(source=d['metadata']['time'], browsingClock=d['metadata']['clock']), ensure_ascii=False)) + '<br>' + str(d['metadata']['rowCount']) + ' 行', e('、'.join(signal_label(d['id'], c['name']) + ' / ' + c['name'] for c in d['metadata']['columns']))] for d in view['datasets']]))
     for a in view['analyses']:
         parts.append('<h3>' + e(a['result']['name']) + '</h3><p>分析 ID：' + e(a['id']) + '；贡献度语义：' + e(METRIC.get(a['result'].get('contributionMetric'), '历史排序')) + '</p>' + parameters(a['result']['config']))

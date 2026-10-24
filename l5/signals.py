@@ -63,6 +63,7 @@ class SignalWorkspace:
         for column in dataset['metadata']['columns']:
             name = column['name']
             defaults = dict(displayName=name, unit='', description='', category='', device='', tags=[], logicalKey='')
+            defaults.update({key: column[key] for key in defaults if key in column})
             if model and name in META:
                 signal = META[name]
                 defaults.update(displayName=signal.get('label', name), unit=signal.get('unit', ''),
@@ -84,7 +85,7 @@ class SignalWorkspace:
             metadata = dataset['metadata']
             for column in metadata['columns']:
                 signals.append(dict(**column, datasetId=dataset['id'], workspaceId=workspace_id,
-                    datasetName=dataset['name'], source='TripLens simulation' if metadata.get('model') else 'CSV',
+                    datasetName=dataset['name'], source='Transformation' if metadata.get('transformation') else 'TripLens simulation' if metadata.get('model') else 'CSV',
                     simulationId=metadata.get('model', {}).get('simulationId'),
                     time=metadata['time'], clock=metadata['clock'], quality=metadata['quality']['signals'][column['name']]))
         return signals
@@ -127,6 +128,9 @@ class SignalWorkspace:
         config = self.reference(identity)
         if origin:
             return dict(key=key, axisId='utc', offset=utc_seconds(origin), label='UTC absolute time', reference=dict(mode='native'))
+        if metadata.get('transformation'):
+            saved = metadata['transformation']['clock']
+            return dict(key=key, axisId=saved['axisId'], offset=saved['offset'], label='Transformation source clock', reference=dict(mode='native'))
         if config['mode'] == 'utc':
             return dict(key=key, axisId='utc', offset=utc_seconds(config['utcOrigin']) + config['offsetSeconds'],
                         label='UTC absolute time', reference=config)
@@ -143,6 +147,8 @@ class SignalWorkspace:
 
     def set_reference(self, identity, body):
         dataset = self.store.base_dataset(identity)
+        if dataset['metadata'].get('transformation'):
+            raise ValueError('A generated dataset keeps its execution clock. Edit the transformation and generate a new dataset instead.')
         if dataset['metadata']['time'].get('origin'):
             raise ValueError('This dataset already has an absolute source clock. Its original timestamps are preserved.')
         mode = body.get('mode')
@@ -239,9 +245,13 @@ class SignalWorkspace:
             value = values[index, column]
             if status == 'measured' and not np.isfinite(value):
                 status = 'missing'
-            samples.append(dict(signalId=signal['id'], status=status, value=float(value) if status == 'measured' else None,
+            provenance = self.store.provenance_sample(dataset, index, [signal['name']])
+            if status == 'measured' and provenance and not provenance['observed'][signal['name']]:
+                status = 'processed'
+            samples.append(dict(signalId=signal['id'], status=status, value=float(value) if status in ('measured', 'processed') else None,
                 time=float(times[index] + clock['offset']), nativeTime=float(times[index]), sourceIndex=index,
-                deltaSeconds=float(times[index] - local), duplicateCount=int(np.searchsorted(times, times[index], side='right') - np.searchsorted(times, times[index], side='left'))))
+                deltaSeconds=float(times[index] - local), duplicateCount=int(np.searchsorted(times, times[index], side='right') - np.searchsorted(times, times[index], side='left')),
+                **(dict(provenance=provenance['provenance'][signal['name']], observed=provenance['observed'][signal['name']]) if provenance else {})))
         return dict(axisId=axis_id, at=at, samples=samples)
 
     @staticmethod

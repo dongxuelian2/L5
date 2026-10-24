@@ -66,7 +66,7 @@ def signal_contributions(monitor, sample: np.ndarray, names: list[str]) -> list[
     return [{'signal': names[i], 'value': float(weights[i])} for i in order]
 
 
-def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], config: dict) -> dict:
+def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], config: dict, *, observed=None) -> dict:
     started = perf_counter()
     config = dict(config)
     signals = config.get('signals')
@@ -81,6 +81,16 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
     for key, value in defaults.get(algorithm, {}).items():
         config.setdefault(key, value)
     data = values[:, [columns.index(s) for s in signals]]
+    observation_policy = config.get('observationPolicy', 'measured')
+    if observation_policy not in ('measured', 'processed'):
+        raise ValueError('Choose measured observations or explicitly include processed values.')
+    processed_count = 0
+    if observed is not None:
+        selected_mask = observed[:, [columns.index(s) for s in signals]]
+        processed_count = int(np.sum(np.isfinite(data) & ~selected_mask))
+        if observation_policy == 'measured':
+            data = np.where(selected_mask, data, np.nan)
+        config['observationPolicy'] = observation_policy
 
     def window(key: str):
         interval = config.get(key)
@@ -130,7 +140,8 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
         target[:, signals.index(signal)] = np.nan
     original_mask = np.isfinite(target)
     imputed = {'baseline': int(np.isnan(normal).sum()), 'analysis': int(np.isnan(target).sum())}
-    normal = np.where(np.isfinite(normal), normal, medians)
+    baseline_observed = np.isfinite(normal)
+    normal = np.where(baseline_observed, normal, medians)
     target = np.where(np.isfinite(target), target, medians)
     fit, calibration = split_normal_training(normal, fit_fraction)
     alpha = float(config.get('alpha', .01))
@@ -143,13 +154,25 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
             periods = np.diff(sequence)
             if len(periods) and (np.any(periods <= 0) or not np.allclose(periods, periods[0], rtol=1e-5, atol=1e-7)):
                 raise ValueError('Temporal algorithms require regular, strictly increasing sample times.')
-    monitor.fit(fit)
-    threshold = calibrate(monitor, calibration, alpha)
     from benchmarks.coverage import CoveragePolicy, decide, score_with_observation_resets
     required = config.get('requiredSignals', [])
     if not isinstance(required, list):
         raise ValueError('Required signals must be a list.')
     policy = CoveragePolicy(float(config.get('minCoverage', .9)), tuple(required), tuple(signals))
+    if observed is not None:
+        # Keep synthetic values out of measured-only fitting/calibration. Temporal models
+        # need contiguous sequence history, so require a fully covered baseline for them.
+        required_indexes = [signals.index(s) for s in required]
+        covered = baseline_observed.mean(axis=1) >= policy.min_observed_fraction
+        if required_indexes:
+            covered &= baseline_observed[:, required_indexes].all(axis=1)
+        if getattr(monitor, 'history_dependent', False) and not covered.all():
+            raise ValueError('Temporal analysis needs a fully observed baseline. Choose another window or explicitly include processed values.')
+        fit, calibration = fit[covered[:split]], calibration[covered[split:]]
+        if len(fit) < 30 or len(calibration) < 30:
+            raise ValueError('Need at least 30 covered fit and 30 covered calibration rows. Extend the baseline or explicitly include processed values.')
+    monitor.fit(fit)
+    threshold = calibrate(monitor, calibration, alpha)
     persistence = config.get('persistence', 1)
     scores = score_with_observation_resets(monitor, target, original_mask, policy)
     states = decide(scores, original_mask, threshold=threshold, consecutive=persistence, policy=policy)
@@ -199,7 +222,8 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
                         'fitSamples': len(fit), 'calibrationSamples': len(calibration),
                         'flaggedSamples': int(flags.sum()), 'peakScore': float(scores[peak_index]),
                         'firstDetection': float(target_times[starts[0]]) if len(starts) else None,
-                        'imputedValues': imputed, 'abstainedSamples': int(sum(s == 'abstain' for s in states)), 'coverageFraction': float(valid.mean())},
+                        'imputedValues': imputed, 'abstainedSamples': int(sum(s == 'abstain' for s in states)), 'coverageFraction': float(valid.mean()),
+                        **({'processedInputValues': processed_count, 'observationPolicy': observation_policy} if observed is not None else {})},
             'model': {**monitor.metadata(), 'center': monitor.center.tolist(), 'scale': monitor.scale.tolist(),
                       'imputationMedians': medians.tolist(),
                       **({'loadings': monitor.components.tolist(), 'eigenvalues': monitor.eigenvalues.tolist()}

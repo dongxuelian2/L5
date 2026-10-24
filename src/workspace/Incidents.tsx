@@ -1,3 +1,4 @@
+import { TransformationLineage } from "./TransformationWorkspace";
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, message } from "./api";
 import { Plot, SignalPlots } from "./Charts";
@@ -142,7 +143,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
       {!incident.links.length && <p className="ws-notice">可以关联已有数据集或分析，也可以先写下人工观察。普通 CSV 的事件可以直接开始调查。</p>}
       <div className="incident-source-grid">{incident.links.map(source => <article className={`ws-panel incident-source ${source.id === focused ? "incident-selected" : ""}`} key={source.id}>
         <div className="ws-inline ws-between"><span className="ws-kicker">{linkKinds[source.kind]}</span><button className="ws-danger" disabled={busy} onClick={() => void mutate(`/links/${source.id}`, undefined, "DELETE")} aria-label={`解除关联 ${source.details.title}`}>解除关联</button></div>
-        <h3>{source.details.title}</h3><SourceSummary source={source} datasets={datasets} />
+        <h3>{source.details.title}</h3><SourceSummary source={source} datasets={datasets} />{datasets.find(d => d.id === source.details.datasetId)?.metadata.transformation && <TransformationLineage dataset={datasets.find(d => d.id === source.details.datasetId)!} />}
         <div className="ws-inline incident-actions">{source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>查看原始曲线</button>}
           {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>打开原始分析 ↗</a>}
           {source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>返回模拟会话 ↗</a>}

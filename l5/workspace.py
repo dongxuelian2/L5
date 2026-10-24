@@ -42,6 +42,8 @@ class WorkspaceStore:
         self.incidents = IncidentService(self)
         from .signals import SignalWorkspace
         self.signals = SignalWorkspace(self)
+        from .transformations import TransformationService
+        self.transformations = TransformationService(self)
 
     @contextmanager
     def connect(self):
@@ -124,7 +126,6 @@ class WorkspaceStore:
     def import_dataset(self, workspace_id: str, body: dict, *, model=None) -> dict:
         self.workspace(workspace_id)
         metadata, times, values = prepare_csv(body.get('csv'), body)
-        identity, stamp = uuid4().hex, now()
         name = self.name(body.get('name') or body.get('filename') or 'Imported CSV')
         metadata['filename'] = str(body.get('filename', name))
         if model:
@@ -135,11 +136,18 @@ class WorkspaceStore:
                 metadata['suggestedRanges'] = {'baselineRange':[float(times[0]), float(healthy[-1])],
                                                'analysisRange':[float(times[times > healthy[-1]][0]), float(times[-1])]}
 
+        return self.save_dataset(workspace_id, name, metadata, times, values, body['csv'])
+
+    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None):
+        """Persist imported and generated datasets through the same repository path."""
+        self.workspace(workspace_id)
+        name = self.name(name)
+        identity, stamp = uuid4().hex, now()
         folder = self.root / workspace_id / 'datasets' / identity
         folder.mkdir(parents=True)
         try:
-            (folder / 'source.csv').write_text(body['csv'], encoding='utf-8')
-            np.savez_compressed(folder / 'series.npz', times=times, values=values)
+            (folder / 'source.csv').write_text(source_csv, encoding='utf-8')
+            np.savez_compressed(folder / 'series.npz', times=times, values=values, **(extra_arrays or {}))
             with self.connect() as db:
                 db.execute('INSERT INTO datasets VALUES (?,?,?,?,?)', (identity, workspace_id, name, json.dumps(metadata), stamp))
                 self.signals.register(dict(id=identity, metadata=metadata), db)
@@ -152,6 +160,19 @@ class WorkspaceStore:
     def load_data(self, dataset: dict):
         with np.load(self.root / dataset['workspace_id'] / 'datasets' / dataset['id'] / 'series.npz', allow_pickle=False) as data:
             return data['times'], data['values']
+
+    def observation_mask(self, dataset):
+        with np.load(self.root / dataset['workspace_id'] / 'datasets' / dataset['id'] / 'series.npz', allow_pickle=False) as data:
+            return data['observed'] if 'observed' in data.files else np.isfinite(data['values'])
+
+    def provenance_sample(self, dataset, index, signals):
+        if not dataset['metadata'].get('transformation'):
+            return {}
+        from .resampling import PROVENANCE
+        names = [c['name'] for c in dataset['metadata']['columns']]
+        with np.load(self.root / dataset['workspace_id'] / 'datasets' / dataset['id'] / 'series.npz', allow_pickle=False) as data:
+            return dict(provenance={s: PROVENANCE[int(data['provenance'][index, names.index(s)])] for s in signals},
+                        observed={s: bool(data['observed'][index, names.index(s)]) for s in signals})
 
     def series(self, identity: str, signals: list[str] | None = None, start: float | None = None, end: float | None = None) -> dict:
         dataset = self.dataset(identity)
@@ -190,7 +211,8 @@ class WorkspaceStore:
         return dict(time=float(times[index]), previousTime=float(times[index-1]) if index else None,
                     nextTime=float(times[index+1]) if index+1 < len(times) else None,
                     values={s: value(index, s) for s in signals},
-                    previous={s: value(index-1, s) if index else None for s in signals})
+                    previous={s: value(index-1, s) if index else None for s in signals},
+                    **self.provenance_sample(dataset, index, signals))
 
     def analyze(self, workspace_id: str, body: dict) -> dict:
         self.workspace(workspace_id)
@@ -198,7 +220,11 @@ class WorkspaceStore:
         if dataset['workspace_id'] != workspace_id:
             raise ValueError('Dataset belongs to a different workspace.')
         times, values = self.load_data(dataset)
-        result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body)
+        result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
+                              observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
+        if dataset['metadata'].get('transformation'):
+            lineage = dataset['metadata']['transformation']
+            result['transformation'] = {k: lineage[k] for k in ('definitionId', 'revision', 'executionId', 'createdAt')}
         identity, stamp = uuid4().hex, now()
         name = self.name(body.get('name') or f"{result['algorithmLabel']} · {dataset['name']}")
         result.update({'id': identity, 'workspaceId': workspace_id, 'datasetId': dataset['id'], 'name': name, 'createdAt': stamp})

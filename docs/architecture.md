@@ -8,6 +8,7 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 |---|---|---|
 | Workspace repository | `l5/workspace.py` | Workspace CRUD, dataset metadata, completed analysis jobs; SQLite with cascading ownership |
 | Signal and time-series workspace | `l5/signals.py`, `src/workspace/SignalWorkspace.tsx` | Stable signal semantics, explicit time references, source-aware exploration, raw cursor reads and saved browsing views |
+| Transformation pipeline | `l5/transformations.py`, `units.py`, `resampling.py`, `expressions.py`, `src/workspace/TransformationWorkspace.tsx` | Saved definitions, engineering conversions, bounded resampling/fill, safe derived expressions and immutable ordinary Dataset executions |
 | Measured data quality | `l5/data_quality.py`, `l5/datasets.py` | Source-row statistics, timestamp issues, cadence policy, measured sample spans and display segment identities |
 | Persistent incident investigation | `l5/incidents.py`, `src/workspace/Incidents.tsx` | User-maintained incidents, source links, editable notes/evidence/hypotheses/conclusions, source-window plots and experiment reopening |
 | Incident timeline and comparison | `l5/incident_timeline.py`, `src/workspace/IncidentTimeline.tsx`, `IncidentComparison.tsx` | Clock-aware event aggregation, linked interval comparison, shared source navigation and observation cursor |
@@ -56,7 +57,33 @@ CSV 导入显式区分相对数值时间、生成时间、ISO 日期时间及 Un
 
 `SignalWorkspace.tsx` 提供目录、元数据编辑器、时间关系表单、质量分布、共享窗口、曲线与游标。Explorer 通过已有数据集和原始信号键进入 Monitoring，携带当前窗口；用户仍须选择健康且在分析之前的基线。选中来源窗口可经 `IncidentLinkDialog` 创建事件，也可打开重叠的已有分析。模拟信号带原会话入口，调查与干预继续使用现有运行时。事件曲线、贡献度和独立报告展示保存的名称和单位，报告附录保留原始列名及来源／浏览时钟。
 
-验证覆盖 `tests/test_data_foundation.py` 和真实 React DOM 交互测试；[浏览器及旧库验证记录](signal-workspace-validation.md) 包含重启恢复和原始文件校验。通用单位转换、重采样、插值、融合和派生变量不在该模块内实现。
+验证覆盖 `tests/test_data_foundation.py` 和真实 React DOM 交互测试；[浏览器及旧库验证记录](signal-workspace-validation.md) 包含重启恢复和原始文件校验。统一网格、单位转换与派生计算由以下独立变换模块实现。
+
+## Transformation pipeline
+
+`WorkspaceStore.transformations` adds one SQLite `transformations` table with Workspace ownership, a versioned JSON definition, editable name, integer revision and timestamps. Definition version 1 is ordered: select stable signal IDs and bind expression keys; resolve source clocks and unit semantics; deduplicate; convert units; resample each source; handle missing values; evaluate derived signals in declaration order. Definitions retain resolved clocks and source units when saved. The editor can explicitly refresh current source metadata. Independent clocks must be related explicitly before a common grid is constructed.
+
+`units.py` uses an explicit scale/offset registry. Unknown units support identity only; rpm/Hz requires declared rotational meaning. Absolute temperatures convert affinely; subtraction first converts compatible inputs and produces a delta unit. Delta scales and simple rates support proportional conversion. Absolute-temperature sums, products and ratios are rejected as ambiguous. Complex products carry an unknown inferred unit until the user specifies a numeric output-unit convention; this is intentionally a small engineering registry rather than dimensional algebra.
+
+`resampling.py` operates in seconds relative to the target grid origin. Source-clock origins are subtracted before sample seconds are added; Unix-sized per-sample additions cannot round away millisecond endpoints. Boundary matching uses a tolerance bounded by grid spacing and source-clock float resolution. Intersection, union and custom windows produce a regular grid of at most 1,000,000 rows / 10,000,000 values. Every method retains source coverage boundaries. Linear interpolation limits bracket span; previous value limits age; nearest requires a bounded bracket and distance. Original missing samples remain missing during resampling and may be filled in the following explicit step. Mean/min/max use left-closed `[g, g + interval)` windows. Duplicates use first, last, finite mean or error. Linear/previous filling anchors to source values rather than newly held values, so repeated processing cannot extend a hold's allowed age. Fixed/statistical fills remain inside source coverage; statistical values use original valid observations inside the output window and record the statistic, numeric result and sample count.
+
+`expressions.py` interprets a bounded AST (2,000 characters, 200 nodes). Only numeric constants, selected/earlier signal keys, arithmetic and documented numeric functions are accepted; Python evaluation, attributes, indexing, imports and arbitrary calls are unavailable. Compatible arithmetic converts values before computation. Scalar clip/minimum/maximum bounds use the first argument's unit. Division/domain failures yield missing values. diff/rate require adjacent values; rate divides by actual timestamp differences and leaves its first value missing. Output conversion copies quantities so it cannot mutate a selected input. Derived columns retain expression, dependency keys, stable source signal IDs, inferred/declared units, display metadata and float64 type.
+
+`WorkspaceStore.save_dataset` is shared by CSV imports and executions. Every execution creates a new ordinary Dataset folder, output `source.csv` and full-precision `series.npz`. NPZ adds aligned `provenance` uint8 and `observed` Boolean matrices; imports keep their existing format. Provenance distinguishes missing, measurement, interpolation, hold, aggregation, fixed/statistical fill, calculation, nearest and processed source. A derived point counts as observed only when its dependencies have original coverage. Aggregates require their finite contributing values to have original coverage. Chaining transformations preserves that mask. Dataset metadata embeds the complete definition snapshot, definition/revision/execution IDs, creation time, source IDs/names/hashes, simulation links, frozen source clock, output grid and quality summaries. Existing arrays are never rewritten. Relative output clocks are restored directly from the execution snapshot; UTC outputs store their own origin. Generated dataset time references cannot be edited independently of a new execution.
+
+Monitoring uses the ordinary analysis endpoint and saved result format. Generated inputs default to `observationPolicy=measured`: processed values are excluded from preprocessing and original coverage. Max-Z/PCA filter fit/calibration rows by the configured coverage policy and still need 30 eligible rows per partition; temporal models require a covered baseline to preserve sequence history. Explicit `processed` uses finite processed values as available input, while ordinary missing values still undergo the existing median/abstention policy. The selected policy and processed-input count are saved in the analysis; results retain execution identity. Explorer cursor samples expose processed status and provenance. Incident links continue to reference the fixed dataset/result IDs. Reports add source hashes, unit relations, expressions, processing policies and quality to the technical appendix. Transformed TripLens data retain source-session links without claiming that calculated columns satisfy the simulator's raw schema.
+
+| API | Purpose |
+|---|---|
+| `GET /api/units` | Explicit engineering-unit registry |
+| `GET/POST /api/workspaces/:id/transformations` | List/create saved definitions |
+| `GET/PATCH /api/transformations/:id` | Reopen/edit a definition; editing increments revision |
+| `POST /api/workspaces/:id/transformations/preview` | Compute an unsaved `{config}` without creating a dataset |
+| `POST /api/transformations/:id/preview` | Compute a saved definition |
+| `POST /api/transformations/:id/execute` | Create a new Dataset from the saved revision |
+| `GET /api/datasets/:id/sample` | Existing full-resolution sample plus provenance/observation flags for generated data |
+
+The React workspace restores definitions, allows per-source policy and expression editing, debounces actual previews and rejects stale responses. Save/generate actions validate with the same computation engine. An unchanged repeat execution reuses the definition revision and creates another dataset ID. `TransformationLineage` is shared by dataset details, analysis results and Incident sources. Existing Explorer plots, monitoring forms, incident timelines and report rendering remain the downstream path. [Acceptance records](transformation-validation.md) cover numerical, HTTP/restart, DOM and browser workflows.
 
 ## 持久化事件调查
 
