@@ -7,6 +7,7 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 | Module | Implementation | Responsibility |
 |---|---|---|
 | Workspace repository | `l5/workspace.py` | Workspace CRUD, dataset metadata, completed analysis jobs; SQLite with cascading ownership |
+| Persistent incident investigation | `l5/incidents.py`, `src/workspace/Incidents.tsx` | User-maintained incidents, source links, editable notes/evidence/hypotheses/conclusions, source-window plots and experiment reopening |
 | CSV ingestion | `l5/datasets.py` | Named numeric columns, timestamp/numeric/generated time, missing measurements, display previews |
 | Generic analysis | `l5/analysis.py`, `l5/monitoring.py` | Max-Z, PCA, EWMA, CUSUM, window CUSUM, DPCA, Adaptive Max-Z; chronological normal fit/calibration; full-resolution scoring |
 | Runtime model sessions | `l5/runtime.py`, `simulation/platform.py` | Configurable simulation, cached prefix evidence, user tools, fitted/known-model forecasts and optional recovery grid search |
@@ -21,6 +22,30 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
 `npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+
+## 持久化事件调查
+
+`WorkspaceStore.incidents` 使用同一个 SQLite 连接和事务机制。启动时以 `CREATE TABLE IF NOT EXISTS` 添加 `incidents`、`incident_links`、`incident_entries` 及索引，保留已有 Workspace、数据集、分析文件和模拟历史。
+
+`incidents` 保存独立 UUID、所属 Workspace、标题、说明、起止秒数、可选时间轴起点、调查状态、结论及创建／修改时间。`incident_entries` 保存可编辑的笔记、证据和候选解释；证据通过 `hypothesis_id` 与 `stance` 表达支持、反对或待判断关系，通过 `source_link_id` 指向事件来源。移除假设后，已有证据保留为未分配观察；解除来源关联后，人工记录保留。
+
+`incident_links` 只保存来源标识和选择器：数据集 ID、分析 ID、分析中的区间序号，或模拟会话 ID 与实验 ID。详情从已保存的分析和模拟实验读取峰值、变量、贡献度、工具输出及预测结果。相同来源重复添加会复用关联，多个区间可以同时引用一个分析。创建事件并关联初始来源在同一事务内完成。关联前检查实际存在性、数据集与分析的一致性，以及 Workspace 归属；证据关系只允许指向本事件中的假设和来源。
+
+检测区间不自动成为事件，也不自动合并。事件时间范围由用户维护。时间戳 CSV 创建的事件携带数据的 UTC 起点；每个来源的曲线和关键时间点保留自己的时间轴，系统不按列名或时间数值自动对齐数据集。
+
+| API | 用途 |
+|---|---|
+| `GET/POST /api/workspaces/:id/incidents` | 列表／创建；GET 支持 `status`、`q`、`start`、`end`，时间按相交区间筛选 |
+| `GET/PATCH /api/incidents/:id` | 恢复详情／修改信息、状态和结论；`archived` 状态用于归档 |
+| `GET/POST /api/incidents/:id/entries` | 查看／添加笔记、证据及候选解释 |
+| `PATCH/DELETE /api/incidents/:id/entries/:entryId` | 编辑／移除调查记录 |
+| `GET/POST /api/incidents/:id/links` | 查看／添加数据、分析、区间、模拟或实验关联 |
+| `DELETE /api/incidents/:id/links/:linkId` | 解除来源关联 |
+| `GET /api/simulations/:id/runs/:runId` | 读取已有实验的参数和计算结果 |
+
+Workspace 侧边栏的「事件」进入列表和详情。`IncidentLinkDialog` 为异常结果和 RuntimeWorkbench 提供创建／加入事件的交互。`Results.tsx` 使用分析 ID 与真实区间序号携带来源，事件详情复用 `SignalPlots`、分数曲线和贡献度组件。`#/workspaces/:wid/analysis/:analysisId/:intervalIndex` 重开来源窗口。`RuntimeWorkbench` 复用已完成的工具与干预记录；事件通过实验 ID 恢复观察窗口、候选假设和干预参数，当前候选解释也可保留其观察上下文。通用 CSV 事件独立可用，过程计算继续由已有运行时引擎承担。
+
+`tests/test_incidents.py` 实际导入普通 CSV、运行 Max-Z／PCA、把多个区间与第二份数据加入同一事件，编辑记录和结论，重启 HTTP 服务后恢复并继续修改；另一条流程生成 TripLens 会话、完成工具调用与干预实验，关联事件并在重启后继续调查。前端测试覆盖区间入口、事件编辑、证据关系、列表筛选和实验参数恢复。
 
 ## TripLens examples and research
 

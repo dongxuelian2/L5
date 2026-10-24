@@ -4,6 +4,7 @@ import { Plot, SignalPlots } from "./Charts";
 import { ResultView } from "./Results";
 import { AlgorithmControls } from "./AlgorithmControls";
 import { AnalysisComparison } from "./AnalysisComparison";
+import { IncidentsPage } from "./Incidents";
 const RuntimeWorkbench = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.RuntimeWorkbench })));
 import { dateLabel, number, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
@@ -132,8 +133,8 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
   </>;
 }
 
-function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh }: {
-  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void;
+function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex }: {
+  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number;
 }) {
   const dataset = datasets.find(d => d.id === selected) || datasets[0];
   const [config, setConfig] = useState<Config | null>(null), [result, setResult] = useState<AnalysisResult | null>(null);
@@ -173,7 +174,7 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
       <ErrorText error={error} /><div className="ws-inline ws-between"><span className="ws-muted">Every completed run is saved automatically to History.</span><button className="ws-primary" disabled={busy || loading || !config.signals.length}>{busy ? "Computing and saving…" : result ? "Run again with these parameters ↗" : "Run analysis and save ↗"}</button></div>
     </form>}
     {!config && <ErrorText error={error} />}
-    {result && resultDataset && <div ref={resultPanel} className="ws-result-anchor"><ResultView key={result.id} result={result} dataset={resultDataset} signalPicker={(selected, onChange) => <SignalPicker title="Raw signals in view" columns={resultDataset.metadata.columns.filter(c => result.config.signals.includes(c.name))} selected={selected} onChange={onChange} />} /></div>}
+    {result && resultDataset && <div ref={resultPanel} className="ws-result-anchor"><ResultView key={result.id} result={result} dataset={resultDataset} initialIntervalIndex={intervalIndex} signalPicker={(selected, onChange) => <SignalPicker title="Raw signals in view" columns={resultDataset.metadata.columns.filter(c => result.config.signals.includes(c.name))} selected={selected} onChange={onChange} />} /></div>}
   </>;
 }
 
@@ -206,8 +207,8 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
   }, [workspaceId, revision]);
   return <div className="ws-shell">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>WORKSPACE</span><small>2.0</small></a><nav aria-label="Application"><a href="#/" className="ws-active">Workspaces</a><a href="#/examples">TripLens examples ↗</a></nav><span className="ws-connection"><i />LOCAL ENGINE</span></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["analysis", "02", "Analysis", "↗"], ["history", "03", "History", jobs.length], ["simulations", "04", "Process simulator", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
-      <main className="ws-main"><ErrorText error={error} />{loading ? <p role="status">Opening workspace…</p> : workspace && (tab === "simulations" ? <Suspense fallback={<p>Opening process simulator…</p>}><RuntimeWorkbench key={workspaceId} workspaceId={workspaceId} simulationId={jobId} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> : tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId} /> : tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} refresh={refresh} /> : <DatasetPage workspaceId={workspaceId} datasets={datasets} refresh={refresh} selected={selected} setSelected={setSelected} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />)}</main>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["analysis", "02", "Analysis", "↗"], ["history", "03", "History", jobs.length], ["simulations", "04", "Process simulator", "↗"], ["incidents", "05", "事件", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
+      <main className="ws-main"><ErrorText error={error} />{loading ? <p role="status">Opening workspace…</p> : workspace && (tab === "incidents" ? <IncidentsPage workspaceId={workspaceId} incidentId={jobId} datasets={datasets} jobs={jobs} /> : tab === "simulations" ? <Suspense fallback={<p>Opening process simulator…</p>}><RuntimeWorkbench key={workspaceId} workspaceId={workspaceId} simulationId={jobId} runId={path[4] === "window" ? undefined : path[4]} initialWindow={path[4] === "window" ? { windowStart: Number(path[5]), asOf: Number(path[6]), hypothesis: path[7] } : undefined} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> : tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId} /> : tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> : <DatasetPage workspaceId={workspaceId} datasets={datasets} refresh={refresh} selected={selected} setSelected={setSelected} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />)}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>L5 / OPEN INDUSTRIAL ANALYSIS</span><span>CSV → BASELINE → ANALYSIS → HISTORY</span></footer>
   </div>;

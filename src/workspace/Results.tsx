@@ -1,7 +1,8 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plot, SignalPlots } from "./Charts";
 import { intervalWindow, keyFindings } from "./findings";
 import { dateLabel, number, timeLabel, type AnalysisResult, type Contribution, type ContributionMetric, type Dataset, type Interval } from "./types";
+import { IncidentLinkDialog } from "./IncidentLinkDialog";
 
 const metrics: Record<ContributionMetric, { label: string; description: string }> = {
   "history-contribution": { label: "History-based channel contribution", description: "Causal channel statistics use the observed sequence through this timestamp. State resets after insufficient observation coverage." },
@@ -9,8 +10,14 @@ const metrics: Record<ContributionMetric, { label: string; description: string }
   "squared-residual": { label: "PCA-Q squared residual", description: "Each signal’s squared standardized residual outside the PCA model. Contributions sum to the Q score." },
   "model-leverage": { label: "PCA-T² model-space leverage", description: "Absolute back-projection of the variance-scaled PCA scores. These descriptive values rank signals and do not sum to T²." },
 };
+const metricsZh: typeof metrics = {
+  "history-contribution": { label: "历史序列贡献度", description: "使用截至该时刻的已观测序列计算各变量贡献。观测覆盖不足时重置历史状态。" },
+  "absolute-robust-z": { label: "稳健 Z 分数绝对值", description: "与正常中心的绝对偏差除以拟合的稳健尺度；最大值是 Max-Z 分数。" },
+  "squared-residual": { label: "PCA-Q 残差平方贡献", description: "各变量在 PCA 模型外的标准化残差平方，贡献之和为 Q 分数。" },
+  "model-leverage": { label: "PCA-T² 模型空间贡献", description: "方差缩放后的 PCA 得分反投影绝对值，用于排列相关变量，贡献之和不等于 T²。" },
+};
 
-function Contributions({ values, signals, metric }: { values?: Contribution[]; signals: string[]; metric?: ContributionMetric }) {
+export function Contributions({ values, signals, metric, locale = "en" }: { values?: Contribution[]; signals: string[]; metric?: ContributionMetric; locale?: "en" | "zh" }) {
   const entries = values ?? signals.map(signal => ({ signal, value: null }));
   const maximum = values?.[0]?.value || 1;
   function rows(items: typeof entries, offset = 0) {
@@ -20,16 +27,17 @@ function Contributions({ values, signals, metric }: { values?: Contribution[]; s
     </li>);
   }
   return <div className="ws-contributions">
-    {metric && values && <><span className="ws-kicker">{metrics[metric].label}</span><p className="ws-muted">{metrics[metric].description}</p></>}
+    {metric && values && <><span className="ws-kicker">{(locale === "zh" ? metricsZh : metrics)[metric].label}</span><p className="ws-muted">{(locale === "zh" ? metricsZh : metrics)[metric].description}</p></>}
     <ol>{rows(entries.slice(0, 3))}</ol>
-    {entries.length > 3 && <details><summary>All {entries.length} signal contributions</summary><ol start={4}>{rows(entries.slice(3), 3)}</ol></details>}
-    {!values && <p className="ws-muted">This saved run retains signal rankings. Run again to save numerical contributions.</p>}
+    {entries.length > 3 && <details><summary>{locale === "zh" ? `查看全部 ${entries.length} 个变量的贡献` : `All ${entries.length} signal contributions`}</summary><ol start={4}>{rows(entries.slice(3), 3)}</ol></details>}
+    {!values && <p className="ws-muted">{locale === "zh" ? "此历史分析仅保存变量排序；重新运行分析可保存数值贡献。" : "This saved run retains signal rankings. Run again to save numerical contributions."}</p>}
   </div>;
 }
 
-export function ResultView({ result, dataset, signalPicker }: { result: AnalysisResult; dataset: Dataset; signalPicker: (selected: string[], onChange: (signals: string[]) => void) => ReactNode }) {
+export function ResultView({ result, dataset, signalPicker, initialIntervalIndex }: { result: AnalysisResult; dataset: Dataset; signalPicker: (selected: string[], onChange: (signals: string[]) => void) => ReactNode; initialIntervalIndex?: number }) {
   const [plotted, setPlotted] = useState(result.relatedSignals.slice(0, 3));
   const [allIntervals, setAllIntervals] = useState(false), [focused, setFocused] = useState<Interval | null>(null);
+  const [linking, setLinking] = useState<{ interval: Interval; mode: "new" | "existing" } | null>(null);
   const detail = useRef<HTMLElement>(null);
   const { summary } = result, axis = dataset.metadata.time;
   const findings = keyFindings(result.intervals);
@@ -37,6 +45,9 @@ export function ResultView({ result, dataset, signalPicker }: { result: Analysis
   const contributions = focused ? focused.contributions : result.signalContributions;
   const related = focused ? focused.signals : result.relatedSignals;
   const peakTime = focused?.peakTime ?? result.peakTime ?? result.times[result.scores.indexOf(summary.peakScore)];
+  useEffect(() => {
+    if (initialIntervalIndex !== undefined && result.intervals[initialIntervalIndex]) focus(result.intervals[initialIntervalIndex]);
+  }, [initialIntervalIndex]);
 
   function focus(interval: Interval) {
     setFocused(interval);
@@ -53,7 +64,7 @@ export function ResultView({ result, dataset, signalPicker }: { result: Analysis
   return <section className="ws-results" aria-label="Analysis result">
     <div className="ws-section-heading"><div><span className="ws-kicker">RESULT / {result.algorithmLabel}</span><h2>{result.name}</h2></div><button className="ws-outlined" onClick={exportResult}>Export result JSON ↓</button></div>
     <p className="ws-saved" role="status">● Saved to workspace · {dateLabel(result.completedAt)} · {number(result.durationMs)} ms</p>
-    <div className="ws-stats ws-result-stats"><div><strong className={result.intervals.length ? "ws-coral" : "ws-accent"}>{result.intervals.length}</strong><span>detected intervals · all events</span></div><div><strong>{summary.flaggedSamples.toLocaleString()} / {summary.analysisSamples.toLocaleString()}</strong><span>samples above threshold</span></div><div><strong>{number(result.threshold)}</strong><span>fixed threshold</span></div><div><strong>{summary.firstDetection === null ? "None" : timeLabel(axis, summary.firstDetection)}</strong><span>first detected sample</span></div></div>
+    <div className="ws-stats ws-result-stats"><div><strong className={result.intervals.length ? "ws-coral" : "ws-accent"}>{result.intervals.length}</strong><span>detected intervals</span></div><div><strong>{summary.flaggedSamples.toLocaleString()} / {summary.analysisSamples.toLocaleString()}</strong><span>samples above threshold</span></div><div><strong>{number(result.threshold)}</strong><span>fixed threshold</span></div><div><strong>{summary.firstDetection === null ? "None" : timeLabel(axis, summary.firstDetection)}</strong><span>first detected sample</span></div></div>
 
     {findings.length > 0 && <section aria-label="Key findings" className="ws-key-findings">
       <div className="ws-section-heading"><h3>Key findings</h3><span className="ws-muted">{findings.length} highlighted / {result.intervals.length} detected</span></div>
@@ -64,6 +75,7 @@ export function ResultView({ result, dataset, signalPicker }: { result: Analysis
         <p>{number(interval.end - interval.start)} s span · peak <b>{number(interval.peakScore)}</b> / threshold {number(result.threshold)}</p>
         <p className="ws-accent">{interval.signals.slice(0, 2).join(" · ")}</p>
         <button type="button" className="ws-outlined" onClick={() => focus(interval)} aria-pressed={focused === interval} aria-label={`Inspect interval ${number(interval.start)} to ${number(interval.end)} seconds`}>Inspect interval & curves ↗</button>
+        <div className="ws-inline incident-actions"><button type="button" onClick={() => setLinking({ interval, mode: "new" })}>创建事件</button><button type="button" onClick={() => setLinking({ interval, mode: "existing" })}>添加到已有事件</button></div>
       </article>)}</div>
     </section>}
 
@@ -83,7 +95,8 @@ export function ResultView({ result, dataset, signalPicker }: { result: Analysis
     </section>
 
     <div className="ws-section-heading"><h3>Complete anomaly record</h3><span className="ws-muted">{result.intervals.length} intervals · chronological order</span></div>
-    {result.intervals.length ? <div className="ws-table-scroll"><table><thead><tr><th>Start</th><th>End</th><th>Samples</th><th>Peak score</th><th>Related signals at peak</th><th>Curves</th></tr></thead><tbody>{(allIntervals ? result.intervals : result.intervals.slice(0, 30)).map((interval, i) => <tr key={i}><td>{timeLabel(axis, interval.start)}</td><td>{timeLabel(axis, interval.end)}</td><td>{interval.samples}</td><td className="ws-coral">{number(interval.peakScore)}</td><td>{interval.signals.join(" · ")}</td><td><button type="button" onClick={() => focus(interval)}>Inspect</button></td></tr>)}</tbody></table>{result.intervals.length > 30 && <button type="button" onClick={() => setAllIntervals(!allIntervals)}>{allIntervals ? "Show first 30" : `Show all ${result.intervals.length} intervals`}</button>}</div> : <p className="ws-notice">No confirmed alarm intervals. {summary.abstainedSamples ? `${summary.abstainedSamples} samples lack sufficient coverage and are excluded from normal/alarm decisions.` : "Observed scores did not meet the configured alarm rule."}</p>}
+    {result.intervals.length ? <div className="ws-table-scroll"><table><thead><tr><th>Start</th><th>End</th><th>Samples</th><th>Peak score</th><th>Related signals at peak</th><th>Curves / 事件</th></tr></thead><tbody>{(allIntervals ? result.intervals : result.intervals.slice(0, 30)).map((interval, i) => <tr key={i}><td>{timeLabel(axis, interval.start)}</td><td>{timeLabel(axis, interval.end)}</td><td>{interval.samples}</td><td className="ws-coral">{number(interval.peakScore)}</td><td>{interval.signals.join(" · ")}</td><td><div className="ws-inline incident-actions"><button type="button" onClick={() => focus(interval)}>Inspect</button><button type="button" onClick={() => setLinking({ interval, mode: "new" })}>创建事件</button><button type="button" onClick={() => setLinking({ interval, mode: "existing" })}>添加到已有事件</button></div></td></tr>)}</tbody></table>{result.intervals.length > 30 && <button type="button" onClick={() => setAllIntervals(!allIntervals)}>{allIntervals ? "Show first 30" : `Show all ${result.intervals.length} intervals`}</button>}</div> : <p className="ws-notice">No confirmed alarm intervals. {summary.abstainedSamples ? `${summary.abstainedSamples} samples lack sufficient coverage and are excluded from normal/alarm decisions.` : "Observed scores did not meet the configured alarm rule."}</p>}
     <details><summary>Saved model and parameters</summary><pre>{JSON.stringify({ config: result.config, model: result.model, summary: result.summary }, null, 2)}</pre></details>
+    {linking && <IncidentLinkDialog workspaceId={result.workspaceId || dataset.workspace_id} mode={linking.mode} onClose={() => setLinking(null)} source={{ kind: "interval", analysisId: result.id, datasetId: dataset.id, intervalIndex: result.intervals.indexOf(linking.interval) }} draft={{ title: `${dataset.name} · ${number(linking.interval.start)}–${number(linking.interval.end)}s 异常调查`, start: linking.interval.start, end: linking.interval.end, origin: axis.origin, description: `${result.algorithmLabel} 检出异常；峰值时间 ${timeLabel(axis, linking.interval.peakTime)}，相关变量：${linking.interval.signals.join("、")}。` }} />}
   </section>;
 }

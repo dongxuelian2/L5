@@ -1,10 +1,10 @@
-# L5 / Capability Restoration
+# L5 / Persistent Industrial Incident Investigation
 
 **Turn your industrial time series into a lasting analysis project.**
 
 [中文](README.md) · [Architecture](docs/architecture.md) · [TripLens video](video/README.md)
 
-L5 opens a local Workspace where you can import your own CSV, select signals and time windows, run anomaly detection, and reopen datasets and analysis history after restarting. **Process simulator** provides runtime process creation, investigation and intervention within each Workspace. **TripLens examples** retains the teaching demos and uses the same runtime investigation interface.
+L5 opens a local Workspace where you can import your own CSV, run anomaly detection, and organize intervals, analyses and model experiments into a persistent **Incident**. The incident workstation saves editable notes, evidence, hypotheses and conclusions so investigation can continue after restarting. **Process simulator** provides runtime process creation, investigation and intervention. **TripLens examples** uses the same runtime interface.
 
 ## Capabilities
 
@@ -13,6 +13,7 @@ L5 opens a local Workspace where you can import your own CSV, select signals and
 - Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, Dynamic PCA-Q/T² and experimental Adaptive Max-Z against an explicitly chosen normal baseline. Max-Z also supports one signal.
 - Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
 - Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
+- Create, edit, find and archive incidents. Associate multiple datasets, analyses and detection intervals; inspect source-window curves, peaks and contributions; maintain hypotheses with supporting or opposing evidence.
 - Store metadata in SQLite and keep original CSV, numeric arrays and result files on disk.
 
 ## Run locally
@@ -39,9 +40,19 @@ For development, run `npm run serve` and `npm run dev` in separate terminals. Vi
 4. Set an assumed-normal baseline and a later, disjoint analysis window. Inputs use seconds; timestamp datasets also show their UTC origin.
 5. Select an algorithm and parameters, then choose **Run analysis and save**.
 6. Inspect results. Use **History** to reopen a run and rerun its parameters.
-7. Restart the service and reopen the same project to continue.
+7. Choose **创建事件** (create incident) on an interval card or in the complete anomaly record. Edit the title, time range and description before saving.
+8. Add other intervals or algorithm results with **添加到已有事件** (add to existing incident). Save notes, hypotheses, evidence relationships and the current conclusion in the incident workstation.
+9. Restart the service, open **事件** (incidents) in the Workspace sidebar and continue the same investigation.
 
 The configured chronological split needs at least 30 fit and 30 calibration observations (default 70%/30%). The first partition fits preprocessing and the model; the second calibrates a fixed empirical threshold. Target data never select that threshold. Raw missing measurements remain missing in plots and are filled with fit-partition medians for computation. The original observation mask gates decisions: insufficient coverage or missing required channels produces abstain and resets temporal history. Configure persistence, sensor loss, noise and offset experiments, then compare saved runs in History. Review the baseline and choose data you believe are healthy.
+
+## Continuing an incident investigation
+
+Users create and maintain incidents. Several adjacent, overlapping or independently detected intervals can belong to one incident. Each source retains its own time axis; the incident's overall range is maintained by the user. The list supports status, title and intersecting time-range filters. Archived incidents remain available and can be reopened by changing their status.
+
+The workstation links to original analyses at the selected interval and shows the corresponding raw signals and score curve. Editable evidence can point to a source and support or oppose a candidate explanation. Notes, observation times, conclusions and all associations are stored in Workspace SQLite, using stable incident IDs. Forms have explicit save controls with service confirmation.
+
+RuntimeWorkbench can associate its current hypothesis, latest completed result or any saved experiment with an incident. The event displays existing tool outputs and intervention plots; returning to the simulation restores the recorded observation window, hypothesis and experiment parameters. Ordinary CSV investigations work independently of process models.
 
 ## Runtime process workflow
 
@@ -57,13 +68,13 @@ The assistant executes selected deterministic tools or routes keywords. Optional
 
 ## Persistent data
 
-The default directory is the Git-ignored `data/` folder. Use `L5_DATA_DIR` or:
+The default directory is the Git-ignored `data/` folder. Incident information, source references, records, evidence relationships and conclusions live in `workspace.sqlite3`, without browser storage. Startup adds the incident tables while retaining existing database records and data files. Use `L5_DATA_DIR` or:
 
 ```bash
 node scripts/python.mjs server.py --data-dir /path/to/l5-data
 ```
 
-Reuse the directory after restarting. Copy the entire directory to back up projects. Deleting a Workspace removes its datasets and generic analysis history. Simulation sessions and their experiments remain in the local simulator library with that Workspace association removed.
+Reuse the directory after restarting. Copy the entire directory to back up projects. Deleting a Workspace removes its incidents, investigation records, datasets and generic analysis history. Simulation sessions and their experiments remain in the local simulator library with that Workspace association removed.
 
 ## Examples and research
 
@@ -76,7 +87,7 @@ Statistical signal contributions describe deviations. Process evidence scores ar
 ## Verification
 
 ```bash
-npm run test:workspace   # CSV, algorithms, persistence and HTTP service restart
+npm run test:workspace   # CSV, algorithms, incident/model workflows and HTTP restart
 npm run check            # product/example tests, TypeScript and production build
 npm run test:research     # existing research tests separately
 npm run verify:artifacts # optional numerical artifact verification

@@ -4,7 +4,8 @@ import type { Analysis, Row, Trace } from "../lib/platform";
 import { downloadFile } from "../lib/download";
 import { api, message } from "./api";
 import { Plot } from "./Charts";
-import { dateLabel, number, type Dataset, type Workspace } from "./types";
+import { dateLabel, number, type Dataset, type Workspace, type RuntimeRun, type IncidentSource } from "./types";
+import { IncidentLinkDialog, type IncidentDraft } from "./IncidentLinkDialog";
 import "./workspace.css";
 import "./runtime.css";
 import { observationKey, useObservation, type Observation, type ObservationContext } from "./useObservation";
@@ -14,7 +15,7 @@ type Session = { id: string; title: string; config: SimulationConfig; rows: Row[
 type Catalog = { faults: Record<string, string>; defaults: SimulationConfig; signals: { key: string; tag: string }[]; actions: { id: string; name: string }[]; actionParameters: Record<string, { default: number; min: number; max: number }>; tools: string[] };
 type ForecastPath = { times: number[]; pressure: number[]; physicalPeak: number; trip: number | null; productionLoss: number; qualityLoss: number; utilityCost: number; safe: boolean; action?: string };
 type Forecast = { mode: string; hypothesis: string; observedThrough: number; at: number; horizon: number; threshold: number; fitError: number | null; baseline: ForecastPath; branches: ForecastPath[]; search?: { resolution: number; evaluated: number; actions: {id:string;name:string;latest:number|null;intervals:number[][]}[] } };
-type Run = { id: string; kind: string; request: Record<string, unknown>; result: unknown; createdAt: string };
+type Run = RuntimeRun;
 type Tab = "evidence" | "alarms" | "tools" | "interventions" | "compare" | "history";
 const labels: Record<Tab, string> = { evidence: "Evidence & topology", alarms: "Alarm history", tools: "Investigation tools", interventions: "Interventions", compare: "Compare sessions", history: "Saved experiments" };
 const fields: [keyof SimulationConfig, string, number, number, number][] = [
@@ -30,7 +31,7 @@ function exportJSON(name: string, value: unknown) {
   downloadFile(name, JSON.stringify(value, null, 2));
 }
 
-export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTab = "evidence" }: { workspaceId?: string; simulationId?: string; onSaved?: (d: Dataset) => void; initialTab?: Tab }) {
+export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWindow, onSaved, initialTab = "evidence" }: { workspaceId?: string; simulationId?: string; runId?: string; initialWindow?: { windowStart: number; asOf: number; hypothesis?: string }; onSaved?: (d: Dataset) => void; initialTab?: Tab }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null), [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null), [chosen, setChosen] = useState(simulationId || "");
   const [config, setConfig] = useState<SimulationConfig | null>(null), [title, setTitle] = useState("");
@@ -39,6 +40,7 @@ export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTa
   const [hypothesis, setHypothesis] = useState<{key:string;id:string} | null>(null), [tab, setTab] = useState<Tab>(initialTab), [runs, setRuns] = useState<Run[]>([]), [restore, setRestore] = useState<Run | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]), [saveWorkspace, setSaveWorkspace] = useState(workspaceId || "");
+  const [linking, setLinking] = useState<{ source: IncidentSource; draft: IncidentDraft } | null>(null);
   const sessionReady = Boolean(session && session.id === chosen);
   const context: ObservationContext | null = session && sessionReady ? { sessionId: session.id, asOf: time, windowStart } : null;
   const observation = useObservation(context);
@@ -66,6 +68,30 @@ export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTa
       .catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();
   }, [chosen]);
+  useEffect(() => {
+    if (runId && sessionReady && session) {
+      const run = runs.find(r => r.id === runId);
+      if (run) reopen(run);
+    }
+  }, [runId, session?.id, sessionReady]);
+  useEffect(() => {
+    if (initialWindow && sessionReady && session) {
+      setTime(initialWindow.asOf); setWindowStart(initialWindow.windowStart);
+      if (initialWindow.hypothesis) setHypothesis({ key: observationKey({ sessionId: session.id, ...initialWindow }), id: initialWindow.hypothesis });
+      setTab("evidence");
+    }
+  }, [session?.id, sessionReady, initialWindow?.asOf, initialWindow?.windowStart, initialWindow?.hypothesis]);
+  function reopen(r: Run) {
+    if (!session) return;
+    const asOf = Number(r.request.asOf ?? session.config.duration), start = Number(r.request.windowStart || 0);
+    setTime(asOf); setWindowStart(start);
+    if (typeof r.request.hypothesis === "string") setHypothesis({ key: observationKey({ sessionId: session.id, asOf, windowStart: start }), id: r.request.hypothesis });
+    setRestore(r); setTab(r.kind === "intervention" ? "interventions" : "tools");
+  }
+  function linkRun(r: Run) {
+    if (!session) return;
+    setLinking({ source: { kind: "run", simulationId: session.id, runId: r.id, ...(typeof r.request.hypothesis === "string" ? { hypothesis: r.request.hypothesis } : {}) }, draft: { title: `${session.title} · 调查`, start: Number(r.request.windowStart || 0), end: Number(r.request.asOf ?? session.config.duration), description: `${r.kind === "intervention" ? "干预实验" : "工具调查"} · ${session.title} · 观察至 ${String(r.request.asOf)}s。` } });
+  }
   async function create(e: FormEvent) {
     e.preventDefault(); if (!config) return; setBusy(true); setError(""); setNotice("");
     try {
@@ -105,6 +131,7 @@ export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTa
         <div className="ws-inline"><button disabled={!analysis} onClick={() => analysis && exportJSON(`${session.id}-t${analysis.observedThrough}.json`, { sessionId:session.id, title:session.title, hypothesis:currentHypothesis, analysis, rows:session.rows.filter(r => r.t >= analysis.windowStart && r.t <= analysis.observedThrough) })}>Export observed dossier JSON ↓</button><button disabled={!catalog} onClick={() => { const keys=["t", ...catalog!.signals.map(s=>s.key)]; downloadFile(`${session.id}-observations.csv`, keys.join(",")+"\n"+session.rows.filter(r=>r.t>=windowStart&&r.t<=time).map(r=>keys.map(k=>r[k]??"").join(",")).join("\n"), "text/csv"); }}>Export observations CSV ↓</button></div>
       </section>
       <nav className="runtime-tabs" aria-label="Process tools">{(Object.keys(labels) as Tab[]).map(t => <button key={t} className={t === tab ? "active" : ""} aria-pressed={tab === t} onClick={() => setTab(t)}>{labels[t]}</button>)}</nav>
+      <div className="ws-panel incident-runtime-actions"><h2>持续事件调查</h2>{(workspaceId || session.workspaceId) ? <><p>把当前工作假设、已完成的工具调查和干预实验保存到事件，后续可从事件返回此模拟会话。</p><div className="ws-inline incident-actions"><button disabled={!analysis || !currentHypothesis} onClick={() => setLinking({ source: { kind: "simulation", simulationId: session.id, hypothesis: currentHypothesis, asOf: time, windowStart }, draft: { title: `${session.title} · 调查`, start: windowStart, end: time, description: `工作假设：${catalog?.faults[currentHypothesis] || currentHypothesis}；观察窗口 ${windowStart}–${time}s。` } })}>将当前候选解释关联到事件</button>{runs[0] && <button onClick={() => linkRun(runs[0])}>关联最近一次已完成结果</button>}</div></> : <p>先将数据和过程模型保存到一个 Workspace，再关联持久事件。</p>}</div>
       {analysis?.diagnosis.status === "insufficient_data" && <p className="ws-notice">Not enough observed data for diagnosis. Include a stable 20-second baseline and at least four seconds of subsequent observations.</p>}
       {tab === "evidence" && displayedAnalysis && <EvidenceView incident={{rows:session.rows.filter(r=>r.t>=windowStart && r.t<=time)}} analysis={analysis ?? displayedAnalysis} time={time} hypothesis={currentHypothesis} onHypothesis={selectHypothesis} updating={!analysis} />}
       {tab === "alarms" && displayedAnalysis && <EvidenceResult pending={!analysis}><AlarmView analysis={analysis ?? displayedAnalysis} /></EvidenceResult>}
@@ -112,8 +139,9 @@ export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTa
       {tab === "tools" && catalog && <ToolConsole key={`${session.id}/${restore?.id || "new"}`} restore={restore} session={session} catalog={catalog} context={context} hypothesis={currentHypothesis} record={record} ready={Boolean(analysis)} />}
       {tab === "interventions" && catalog && <Interventions key={`${session.id}/${restore?.id || "new"}`} restore={restore} session={session} catalog={catalog} context={context} hypothesis={currentHypothesis} record={record} ready={Boolean(analysis)} />}
       {tab === "compare" && <SessionComparison session={session} sessions={sessions} context={context} analysis={analysis} />}
-      {tab === "history" && <section className="ws-panel"><h2>Saved model experiments & investigations</h2><p>Each record retains the observation cutoff, chosen hypothesis, parameters and calculated output.</p>{!runs.length && <p className="ws-notice">Invoke a tool or run an intervention to save an experiment.</p>}{runs.map(r => <details key={r.id}><summary>{r.kind} · {dateLabel(r.createdAt)} · as of {String(r.request.asOf)}s</summary><div className="ws-inline"><button onClick={() => exportJSON(`${r.id}.json`, r)}>Export result JSON ↓</button><button onClick={() => { setTime(Number(r.request.asOf)); setWindowStart(Number(r.request.windowStart || 0)); if (typeof r.request.hypothesis === "string") setHypothesis({key:observationKey({sessionId:session.id,asOf:Number(r.request.asOf),windowStart:Number(r.request.windowStart || 0)}),id:r.request.hypothesis}); setRestore(r); setTab(r.kind === "intervention" ? "interventions" : "tools"); }}>Reopen context & parameters ↗</button></div><details><summary>Saved inputs</summary><pre>{JSON.stringify(r.request,null,2)}</pre></details>{r.kind === "intervention" ? <ForecastView forecast={r.result as Forecast} /> : <pre>{JSON.stringify(r.result, null, 2)}</pre>}</details>)}</section>}
+      {tab === "history" && <section className="ws-panel"><h2>Saved model experiments & investigations</h2><p>Each record retains the observation cutoff, chosen hypothesis, parameters and calculated output.</p>{!runs.length && <p className="ws-notice">Invoke a tool or run an intervention to save an experiment.</p>}{runs.map(r => <details key={r.id}><summary>{r.kind} · {dateLabel(r.createdAt)} · as of {String(r.request.asOf)}s</summary><div className="ws-inline incident-actions"><button onClick={() => exportJSON(`${r.id}.json`, r)}>Export result JSON ↓</button><button onClick={() => reopen(r)}>Reopen context & parameters ↗</button>{(workspaceId || session.workspaceId) && <button onClick={() => linkRun(r)}>关联到事件</button>}</div><details><summary>Saved inputs</summary><pre>{JSON.stringify(r.request,null,2)}</pre></details><SavedRunView run={r} /></details>)}</section>}
     </>}
+    {linking && (workspaceId || session?.workspaceId) && <IncidentLinkDialog workspaceId={workspaceId || session!.workspaceId!} source={linking.source} draft={linking.draft} onClose={() => setLinking(null)} />}
   </div>;
 }
 
@@ -129,7 +157,7 @@ function ToolConsole({ session, catalog, context, hypothesis, record, restore, r
   const [tool, setTool] = useState(initial?.[0]?.tool || "inspect_signal_window"), [signal, setSignal] = useState(initial?.[0]?.args.signal || "valve"), [controller, setController] = useState(initial?.[0]?.args.controller || "TIC-101");
   const [comparison, setComparison] = useState("__all");
   const scope = useRunContext(context);
-  const [output, setOutput] = useState<{key:string;trace:Trace[];reply:string} | null>(null), [prompt, setPrompt] = useState("");
+  const [output, setOutput] = useState<{key:string;trace:Trace[];reply:string} | null>(() => restore && restore.kind !== "intervention" ? { key: observationKey({ sessionId: session.id, asOf: Number(restore.request.asOf ?? session.config.duration), windowStart: Number(restore.request.windowStart || 0) }), trace: (restore.result as { trace?: Trace[] }).trace || [], reply: (restore.result as { summary?: string }).summary || "" } : null), [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState({key:scope.key,busy:false,error:""});
   const busy = status.key === scope.key && status.busy, error = status.key === scope.key ? status.error : "";
   function calls() {
@@ -195,6 +223,12 @@ function ForecastView({ forecast }: {forecast:Forecast}) {
   for (const path of paths) for (const value of path.pressure) { domain[0] = Math.min(domain[0], value); domain[1] = Math.max(domain[1], value); }
   const axis = { kind:"numeric" as const, column:"t", origin:null, start:forecast.baseline.times[0], end:forecast.horizon };
   return <div className="runtime-forecast">{forecast.search && <><h3>Recovery window search</h3><p className="ws-muted">Grid resolution {forecast.search.resolution}s · {forecast.search.evaluated} simulated trials. Latest starts refer to tested grid points.</p><table><thead><tr><th>Action</th><th>Latest tested safe start</th><th>Safe tested intervals</th></tr></thead><tbody>{forecast.search.actions.map(a=><tr key={a.id}><td>{a.name}</td><td>{a.latest == null ? "No recoverable trip boundary" : `${a.latest}s`}</td><td>{a.intervals.map(i=>i.join("–")+"s").join(", ") || "None"}</td></tr>)}</tbody></table></>}<p className="ws-notice">{forecast.mode} model · {forecast.hypothesis} · observed through {forecast.observedThrough}s · action at {forecast.at}s · forecast to {forecast.horizon}s{forecast.fitError != null && ` · normalized fit error ${forecast.fitError}`}</p><div className="ws-table-scroll"><table><thead><tr><th>Branch</th><th>Max physical pressure (kPa)</th><th>Simulated limit crossing</th><th>Production loss (%)</th><th>Quality loss (pp)</th><th>Utility use (%·s)</th></tr></thead><tbody>{paths.map((p,i) => <tr key={i}><td>{p.action || "No intervention"}</td><td>{number(p.physicalPeak)}</td><td>{p.trip === null ? "None in horizon" : `${p.trip}s`}</td><td>{p.productionLoss}</td><td>{p.qualityLoss}</td><td>{p.utilityCost}</td></tr>)}</tbody></table></div>{paths.map((p,i) => <Plot key={i} title={`${p.action || "Baseline"} · physical pressure`} times={p.times} values={p.pressure} threshold={forecast.threshold} thresholdLabel="pressure limit" domain={domain} axis={axis} color={i ? "#b5ed9a" : "#e9927d"} />)}<p className="ws-muted">Conditional reduced-order forecasts; model mismatch is not bounded.</p></div>;
+}
+
+export function SavedRunView({ run }: { run: RuntimeRun }) {
+  if (run.kind === "intervention") return <ForecastView forecast={run.result as Forecast} />;
+  const result = run.result as { trace?: Trace[]; summary?: string; limitation?: string };
+  return <div className="incident-saved-run">{result.summary && <p className="ws-notice">{result.summary}</p>}{result.trace?.length ? <TraceView analysis={{ trace: result.trace } as Analysis} /> : <p>此记录没有工具输出。</p>}{result.limitation && <p className="ws-muted">{result.limitation}</p>}</div>;
 }
 
 function SessionComparison({ session, sessions, context, analysis }: {session:Session;sessions:Session[];context:ObservationContext;analysis:Observation|null}) {

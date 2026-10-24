@@ -1,4 +1,33 @@
 .ws-shell { min-height:100vh; background:#101410; color:#d5dace; font-size:12px; line-height:1.6; }
+.ws-shell textarea { background:#101410; border:1px solid #394333; border-radius:3px; color:#d5dace; padding:11px 12px; width:100%; min-width:0; resize:vertical; font:inherit; line-height:1.8; }
+.incident-dialog { position:fixed; inset:0; margin:auto; background:#151a15; color:#d5dace; border:1px solid #65765a; border-radius:6px; padding:28px; width:min(620px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); overflow:auto; box-shadow:0 20px 90px #0009; }
+.incident-dialog::backdrop { background:#060a06c9; }
+.incident-form { display:flex; flex-direction:column; gap:18px; }
+.incident-form .ws-section-heading { margin:0; }
+.incident-form .ws-primary { align-self:flex-start; }
+.incident-form .ws-form-grid { margin:0; }
+.incident-form p.ws-notice { margin:0!important; }
+.incident-workstation, .incident-dialog, .incident-runtime-actions { font-family:"IBM Plex Mono","Microsoft YaHei","PingFang SC",sans-serif; }
+.incident-nav { position:sticky; top:0; z-index:5; background:#101410; display:flex; flex-direction:row; flex-wrap:wrap; gap:24px; border-block:1px solid #30392d; padding:14px 0; margin:0 0 28px; color:#b5ed9a; }
+.incident-workstation .incident-filters { grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); }
+.incident-source-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:16px; }
+.incident-source { margin:0 0 8px; min-width:0; }
+.incident-source h3 { overflow-wrap:anywhere; }
+.incident-workstation .ws-panel>.ws-section-heading { margin:0 0 14px; }
+.incident-selected { border-color:#a7d28f; }
+.incident-actions { flex-wrap:wrap; gap:8px; margin-top:14px; }
+.incident-prose { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.9; margin-bottom:14px!important; }
+.incident-workstation h1 { overflow-wrap:anywhere; letter-spacing:-.6px; }
+.incident-evidence-columns { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; border-top:1px solid #30392d; margin-top:18px; }
+.incident-evidence-ref { display:flex; flex-direction:column; align-items:flex-start; text-align:left; white-space:normal!important; gap:6px; border-left:2px solid #65765a; width:100%; margin:8px 0; }
+.incident-evidence-ref span { color:#929e8b; font-size:11px; max-height:90px; overflow:auto; }
+.incident-timeline { list-style:none; padding:0; margin-top:18px; }
+.incident-timeline li { padding:12px 0 12px 18px; border-left:2px solid #44513d; display:flex; flex-wrap:wrap; align-items:center; gap:16px; }
+.incident-timeline span { color:#929e8b; }
+.incident-preview { scroll-margin-top:24px; }
+.incident-runtime-actions h2 { margin-bottom:10px; }
+.incident-workstation section, .incident-workstation form, .incident-preview-anchor { scroll-margin-top:64px; }
+@media(max-width:760px) { .incident-evidence-columns { grid-template-columns:1fr; } .incident-workstation .ws-section-heading { flex-wrap:wrap; } .incident-dialog { padding:20px; } }
 .ws-shell h1, .ws-shell h2, .ws-shell h3, .ws-shell p { margin:0; }
 .ws-shell h1 { font-size:clamp(27px,3.5vw,44px); font-weight:500; letter-spacing:-1.8px; line-height:1.2; margin:10px 0 14px; }
 .ws-shell h2 { font-size:17px; font-weight:500; letter-spacing:-.4px; }

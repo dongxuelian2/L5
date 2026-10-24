@@ -35,6 +35,7 @@ const { SignalPlots } = require('../src/workspace/Charts.tsx');
 const { ResultView } = require('../src/workspace/Results.tsx');
 const { ImportDataset } = require('../src/workspace/WorkspaceApp.tsx');
 const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
+const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -190,7 +191,7 @@ function button(text) { return [...container.querySelectorAll('button')].find(no
 async function setField(node,value) {
   assert.ok(node);
   await act(async()=>{
-    const prototype = node.tagName === 'SELECT' ? dom.window.HTMLSelectElement.prototype : dom.window.HTMLInputElement.prototype;
+    const prototype = node.tagName === 'SELECT' ? dom.window.HTMLSelectElement.prototype : node.tagName === 'TEXTAREA' ? dom.window.HTMLTextAreaElement.prototype : dom.window.HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(prototype,'value').set.call(node,String(value));
     node.dispatchEvent(new dom.window.Event(node.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true}));
   });
@@ -311,4 +312,167 @@ test('late session loads and old-session analyses cannot replace the selected se
   assert.equal(container.querySelector('.p-candidates'),null,'old session analysis cannot populate a new session');
   await debounceAnalysis(); const current=api.analyses.at(-1); assert.match(current.url,/simulations\/C\/analysis/);
   await resolveAnalysis(current); assert.ok(container.querySelector('.p-candidates'));
+});
+
+function incidentResult(id = 'incident-result') {
+  const intervals = [
+    { start: 340, end: 379, samples: 40, peakTime: 350, peakScore: 30, signals: names.slice(0, 3), contributions: names.slice(0, 3).map((signal, i) => ({ signal, value: 30 / (i + 1) })) },
+    { start: 510, end: 554, samples: 45, peakTime: 520, peakScore: 20, signals: names.slice(2, 5), contributions: names.slice(2, 5).map((signal, i) => ({ signal, value: 20 / (i + 1) })) },
+  ];
+  return { id, workspaceId: 'test', datasetId: 'incident-data', name: '反应器分析', algorithmLabel: 'Robust Max-Z', completedAt: '2026-10-24T00:00:00Z', createdAt: '2026-10-24T00:00:00Z', durationMs: 3,
+    config: { signals: names, analysisRange: [200, 699], baselineRange: [0, 199], datasetId: 'incident-data', algorithm: 'robust-maxz', alpha: .01 },
+    times: [200, 340, 350, 379, 510, 520, 554, 699], scores: [0, 15, 30, 10, 15, 20, 10, 0], threshold: 3, intervals, relatedSignals: names.slice(0, 3), signalContributions: intervals[0].contributions, contributionMetric: 'absolute-robust-z', peakTime: 350,
+    summary: { analysisSamples: 500, baselineSamples: 200, fitSamples: 140, calibrationSamples: 60, flaggedSamples: 85, peakScore: 30, firstDetection: 340, imputedValues: { analysis: 0 } }, model: {} };
+}
+const emptyIncident = () => ({ id: 'event-one', workspace_id: 'test', title: '反应器事件', description: '持续调查', status: 'open', start_time: 330, end_time: 560, time_origin: null, conclusion: '', created_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-24T00:00:00Z', entries: [], links: [] });
+function dialogField(label) {
+  const dialog = container.querySelector('dialog[open]'); assert.ok(dialog, 'modal is open');
+  const element = [...dialog.querySelectorAll('label')].find(n => n.textContent.startsWith(label));
+  assert.ok(element, `dialog field ${label} exists`); return element.querySelector('input,textarea,select');
+}
+function inputFor(label, within = container) {
+  const element = [...within.querySelectorAll('label')].find(n => n.textContent.startsWith(label));
+  assert.ok(element, `field ${label} exists`); return element.querySelector('input,textarea,select');
+}
+
+test('result interval cards and complete record create or join a persistent incident with editable event fields', async () => {
+  const result = incidentResult(), writes = [], saved = emptyIncident();
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/series?')) return response(seriesFor(url));
+    if (url === '/api/workspaces/test/incidents' && !options.body) return response({ incidents: [saved] });
+    writes.push({ url, method: options.method, body: JSON.parse(options.body) }); return response(saved);
+  };
+  await mount(React.createElement(ResultView, { result, dataset: dataset('incident-data'), signalPicker: () => null }));
+  const card = container.querySelector('.ws-finding');
+  const cardStart = Number(card.querySelector('button[aria-label]').getAttribute('aria-label').match(/interval (\d+)/)[1]);
+  await click([...card.querySelectorAll('button')].find(n => n.textContent === '创建事件'));
+  assert.equal(dialogField('开始时间').value, String(cardStart));
+  await setField(dialogField('事件标题'), '用户确认的事件');
+  await setField(dialogField('开始时间'), 320);
+  await setField(dialogField('事件说明'), '等待现场复核');
+  await click(button('创建并打开事件'));
+  assert.equal(writes[0].url, '/api/workspaces/test/incidents');
+  assert.equal(writes[0].body.title, '用户确认的事件');
+  assert.equal(writes[0].body.start_time, 320);
+  assert.equal(writes[0].body.description, '等待现场复核');
+  assert.deepEqual(writes[0].body.source, { kind: 'interval', analysisId: result.id, datasetId: 'incident-data', intervalIndex: result.intervals.findIndex(i => i.start === cardStart) });
+  assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
+  const row = container.querySelector('tbody tr');
+  await click([...row.querySelectorAll('button')].find(n => n.textContent === '添加到已有事件'));
+  assert.equal(dialogField('选择事件').value, saved.id);
+  await click(button('添加并打开事件'));
+  assert.equal(writes[1].url, '/api/incidents/event-one/links');
+  assert.equal(writes[1].body.intervalIndex, 0);
+});
+
+test('incident workstation edits notes, hypotheses, evidence relationships and conclusions, then reopens saved content and curves', async () => {
+  const result = incidentResult('incident-detail-analysis'), data = dataset('incident-data');
+  let saved = emptyIncident(), identity = 0;
+  saved.links = [{ id: 'source-one', incident_id: saved.id, kind: 'interval', reference_id: result.id, selector: '0', created_at: saved.created_at,
+    details: { title: result.name, analysisId: result.id, datasetId: data.id, algorithmLabel: result.algorithmLabel, analysisRange: result.config.analysisRange, intervalIndex: 0, interval: result.intervals[0], contributionMetric: result.contributionMetric } }];
+  const writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/series?')) return response(seriesFor(url));
+    if (url === `/api/analyses/${result.id}`) return response(result);
+    if (url === '/api/incidents/event-one' && options.method === 'GET') return response(saved);
+    const body = options.body ? JSON.parse(options.body) : {};
+    writes.push({ url, method: options.method, body });
+    if (url === '/api/incidents/event-one') saved = { ...saved, ...body };
+    else if (url.endsWith('/entries') && options.method === 'POST') saved = { ...saved, entries: [...saved.entries, { id: `entry-${++identity}`, incident_id: saved.id, created_at: saved.created_at, updated_at: saved.updated_at, ...body }] };
+    else if (options.method === 'PATCH') { const id = url.split('/').at(-1); saved = { ...saved, entries: saved.entries.map(e => e.id === id ? { ...e, ...body } : e) }; }
+    else throw new Error(`Unexpected incident operation ${url}`);
+    return response(saved);
+  };
+  await mount(React.createElement(IncidentDetail, { initial: structuredClone(saved), datasets: [data], jobs: [] }));
+  assert.ok(curve(names[0]), 'linked interval plots the raw dataset');
+  assert.match(container.querySelector('a[href*="/analysis/"]').getAttribute('href'), /incident-detail-analysis\/0$/);
+  await click(button('＋ 添加候选解释'));
+  await setField(dialogField('记录标题'), '冷却侧变化');
+  await setField(dialogField('记录内容'), '先核对冷却回路');
+  await click(button('保存调查记录'));
+  await click(button('＋ 添加证据'));
+  await setField(dialogField('记录标题'), '温度首先升高');
+  await setField(dialogField('记录内容'), '温度在区间开始前已偏离。');
+  await setField(dialogField('关联候选解释'), 'entry-1');
+  await setField(dialogField('证据关系'), 'support');
+  await setField(dialogField('观察时间'), 345);
+  await click(button('保存调查记录'));
+  const evidence = saved.entries.find(e => e.kind === 'evidence');
+  assert.equal(evidence.hypothesis_id, 'entry-1'); assert.equal(evidence.stance, 'support');
+  assert.equal(evidence.source_link_id, 'source-one'); assert.equal(evidence.observed_at, 345);
+  await click(button('＋ 添加笔记'));
+  await setField(dialogField('记录标题'), '现场复核'); await setField(dialogField('记录内容'), '已检查交接记录。');
+  await click(button('保存调查记录'));
+  const noteCard = [...container.querySelectorAll('article')].find(a => a.textContent.includes('现场复核'));
+  await click([...noteCard.querySelectorAll('button')].find(b => b.textContent === '编辑'));
+  await setField(dialogField('记录内容'), '已检查交接记录，等待冷却水记录。');
+  await click(button('保存调查记录'));
+  await setField(inputFor('事件标题'), '反应器持续调查');
+  await setField(inputFor('调查状态'), 'investigating');
+  await click(button('保存基本信息'));
+  await setField(inputFor('调查结论'), '暂时支持冷却侧变化，继续验证。');
+  await click(button('保存调查结论'));
+  assert.ok(writes.some(w => w.method === 'PATCH' && w.body.conclusion === '暂时支持冷却侧变化，继续验证。'));
+  await act(async () => root.unmount()); container.remove(); root = null;
+  await mount(React.createElement(IncidentsPage, { workspaceId: 'test', incidentId: saved.id, datasets: [data], jobs: [] }));
+  assert.equal(inputFor('事件标题').value, '反应器持续调查');
+  assert.equal(inputFor('调查结论').value, saved.conclusion);
+  assert.match(container.textContent, /等待冷却水记录/);
+  assert.match(container.textContent, /支持：冷却侧变化/);
+  assert.ok(curve(names[0]));
+});
+
+test('incident list filters by status, title and time using the workspace API', async () => {
+  const requests = [], incident = { ...emptyIncident(), analysis_count: 2, interval_count: 3 };
+  globalThis.fetch = async url => { requests.push(url); return response({ incidents: [incident] }); };
+  await mount(React.createElement(IncidentsPage, { workspaceId: 'test', datasets: [], jobs: [] }));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 220)));
+  assert.match(container.textContent, /2 个分析 · 3 个区间/);
+  await setField(inputFor('调查状态'), 'investigating');
+  await setField(inputFor('查找事件'), '反应器');
+  await setField(inputFor('相交区间起点'), 300);
+  await setField(inputFor('相交区间终点'), 600);
+  await act(async () => new Promise(resolve => setTimeout(resolve, 220)));
+  const query = new URL(requests.at(-1), 'http://localhost').searchParams;
+  assert.equal(query.get('status'), 'investigating'); assert.equal(query.get('q'), '反应器');
+  assert.equal(query.get('start'), '300'); assert.equal(query.get('end'), '600');
+  assert.equal(container.querySelector('.ws-history-row').getAttribute('href'), '#/workspaces/test/incidents/event-one');
+});
+
+test('saved runtime experiment reopens its observation and intervention parameters and links to an incident', async () => {
+  const api = runtimeAPI(), delegate = globalThis.fetch;
+  const savedBody = { asOf: 156, windowStart: 0, hypothesis: 'cooling_valve', mode: 'known', at: 162, horizon: 400, actions: ['bypass'], parameters: { bypassFlow: 63 } };
+  const run = { id: 'saved-trial', kind: 'intervention', request: savedBody, result: forecastFor(savedBody), createdAt: '2026-10-24T00:00:00Z' }, writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (url === '/api/simulations?workspaceId=test') return response({ simulations: [{ ...simulation('A'), workspaceId: 'test' }] });
+    if (url === '/api/simulations/A/runs') return response({ runs: [run] });
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [emptyIncident()] });
+    if (url === '/api/incidents/event-one/links') { writes.push(JSON.parse(options.body)); return response(emptyIncident()); }
+    return delegate(url, options);
+  };
+  await mount(React.createElement(RuntimeWorkbench, { workspaceId: 'test', simulationId: 'A', runId: run.id }));
+  await debounceAnalysis(); await resolveAnalysis(api.analyses.at(-1));
+  assert.equal(field('Observe through').value, '156'); assert.equal(field('Intervention starts at').value, '162');
+  assert.equal(field('Prediction ends at').value, '400'); assert.equal(field('Bypass cooling flow').value, '63');
+  assert.ok(container.querySelector('.runtime-forecast'), 'stored forecast opens without recomputation');
+  await click(button('关联最近一次已完成结果'));
+  await click([...container.querySelectorAll('dialog button')].find(b => b.textContent === '添加到已有事件'));
+  await click(button('添加并打开事件'));
+  assert.deepEqual(writes[0], { kind: 'run', simulationId: 'A', runId: 'saved-trial', hypothesis: 'cooling_valve' });
+  assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
+});
+
+test('restored tool output stays tied to its saved observation window after switching tabs', async () => {
+  const api = runtimeAPI(), delegate = globalThis.fetch;
+  const run = { id: 'saved-tools', kind: 'tools', request: { asOf: 93, windowStart: 0, hypothesis: 'cooling_valve', calls: [{ tool: 'inspect_signal_window', args: { signal: 'valve' } }] },
+    result: { trace: [{ index: 1, tool: 'inspect_signal_window', args: { signal: 'valve' }, result: { marker: 'saved-window-93' }, status: 'computed' }] }, createdAt: '2026-10-24T00:00:00Z' };
+  globalThis.fetch = async (url, options) => url === '/api/simulations/A/runs' ? response({ runs: [run] }) : delegate(url, options);
+  await mount(React.createElement(RuntimeWorkbench, { simulationId: 'A', runId: run.id }));
+  await debounceAnalysis(); await resolveAnalysis(api.analyses.at(-1));
+  assert.equal(isMasked(container.querySelector('.p-trace-result')), false);
+  assert.match(container.querySelector('.p-trace-result').textContent, /saved-window-93/);
+  await setField(field('Observe through'), 150); await debounceAnalysis(); await resolveAnalysis(api.analyses.at(-1));
+  assert.equal(isMasked(container.querySelector('.p-trace-result')), true);
+  await click(button('Evidence & topology')); await click(button('Investigation tools'));
+  assert.equal(isMasked(container.querySelector('.p-trace-result')), true, 'remounting cannot label a saved 93-second result as current 150-second evidence');
 });
