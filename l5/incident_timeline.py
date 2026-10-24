@@ -1,7 +1,7 @@
 """Incident views derived from saved sources, with explicit, compatible clocks.
 
 No detection is rerun here. Intervals retain their original result indices and
-scores. UTC clocks can align; relative clocks require the same source identity.
+scores. Relative clocks remain independent unless explicitly associated.
 """
 from __future__ import annotations
 
@@ -16,14 +16,12 @@ def origin_seconds(origin):
 
 def clock_for_key(store, key):
     if key.startswith('dataset:'):
-        dataset = store.dataset(key.split(':', 1)[1])
-        time = dataset['metadata']['time']
-        origin = time.get('origin')
-        simulation = dataset['metadata'].get('model', {}).get('simulationId')
-        axis_id = 'utc' if origin else 'simulation:' + simulation if simulation else key
-        return dict(key=key, axisId=axis_id, offset=origin_seconds(origin), label='UTC 绝对时间' if origin else dataset['name'])
+        return store.signals.clock(key.split(':', 1)[1])
     if key.startswith('simulation:'):
-        return dict(key=key, axisId=key, offset=0, label=store.runtime.get(key.split(':', 1)[1])['title'])
+        session = store.runtime.get(key.split(':', 1)[1])
+        if session.get('datasetId'):
+            return {**store.signals.clock(session['datasetId']), 'key': key}
+        return dict(key=key, axisId=key, offset=0, label=session['title'])
     if key.startswith('origin:'):
         return dict(key=key, axisId='utc', offset=origin_seconds(key[7:]), label='UTC 绝对时间')
     return dict(key=key, axisId=key, offset=0, label='事件独立时间轴')
@@ -31,7 +29,7 @@ def clock_for_key(store, key):
 
 def source_clock(store, source):
     detail = source['details']
-    key = 'simulation:' + detail['simulationId'] if detail.get('simulationId') else 'dataset:' + detail['datasetId']
+    key = 'dataset:' + detail['datasetId'] if detail.get('datasetId') else 'simulation:' + detail['simulationId']
     return clock_for_key(store, key)
 
 
@@ -40,10 +38,13 @@ def incident_clock(store, incident):
     return clock_for_key(store, key)
 
 
-def observed_spans(result, offset):
+def observed_spans(result, offset, gap_threshold=None):
     """Closed spans of evaluated samples; abstention gaps are never normal data."""
     spans, start, last = [], None, None
     for t, state in zip(result['times'], result.get('states', ['normal'] * len(result['times']))):
+        if start is not None and gap_threshold and t + offset - last > gap_threshold:
+            spans.append([start, last])
+            start = None
         if state == 'abstain':
             if start is not None:
                 spans.append([start, last])
@@ -169,7 +170,7 @@ def investigation(store, identity, selected=None):
         analyses.append(dict(id=analysis_id, result=result, axisId=clock['axisId'], offset=clock['offset'],
             datasetId=result['datasetId'], datasetName=datasets[result['datasetId']]['name'],
             scope='完整分析' if full else '已关联区间', linkId=(full or links[0])['id'], intervals=intervals,
-            observedSpans=observed_spans(result, clock['offset'])))
+            observedSpans=observed_spans(result, clock['offset'], datasets[result['datasetId']]['metadata']['quality']['gapThreshold'])))
 
     for entry in incident['entries']:
         link = link_by_id.get(entry['source_link_id'])

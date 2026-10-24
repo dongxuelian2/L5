@@ -31,11 +31,12 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.HTMLElement.prototype.scrollIntoView = function () {};
 dom.window.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 const { createRoot } = await import('react-dom/client');
-const { SignalPlots } = require('../src/workspace/Charts.tsx');
+const { Plot, SignalPlots } = require('../src/workspace/Charts.tsx');
 const { ResultView } = require('../src/workspace/Results.tsx');
 const { ImportDataset } = require('../src/workspace/WorkspaceApp.tsx');
 const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
+const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/SignalWorkspace.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -617,4 +618,152 @@ test('late report responses cannot replace a newer saved incident generation', a
   await act(async () => resolveOld({ ok: true, headers: { get: () => 'text/html' }, text: async () => '<html><body>旧结论</body></html>' }));
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /最新结论/);
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /旧结论/);
+});
+
+
+function foundationData() {
+  const sources = ['temperature', 'temperature-peer', 'pressure'].map((id, i) => {
+    const data = dataset(id, 11), name = i < 2 ? 'temp' : 'pressure';
+    const column = { id: 'signal-' + id, name, displayName: i < 2 ? 'Motor temperature' : 'Feed pressure', unit: i < 2 ? '°C' : 'kPa', category: i < 2 ? 'Temperature' : 'Pressure', device: i === 2 ? 'Pump B' : 'Motor A', tags: ['campaign'], logicalKey: i < 2 ? 'motor.temperature' : '', missing: 1, min: 1, max: 10 };
+    const q = { totalCount: 11, validCount: 10, finiteCount: 10, missing: 1, missingFraction: 1/11, invalidTimeMeasurements: 0, min: 1, max: 10, mean: 5, std: 2, missingSpans: [{ start: 4, end: 4, count: 1 }], availableSpans: [{ start: 0, end: 3, count: 4 }, { start: 5, end: 10, count: 6 }] };
+    data.metadata.columns = [column]; data.metadata.time = { kind: 'datetime', origin: '1970-01-01T00:16:40Z', column: 't', start: 0, end: 10 };
+    data.metadata.clock = { key: 'dataset:' + id, axisId: 'utc', offset: 1000, label: 'UTC absolute time', reference: { mode: 'native' } };
+    data.metadata.quality = { totalCount: 11, timedCount: 11, invalidTimeCount: 0, invalidTimes: [], start: 0, end: 10, typicalInterval: 1, gapThreshold: 5, gaps: [], gapCount: 0, irregularCount: 0, irregular: false, duplicateCount: 0, duplicates: [], signals: { [name]: q } };
+    return data;
+  });
+  const catalog = sources.map(d => ({ ...d.metadata.columns[0], datasetId: d.id, datasetName: d.name, workspaceId: 'test', source: 'CSV', time: d.metadata.time, clock: d.metadata.clock, quality: d.metadata.quality.signals[d.metadata.columns[0].name] }));
+  return { sources, catalog };
+}
+function foundationAPI(fixture, savedViews = [], defer = false) {
+  const requests = [], pending = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    requests.push({ url, body, method: options.method, signal: options.signal });
+    if (url.endsWith('/signals')) return response({ signals: fixture.catalog });
+    if (url.endsWith('/views') && !body) return response({ views: savedViews });
+    if (url.includes('/views') && body) return response({ ...body, id: 'saved-comparison', workspaceId: 'test', updatedAt: '2026-10-24T00:00:00Z' });
+    if (url.endsWith('/explore')) {
+      const window = { start: 1000, end: 1010, at: 1000, ...body.windows?.utc };
+      const result = { axes: body.signalIds.length ? [{ id: 'utc', label: 'UTC absolute time', origin: '1970-01-01T00:00:00Z', start: 1000, end: 1010, window }] : [], series: fixture.catalog.filter(s => body.signalIds.includes(s.id)).map(s => ({ signal: s, times: [window.start, window.end], nativeTimes: [window.start-1000, window.end-1000], values: [1, 10], segmentIds: [1, 2], sourceRows: 11, displayRows: 2 })) };
+      return defer ? new Promise(resolve => pending.push({ body, result, resolve })) : response(result);
+    }
+    if (url.endsWith('/cursor')) return response({ axisId: body.axisId, at: body.at, samples: body.signalIds.map((id, i) => ({ signalId: id, status: i === 2 ? 'outside' : 'measured', value: i === 2 ? null : 42.125, time: body.at+.25, nativeTime: body.at-1000+.25, sourceIndex: 5, deltaSeconds: .25, duplicateCount: 1 })) });
+    if (url.startsWith('/api/signals/') || url.endsWith('/time-reference')) return response({});
+    throw new Error('Unexpected foundation request: ' + url);
+  };
+  return { requests, pending };
+}
+
+test('signal catalog filters semantics, selects sources and saves metadata against stable IDs', async () => {
+  const fixture = foundationData(), api = foundationAPI(fixture);
+  const props = { workspaceId: 'test', datasets: fixture.sources, jobs: [], mode: 'signals', onChanged() {}, onAnalyze() {} };
+  await mount(React.createElement(SignalWorkspace, props));
+  await setField(field('Filter by device'), 'Motor A');
+  assert.equal(container.querySelectorAll('.signal-catalog tbody tr').length, 2);
+  await click(container.querySelectorAll('.signal-catalog input[type=checkbox]')[0]);
+  await click(container.querySelectorAll('.signal-catalog input[type=checkbox]')[1]);
+  await click(button('Explore selected signals'));
+  assert.match(window.location.hash, /explorer/);
+  await act(async () => root.render(React.createElement(SignalWorkspace, { ...props, mode: 'explorer' })));
+  assert.equal(container.querySelectorAll('.explorer-lane').length, 2);
+  const explorer = api.requests.filter(r => r.url.endsWith('/explore')).at(-1);
+  assert.deepEqual(explorer.body.signalIds, fixture.catalog.slice(0, 2).map(s => s.id));
+  await act(async () => root.render(React.createElement(SignalEditor, { signal: fixture.catalog[0], catalog: fixture.catalog, onClose() {}, onSaved() {} })));
+  await setField(field('Display name'), 'Bearing temperature');
+  await setField(field('Physical unit'), 'K');
+  await setField(field('Logical measurement key'), 'bearing.temperature');
+  await setField(field('Tags'), 'motor, bearing');
+  await click(button('Save signal metadata'));
+  const mutation = api.requests.at(-1);
+  assert.equal(mutation.url, '/api/signals/signal-temperature');
+  assert.equal(mutation.method, 'PATCH');
+  assert.equal(mutation.body.displayName, 'Bearing temperature');
+  assert.deepEqual(mutation.body.tags, ['motor', 'bearing']);
+  assert.ok(!('name' in mutation.body), 'source column remains immutable');
+});
+
+test('explorer restores saved windows, groups only compatible units and reads full-resolution cursor values', async () => {
+  const fixture = foundationData();
+  const saved = { id: 'view', workspaceId: 'test', name: 'Saved motor review', signalIds: fixture.catalog.map(s => s.id), windows: { utc: { start: 1002, end: 1008, at: 1005 } }, displayMode: 'overlay' };
+  const api = foundationAPI(fixture, [saved]), analyses = [];
+  await mount(React.createElement(SignalWorkspace, { workspaceId: 'test', datasets: fixture.sources, jobs: [], mode: 'explorer', onChanged() {}, onAnalyze: (...args) => analyses.push(args) }));
+  assert.equal(container.querySelectorAll('.explorer-lane').length, 2, 'two temperature sources overlay, pressure has its own axis scale');
+  assert.match(container.textContent, /Opened saved view: Saved motor review/);
+  assert.equal(field('Window start').value, '2');
+  const plots = api.requests.filter(r => r.url.endsWith('/explore')).length;
+  await setField(container.querySelector('input[type=range]'), 4);
+  await act(async () => new Promise(resolve => setTimeout(resolve, 110)));
+  assert.match(container.querySelector('.cursor-readout').textContent, /42.125/);
+  assert.match(container.querySelector('.cursor-readout').textContent, /Δ 0.25 s/);
+  assert.match(container.querySelector('.cursor-readout').textContent, /Outside source coverage/);
+  assert.equal(api.requests.filter(r => r.url.endsWith('/explore')).length, plots, 'cursor movement does not refetch display series');
+  await click(button('Save browsing view'));
+  const save = api.requests.findLast(r => r.url.includes('/views/') && r.body);
+  assert.equal(save.body.windows.utc.at, 1006);
+  assert.equal(save.body.displayMode, 'overlay');
+  assert.match(container.textContent, /Saved: Saved motor review/);
+  await click(button('Configure analysis for this window'));
+  assert.deepEqual(analyses[0], ['temperature', ['temp'], [2, 8]]);
+  const paths = container.querySelector('.explorer-lane svg').querySelectorAll('path');
+  assert.equal(paths.length, 2);
+  for (const path of paths) assert.equal((path.getAttribute('d').match(/M/g) || []).length, 2, 'missing boundaries break each source line');
+  await act(async () => root.render(React.createElement(Plot, {
+    title: 'Two independent temperature sources', times: [1000, 1010], values: [1, 2], segmentIds: [1, 1], axis: fixture.sources[0].metadata.time,
+    gaps: [{ start: 1002, end: 1008 }], overlays: [{ title: 'Interrupted source', times: [1000, 1010], values: [3, 4], segmentIds: [1, 2], color: '#fff' }],
+  })));
+  const independent = container.querySelectorAll('svg path');
+  assert.match(independent[0].getAttribute('d'), /L/, 'a peer sampling interruption must not break this continuously recorded source');
+  assert.equal((independent[1].getAttribute('d').match(/M/g) || []).length, 2, 'the interrupted peer retains its own gap');
+});
+
+test('quality problems open the corresponding original signal window and show measured statistics', async () => {
+  const fixture = foundationData(), opened = [];
+  await mount(React.createElement(QualityExplorer, { dataset: fixture.sources[0], open: (...args) => opened.push(args) }));
+  assert.match(container.textContent, /10 \/ 11/);
+  assert.match(container.textContent, /9.091%/);
+  await click(container.querySelector('.quality-issue'));
+  assert.deepEqual(opened[0], [['signal-temperature'], 4, 4]);
+  assert.equal(container.querySelector('svg [role=button]').getAttribute('aria-label'), 'Missing measurement: temp 4 to 4');
+});
+
+test('relative time relationship editor saves an explicit reference and signed offset', async () => {
+  const fixture = foundationData(), api = foundationAPI(fixture);
+  const relative = structuredClone(fixture.sources[0]);
+  relative.metadata.time.origin = null; relative.metadata.clock.reference = { mode: 'independent', offsetSeconds: 0 };
+  let updated = false;
+  await mount(React.createElement(TimeReferenceEditor, { dataset: relative, datasets: fixture.sources, onSaved: () => { updated = true; } }));
+  await setField(field('Time relationship'), 'reference');
+  await setField(field('Reference dataset'), fixture.sources[1].id);
+  await setField(field('Offset added'), -12.5);
+  await click(button('Save time relationship'));
+  assert.equal(updated, true);
+  assert.deepEqual(api.requests.at(-1).body, { mode: 'reference', offsetSeconds: -12.5, referenceDatasetId: 'temperature-peer' });
+});
+
+test('late explorer and cursor responses cannot replace a newer source window', async () => {
+  const fixture = foundationData();
+  const api = foundationAPI(fixture, [{ id: 'v', name: 'Review', signalIds: [fixture.catalog[0].id], windows: {}, displayMode: 'separate' }], true);
+  await mount(React.createElement(SignalWorkspace, { workspaceId: 'test', datasets: fixture.sources, jobs: [], mode: 'explorer', onChanged() {}, onAnalyze() {} }));
+  await act(async () => api.pending[0].resolve(response(api.pending[0].result)));
+  await setField(field('Window start'), 2);
+  await setField(field('Window end'), 8);
+  await click(button('Apply observation window'));
+  const older = api.pending.at(-1);
+  await click(container.querySelector('.explorer-signal-pool input[type=checkbox]'));
+  const newer = api.pending.at(-1);
+  await act(async () => newer.resolve(response(newer.result)));
+  await act(async () => older.resolve(response(older.result)));
+  assert.equal(container.querySelectorAll('.explorer-group').length, 0, 'unselected source cannot return from an old window request');
+  const deferred = [];
+  globalThis.fetch = (url, options) => new Promise(resolve => deferred.push({ body: JSON.parse(options.body), resolve }));
+  const series = fixture.catalog.slice(0, 1).map(signal => ({ signal }));
+  const axis = { id: 'utc', label: 'UTC', origin: '1970-01-01T00:00:00Z', start: 1000, end: 1010 };
+  await act(async () => root.render(React.createElement(CursorReadout, { workspaceId: 'test', axis, series, at: 1001 })));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 110)));
+  await act(async () => root.render(React.createElement(CursorReadout, { workspaceId: 'test', axis, series, at: 1007 })));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 110)));
+  await act(async () => deferred[1].resolve(response({ samples: [{ signalId: fixture.catalog[0].id, value: 77, status: 'measured', time: 1007, nativeTime: 7, deltaSeconds: 0, sourceIndex: 7, duplicateCount: 1 }] })));
+  await act(async () => deferred[0].resolve(response({ samples: [{ signalId: fixture.catalog[0].id, value: 11, status: 'measured', time: 1001, nativeTime: 1, deltaSeconds: 0, sourceIndex: 1, duplicateCount: 1 }] })));
+  assert.match(container.textContent, /77/);
+  assert.equal(container.querySelector('tbody td:nth-child(3)').textContent, '77');
 });

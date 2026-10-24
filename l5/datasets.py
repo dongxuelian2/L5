@@ -7,6 +7,8 @@ import csv
 import numpy as np
 import pandas as pd
 
+from .data_quality import cadence, segment_ids, summarize
+
 TIME_NAMES = {'time', 'timestamp', 'datetime', 'date', 't', '时间', '日期'}
 TIME_UNITS = {'seconds': 1, 'milliseconds': .001, 'minutes': 60, 'hours': 3600}
 
@@ -20,7 +22,7 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
             separator = csv.Sniffer().sniff(source[:65536], delimiters=',;\t|').delimiter
         except csv.Error:
             separator = ','
-        frame = pd.read_csv(StringIO(source), sep=separator)
+        frame = pd.read_csv(StringIO(source), sep=separator, skip_blank_lines=False)
     except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError) as error:
         raise ValueError(f'Unable to read CSV: {error}') from error
     frame.columns = [str(c).strip() for c in frame.columns]
@@ -39,26 +41,47 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
             raise ValueError('Time column does not exist in this CSV.')
         numeric = pd.to_numeric(frame[column], errors='coerce')
         kind = options.get('timeKind', 'auto')
-        if kind not in ('auto', 'numeric', 'datetime'):
-            raise ValueError('Choose numeric time or a date/time column.')
-        if kind == 'numeric' or (kind == 'auto' and numeric.notna().all()):
+        if kind not in ('auto', 'numeric', 'datetime', 'unix'):
+            raise ValueError('Choose numeric, Unix or date/time timestamps.')
+        if kind in ('numeric', 'unix') or (kind == 'auto' and numeric.notna().sum() >= max(1, len(frame) / 2)):
             unit = options.get('timeUnit', 'seconds')
             if unit not in TIME_UNITS:
                 raise ValueError('Unknown time unit.')
             times = numeric.to_numpy(dtype=float) * TIME_UNITS[unit]
-            if not np.isfinite(times).all():
-                raise ValueError('Numeric time column contains missing or invalid values.')
             time = {'kind': 'numeric', 'column': column, 'sourceUnit': unit, 'origin': None}
+            if kind == 'unix':
+                valid = times[np.isfinite(times)]
+                if not len(valid):
+                    raise ValueError('Time column needs at least one valid timestamp.')
+                origin = pd.to_datetime(float(valid.min()), unit='s', utc=True)
+                times = times - float(valid.min())
+                time.update(kind='unix', origin=origin.isoformat())
         else:
-            dates = pd.to_datetime(frame[column], errors='coerce', utc=True, format='mixed')
-            if dates.isna().any():
-                raise ValueError('Time column contains invalid dates. Choose numeric time or generated time instead.')
+            zone = options.get('timezone', 'UTC')
+            try:
+                pd.Timestamp('2000-01-01').tz_localize(zone)
+            except (ValueError, TypeError, KeyError) as error:
+                raise ValueError('Enter a valid timezone, such as UTC or Asia/Shanghai.') from error
+            def parse_date(value):
+                try:
+                    stamp = pd.Timestamp(value)
+                    return stamp.tz_localize(zone, ambiguous='NaT', nonexistent='NaT').tz_convert('UTC') if stamp.tzinfo is None else stamp.tz_convert('UTC')
+                except (ValueError, TypeError, OverflowError):
+                    return pd.NaT
+            dates = pd.to_datetime(frame[column], errors='coerce', utc=True, format='mixed') if zone == 'UTC' else pd.to_datetime(frame[column].map(parse_date), utc=True)
+            if dates.isna().all():
+                raise ValueError('Time column needs at least one valid date. Choose numeric time or generated time instead.')
             origin = dates.min()
             times = (dates - origin).dt.total_seconds().to_numpy()
-            time = {'kind': 'datetime', 'column': column, 'origin': origin.isoformat()}
+            time = {'kind': 'datetime', 'column': column, 'origin': origin.isoformat(), 'naiveTimezone': zone}
+    valid_time = np.isfinite(times)
+    if not valid_time.any():
+        raise ValueError('Time column needs at least one valid timestamp.')
+    invalid_times = [dict(row=int(i) + 2, raw=str(frame.iloc[i][column])) for i in np.flatnonzero(~valid_time)]
+    source_times = times.copy()
+    times = times[valid_time]
     order = np.argsort(times, kind='stable')
     if not np.array_equal(order, np.arange(len(frame))):
-        frame = frame.iloc[order].reset_index(drop=True)
         times = times[order]
         notes.append('Rows were sorted by time before saving.')
     columns, arrays, ignored = [], [], []
@@ -68,21 +91,30 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
         values = pd.to_numeric(frame[name], errors='coerce').to_numpy(dtype=float)
         values[~np.isfinite(values)] = np.nan
         valid = values[np.isfinite(values)]
-        if not len(valid):
+        if not len(valid) and frame[name].dtype.kind not in 'fiu':
             ignored.append(name)
             continue
         columns.append({'name': name, 'missing': int(np.isnan(values).sum()),
-                        'min': float(valid.min()), 'max': float(valid.max())})
+                        'min': float(valid.min()) if len(valid) else None, 'max': float(valid.max()) if len(valid) else None})
         arrays.append(values)
     if not arrays:
         raise ValueError('CSV needs at least one numeric signal besides the time column.')
-    data = np.column_stack(arrays)
-    missing = int(np.isnan(data).sum())
+    source_data = np.column_stack(arrays)
+    data = source_data[valid_time][order]
+    missing = int(np.isnan(source_data).sum())
     if missing:
         notes.append(f'{missing} missing / nonnumeric measurements will use baseline medians during analysis.')
     time.update({'start': float(times[0]), 'end': float(times[-1]), 'unit': 'seconds'})
+    if invalid_times:
+        notes.append(f'{len(invalid_times)} rows have invalid / missing time. They remain in the original CSV and quality counts; timed plots and analysis omit them.')
+        for issue in invalid_times:
+            row = issue['row'] - 2
+            neighbors = np.flatnonzero(np.isfinite(source_times[:row]))
+            issue['nearbyTime'] = float(source_times[neighbors[-1]]) if len(neighbors) else float(times[0])
+    quality = summarize(times, data, [c['name'] for c in columns], source_values=source_data, invalid_times=invalid_times)
+    time.update({k: quality[k] for k in ('typicalInterval', 'irregularCount', 'duplicateCount', 'invalidTimeCount', 'gapCount')})
     metadata = {'rowCount': len(frame), 'columns': columns, 'sourceColumns': list(frame.columns),
-                'ignoredColumns': ignored, 'time': time, 'missingCount': missing, 'notes': notes}
+                'ignoredColumns': ignored, 'time': time, 'missingCount': missing, 'notes': notes, 'quality': quality}
     boundary = min(len(times) - 2, max(99, int(len(times) * .2) - 1))
     if boundary >= 0:
         metadata['suggestedRanges'] = {'baselineRange': [float(times[0]), float(times[boundary])],
@@ -90,7 +122,7 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
     return metadata, times, data
 
 
-def series_preview(times: np.ndarray, data: np.ndarray, names: list[str], limit: int = 1600) -> dict:
+def series_preview(times: np.ndarray, data: np.ndarray, names: list[str], limit: int = 1600, *, gap_threshold=None) -> dict:
     """Display downsampling only; analysis always uses all selected source rows."""
     # Keep per-channel extrema so short spikes survive an overview plot.
     if len(times) <= limit:
@@ -108,6 +140,9 @@ def series_preview(times: np.ndarray, data: np.ndarray, names: list[str], limit:
                 if len(valid):
                     keep.update((int(valid[np.argmin(data[valid, col])]), int(valid[np.argmax(data[valid, col])])))
         indexes = np.array(sorted(keep))
-    return {'times': times[indexes].tolist(), 'values': {
+    gap_threshold = gap_threshold or cadence(times)['gapThreshold']
+    return {'times': times[indexes].tolist(), 'segmentIds': {
+        name: segment_ids(times, data[:, i], gap_threshold)[indexes].tolist() for i, name in enumerate(names)
+    }, 'values': {
         name: [float(v) if np.isfinite(v) else None for v in data[indexes, i]] for i, name in enumerate(names)
     }, 'sourceRows': len(times), 'displayRows': len(indexes)}

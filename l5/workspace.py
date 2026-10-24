@@ -40,6 +40,8 @@ class WorkspaceStore:
         self.runtime = SimulationService(self)
         from .incidents import IncidentService
         self.incidents = IncidentService(self)
+        from .signals import SignalWorkspace
+        self.signals = SignalWorkspace(self)
 
     @contextmanager
     def connect(self):
@@ -106,16 +108,18 @@ class WorkspaceStore:
         with self.connect() as db:
             return [self.dataset_row(r) for r in db.execute('SELECT * FROM datasets WHERE workspace_id=? ORDER BY created_at DESC', (workspace_id,))]
 
-    @staticmethod
-    def dataset_row(row) -> dict:
-        return {**dict(row), 'metadata': json.loads(row['metadata'])}
+    def dataset_row(self, row) -> dict:
+        return self.signals.project({**dict(row), 'metadata': json.loads(row['metadata'])})
 
     def dataset(self, identity: str) -> dict:
+        return self.signals.project(self.base_dataset(identity))
+
+    def base_dataset(self, identity: str) -> dict:
         with self.connect() as db:
             row = db.execute('SELECT * FROM datasets WHERE id=?', (identity,)).fetchone()
         if row is None:
             raise KeyError('Dataset not found.')
-        return self.dataset_row(row)
+        return {**dict(row), 'metadata': json.loads(row['metadata'])}
 
     def import_dataset(self, workspace_id: str, body: dict, *, model=None) -> dict:
         self.workspace(workspace_id)
@@ -138,6 +142,7 @@ class WorkspaceStore:
             np.savez_compressed(folder / 'series.npz', times=times, values=values)
             with self.connect() as db:
                 db.execute('INSERT INTO datasets VALUES (?,?,?,?,?)', (identity, workspace_id, name, json.dumps(metadata), stamp))
+                self.signals.register(dict(id=identity, metadata=metadata), db)
                 db.execute('UPDATE workspaces SET updated_at=? WHERE id=?', (stamp, workspace_id))
         except Exception:
             shutil.rmtree(folder)
@@ -158,7 +163,8 @@ class WorkspaceStore:
         mask = (times >= (start if start is not None else times[0])) & (times <= (end if end is not None else times[-1]))
         if not mask.any():
             raise ValueError('No samples in this time range.')
-        return series_preview(times[mask], values[mask][:, [columns.index(s) for s in signals]], signals)
+        return series_preview(times[mask], values[mask][:, [columns.index(s) for s in signals]], signals,
+                              gap_threshold=dataset['metadata']['quality']['gapThreshold'])
 
     def jobs(self, workspace_id: str) -> list[dict]:
         self.workspace(workspace_id)

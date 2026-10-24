@@ -6,7 +6,10 @@ from html import escape
 import json
 import math
 
+import numpy as np
+
 from .incident_timeline import investigation
+from .data_quality import segment_ids
 
 
 STATUS = {'open': '待调查', 'investigating': '调查中', 'resolved': '已形成结论', 'archived': '已归档'}
@@ -31,7 +34,7 @@ def timestamp(value, axis=None):
     if value is None:
         return '未确定'
     if axis and axis.get('origin'):
-        return datetime.fromtimestamp(value, timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', ' UTC').replace('T', ' ')
+        return datetime.fromtimestamp(value, timezone.utc).isoformat(timespec='milliseconds').replace('T', ' ', 1).replace('+00:00', ' UTC')
     return n(value) + ' s'
 
 
@@ -103,13 +106,15 @@ def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit=
                 indices.update((min(finite, key=lambda i: values[i]), max(finite, key=lambda i: values[i])))
             if missing:
                 indices.update((missing[0], missing[-1]))
-        points, connected = [], False
+        points, connected, previous_segment = [], False, None
+        segments = line.get('segmentIds')
         for i in sorted(indices):
             if values[i] is None:
                 connected = False
                 continue
-            points.append(f'{"L" if connected else "M"}{x(times[i]):.2f},{y(values[i]):.2f}')
+            points.append(f'{"L" if connected and (segments is None or previous_segment == segments[i]) else "M"}{x(times[i]):.2f},{y(values[i]):.2f}')
             connected = True
+            previous_segment = segments[i] if segments is not None else None
         svg.append(f'<path d="{" ".join(points)}" fill="none" stroke="{line.get("color", "#246b63")}" stroke-width="1.4"/>')
     # Elapsed seconds keep long UTC labels out of the plot. Caption gives UTC origin.
     for fraction in (0, .25, .5, .75, 1):
@@ -169,6 +174,10 @@ def render_report(store, identity):
     incident, workspace = view['incident'], view['workspace']
     axes = {a['id']: a for a in view['axes']}
     datasets = {d['id']: d for d in view['datasets']}
+    analysis_datasets = {a['id']: a['datasetId'] for a in view['analyses']}
+    def signal_label(dataset_id, name):
+        column = next((c for c in datasets[dataset_id]['metadata']['columns'] if c['name'] == name), {})
+        return (column.get('displayName') or name) + (f' ({column["unit"]})' if column.get('unit') else '')
     primary = axes[view['primaryAxisId']]
     from .incident_timeline import incident_clock
     offset = incident_clock(store, incident)['offset']
@@ -178,7 +187,7 @@ def render_report(store, identity):
         f'<div class="brand">L5 / 工业运行分析与故障调查</div><h1>事件调查报告<br>{e(incident["title"])}</h1>',
         f'<div class="meta"><span>事件编号：{e(identity)}</span><span>调查状态：{e(STATUS[incident["status"]])}</span><span>Workspace：{e(workspace["name"])}</span><span>生成时间：{e(recorded_time(view["generatedAt"]))}</span><span>事件开始：{e(timestamp(start, primary))}</span><span>事件结束：{e(timestamp(end, primary))}</span><span>时间轴：{e(primary["label"])}</span><span>内容更新：{e(recorded_time(incident["updated_at"]))}</span></div>',
         '<div class="summary"><h3>事件概述</h3>' + prose(incident['description']) + '<h3>已记录结论</h3>' + prose(incident['conclusion']) + '</div>',
-        '<p class="muted">本报告读取已持久化的事件、分析结果、原始测量和调查记录。未填写的判断保持未记录。不同算法分数使用各自原始尺度；贡献度表示统计关联。数值时间轴仅在同一数据集或同一模拟会话内对齐，带时区的数据按 UTC 对齐。</p>',
+        '<p class="muted">本报告读取已持久化的事件、分析结果、原始测量和调查记录。未填写的判断保持未记录。不同算法分数使用各自原始尺度；贡献度表示统计关联。带时区的数据按 UTC 对齐；相对时间源使用已保存的显式参考与偏移，否则保留独立时钟。</p>',
         '<h2>1. 事件时间线</h2>']
     for axis in view['axes']:
         events = [v for v in view['events'] if v['axisId'] == axis['id'] and v['start'] is not None]
@@ -189,7 +198,7 @@ def render_report(store, identity):
         for item in events:
             detail = item.get('content', '')
             if item['kind'] == 'alarm':
-                detail = f'峰值 {timestamp(item["peakTime"], axis)}；原始分数 {n(item["peakScore"])}；变量：' + ', '.join(item['signals'])
+                detail = f'峰值 {timestamp(item["peakTime"], axis)}；原始分数 {n(item["peakScore"])}；变量：' + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
             if item.get('observationWindow'):
                 detail = '观察窗口 ' + ' - '.join(n(v) for v in item['observationWindow']) + ' s；' + str(item.get('hypothesis') or '')
                 if item.get('actionAt') is not None:
@@ -219,7 +228,7 @@ def render_report(store, identity):
              e(timestamp(min((i['start'] for i in a['intervals']), default=None), axis)) + '<br>' + e(timestamp(max(a['intervals'], key=lambda i: i['peakScore'])['peakTime'], axis) if a['intervals'] else '未检出'),
              str(len(a['intervals'])) + ' / ' + n(sum(i['end']-i['start'] for i in a['intervals'])) + ' s',
              n(max((i['peakScore'] for i in a['intervals']), default=None)) + ' / ' + n(a['result']['threshold']),
-             e(', '.join(a['result']['relatedSignals'][:5]))] for a in members]))
+             e(', '.join(signal_label(a['datasetId'], s) for s in a['result']['relatedSignals'][:5]))] for a in members]))
         spread = n(group['firstAlarmSpread']) + ' s' if group['firstAlarmSpread'] is not None else '不适用（需要两个有报警的分析）'
         parts.append(f'<p>首次报警：{e(timestamp(group["firstDetection"], axis))}；有报警的分析间首次报警时间差：{e(spread)}。</p>')
         if len(members) > 1:
@@ -235,7 +244,8 @@ def render_report(store, identity):
         parts.append(f'<h3 id="analysis-{a["id"]}">{e(result["name"])} · {e(result["algorithmLabel"])}</h3>')
         times = [t + a['offset'] for t in result['times']]
         scores = [None if result.get('states', [])[i:i+1] == ['abstain'] else v for i, v in enumerate(result['scores'])]
-        parts.append(chart('异常分数与固定阈值 · ' + a['datasetName'], times, [dict(label=result['algorithmLabel'], values=scores, color='#b45742')],
+        segments = segment_ids(np.asarray(times), np.asarray([np.nan if v is None else v for v in scores]), datasets[a['datasetId']]['metadata']['quality']['gapThreshold']).tolist()
+        parts.append(chart('异常分数与固定阈值 · ' + a['datasetName'], times, [dict(label=result['algorithmLabel'], values=scores, segmentIds=segments, color='#b45742')],
                            axis=axis, threshold=result['threshold'], intervals=a['intervals'], unit='算法原始分数（各方法尺度独立）'))
         summary = result['summary']
         parts.append(f'<p class="muted">拟合 {summary["fitSamples"]} 样本；校准 {summary["calibrationSamples"]} 样本；分析 {summary["analysisSamples"]} 样本；报警 {summary["flaggedSamples"]} 样本；abstain {summary.get("abstainedSamples", 0)} 样本。以上为完整分析指标。</p>')
@@ -244,7 +254,7 @@ def render_report(store, identity):
         peak = max(a['intervals'], key=lambda i: i['peakScore']) if a['intervals'] else None
         contributions = (peak or {}).get('contributions') or result.get('signalContributions', [])
         parts.append('<h4>关键变量 · ' + e(METRIC.get(result.get('contributionMetric'), '已保存变量排序')) + '</h4>')
-        parts.append(table(['变量', '贡献（保留本算法含义）'], [[e(c['signal']), n(c['value'])] for c in contributions[:10]]))
+        parts.append(table(['变量', '贡献（保留本算法含义）'], [[e(signal_label(a['datasetId'], c['signal'])), n(c['value'])] for c in contributions[:10]]))
         parts.append('<p class="muted">贡献值来自最高原始分数的关联峰值；没有关联报警时使用完整分析峰值。不同方法的贡献值不直接相加或排序比较。</p>')
         native_range = result['config']['analysisRange']
         if a['intervals'] and a['scope'] != '完整分析':
@@ -256,8 +266,9 @@ def render_report(store, identity):
             series = store.series(a['datasetId'], signals, *native_range)
             for signal in signals:
                 unit = next((c.get('unit') for c in datasets[a['datasetId']]['metadata']['columns'] if c['name'] == signal), None)
-                parts.append(chart('原始变量趋势 · ' + signal, [t+a['offset'] for t in series['times']],
-                    [dict(label=signal, values=series['values'][signal])], axis=axis, intervals=a['intervals'], unit=unit or '原始值（单位按原列名；未另行标注）'))
+                label = signal_label(a['datasetId'], signal)
+                parts.append(chart('原始变量趋势 · ' + label, [t+a['offset'] for t in series['times']],
+                    [dict(label=label, values=series['values'][signal], segmentIds=series['segmentIds'][signal])], axis=axis, intervals=a['intervals'], unit=unit or '原始值（源数据未提供单位）'))
             parts.append(f'<p class="muted">{e(a["datasetName"])}；显示 {series["displayRows"]} / {series["sourceRows"]} 个样本，长序列使用保留极值的显示采样；检测结果使用完整数据。</p>')
     # Standalone dataset links still contribute genuine observed charts to a report without analyses.
     analyzed = {a['datasetId'] for a in view['analyses']}
@@ -268,7 +279,9 @@ def render_report(store, identity):
         clock = clock_for_key(store, 'dataset:' + dataset['id'])
         series = store.series(dataset['id'])
         for signal, values in series['values'].items():
-            parts.append(chart(dataset['name'] + ' · ' + signal, [t+clock['offset'] for t in series['times']], [dict(label=signal, values=values)], axis=axes.get(clock['axisId'])))
+            label = signal_label(dataset['id'], signal)
+            unit = next((c.get('unit') for c in dataset['metadata']['columns'] if c['name'] == signal), '')
+            parts.append(chart(dataset['name'] + ' · ' + label, [t+clock['offset'] for t in series['times']], [dict(label=label, values=values, segmentIds=series['segmentIds'][signal])], axis=axes.get(clock['axisId']), unit=unit or '原始值（源数据未提供单位）'))
     parts.append('<h2>4. 调查证据与候选解释</h2>')
     entries = incident['entries']
     for entry in sorted(entries, key=lambda v: (v['kind'] != 'hypothesis', v['created_at'])):
@@ -327,7 +340,7 @@ def render_report(store, identity):
     evidence = [v for v in entries if v['kind'] == 'evidence']
     parts.append('<p>已保存证据：' + ('、'.join(f'<a href="#entry-{v["id"]}">{e(v["title"])}</a>（{e(STANCE[v["stance"]])}）' for v in evidence) or '尚未记录') + '</p>')
     parts.append('<h2>附录. 数据、参数与关联记录</h2>')
-    parts.append(table(['数据集 / 标识', '采样与时间元数据', '变量'], [[e(d['name']) + '<br>' + e(d['id']), e(json.dumps(d['metadata']['time'], ensure_ascii=False)) + '<br>' + str(d['metadata']['rowCount']) + ' 行', e('、'.join(c['name'] for c in d['metadata']['columns']))] for d in view['datasets']]))
+    parts.append(table(['数据集 / 标识', '采样与时间元数据', '变量 / 原始列名'], [[e(d['name']) + '<br>' + e(d['id']), e(json.dumps(dict(source=d['metadata']['time'], browsingClock=d['metadata']['clock']), ensure_ascii=False)) + '<br>' + str(d['metadata']['rowCount']) + ' 行', e('、'.join(signal_label(d['id'], c['name']) + ' / ' + c['name'] for c in d['metadata']['columns']))] for d in view['datasets']]))
     for a in view['analyses']:
         parts.append('<h3>' + e(a['result']['name']) + '</h3><p>分析 ID：' + e(a['id']) + '；贡献度语义：' + e(METRIC.get(a['result'].get('contributionMetric'), '历史排序')) + '</p>' + parameters(a['result']['config']))
     parts.append(table(['关联记录 ID', '类型', '原始记录 ID / 区间序号', '创建时间'], [[e(l['id']), e(l['kind']), e(l['reference_id']) + '<br>' + e(l['selector']), e(recorded_time(l['created_at']))] for l in incident['links']]))

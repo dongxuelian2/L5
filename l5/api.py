@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,9 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts[1] == 'incidents':
+        if parts[1] == 'signals' and len(parts) == 3 and method == 'PATCH':
+            result = store.signals.update_signal(parts[2], body)
+        elif parts[1] == 'incidents':
             incidents = store.incidents
             if len(parts) == 3:
                 if method == 'GET':
@@ -107,7 +109,18 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'incidents':
+            if parts[3] == 'signals' and method == 'GET':
+                result = {'signals': store.signals.catalog(parts[2])}
+            elif parts[3] == 'explore' and method == 'POST':
+                result = store.signals.explore(parts[2], body)
+            elif parts[3] == 'cursor' and method == 'POST':
+                result = store.signals.cursor(parts[2], body)
+            elif parts[3] == 'views':
+                if method == 'GET':
+                    result = {'views': store.signals.views(parts[2])}
+                elif method == 'POST':
+                    result, status = store.signals.save_view(parts[2], body), 201
+            elif parts[3] == 'incidents':
                 if method == 'GET':
                     query = parse_qs(url.query)
                     result = {'incidents': store.incidents.list(parts[2], status=query.get('status', [None])[0],
@@ -125,12 +138,21 @@ def dispatch(handler, method: str) -> bool:
                     result = {'jobs': store.jobs(parts[2])}
                 elif method == 'POST':
                     result, status = store.analyze(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3] == 'views' and method == 'PATCH':
+            result = store.signals.save_view(parts[2], body, parts[4])
         elif parts == ['api', 'datasets', 'preview'] and method == 'POST':
             metadata, times, values = prepare_csv(body.get('csv'), body)
             names = [c['name'] for c in metadata['columns'][:4]]
             result = {'metadata': metadata, 'series': series_preview(times, values[:, :4], names)}
         elif len(parts) == 3 and parts[1] == 'datasets' and method == 'GET':
             result = store.dataset(parts[2])
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'quality' and method == 'GET':
+            result = store.dataset(parts[2])['metadata']['quality']
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'time-reference':
+            if method == 'GET':
+                result = store.signals.clock(parts[2])
+            elif method == 'PATCH':
+                result = store.signals.set_reference(parts[2], body)
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'series' and method == 'GET':
             query = parse_qs(url.query)
             result = store.series(parts[2], query.get('signal'),

@@ -4,6 +4,7 @@ import type { Series } from "./types";
 export type SignalSeries = {
   times: number[];
   values: (number | null)[];
+  segmentIds?: number[];
   sourceRows: number;
   displayRows: number;
 };
@@ -43,7 +44,7 @@ export class SeriesCache {
       const data = await api<Series>(`/datasets/${this.datasetId}/series?${params}`);
       for (const name of missing) {
         if (!Object.hasOwn(data.values, name)) throw new Error(`No measurements returned for ${name}.`);
-        this.signals.set(name, { times: data.times, values: data.values[name], sourceRows: data.sourceRows, displayRows: data.displayRows });
+        this.signals.set(name, { times: data.times, values: data.values[name], segmentIds: data.segmentIds?.[name], sourceRows: data.sourceRows, displayRows: data.displayRows });
       }
     } catch (error) {
       missing.forEach(name => this.errors.set(name, message(error)));

@@ -1,4 +1,4 @@
-# L5 / Persistent Industrial Incident Investigation
+# L5 / Signal & Time-Series Workspace
 
 **Turn your industrial time series into a lasting analysis project.**
 
@@ -10,6 +10,9 @@ L5 opens a local Workspace where you can import your own CSV, run anomaly detect
 
 - Create, open, rename and delete projects, each containing multiple datasets and analyses.
 - Preview and save CSV/TSV data with arbitrary numeric signal names. Choose a timestamp or numeric time column and its unit, or generate time from a sampling interval. Comma, semicolon, tab and pipe delimiters are supported.
+- Maintain a persistent signal catalog with stable IDs, display names, units, descriptions, categories, devices, tags and explicit logical measurement keys across datasets.
+- Inspect actual missing measurements, invalid/duplicate timestamps, irregular sampling, long interruptions, statistics and available sample spans. Open a problem's original curve from its quality view.
+- Browse multiple sources in Signal Explorer with shared windows and full-resolution cursor readings. Absolute sources share UTC; relative sources require saved references or explicit UTC origins. Save and restore selections, windows, cursors and layouts.
 - Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, Dynamic PCA-Q/T² and experimental Adaptive Max-Z against an explicitly chosen normal baseline. Max-Z also supports one signal.
 - Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
 - Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
@@ -45,6 +48,20 @@ For development, run `npm run serve` and `npm run dev` in separate terminals. Vi
 9. Restart the service, open **事件** (incidents) in the Workspace sidebar and continue the same investigation.
 
 The configured chronological split needs at least 30 fit and 30 calibration observations (default 70%/30%). The first partition fits preprocessing and the model; the second calibrates a fixed empirical threshold. Target data never select that threshold. Raw missing measurements remain missing in plots and are filled with fit-partition medians for computation. The original observation mask gates decisions: insufficient coverage or missing required channels produces abstain and resets temporal history. Configure persistence, sensor loss, noise and offset experiments, then compare saved runs in History. Review the baseline and choose data you believe are healthy.
+
+## Multi-source signal workflow
+
+Import each file in **Datasets**, reviewing the displayed time interpretation. Choose **Unix epoch time** explicitly for Unix seconds or milliseconds. ISO timestamps normalize to UTC; naive dates use the entered timezone (UTC by default). Numeric and generated time remain relative.
+
+Use **Signal catalog** to edit semantics and filter by dataset, device, category or tag. Equal logical measurement keys explicitly associate physical points; each source keeps its own unit. **Data quality** shows measured statistics, coverage and timestamp issues; problem buttons open the corresponding signal window.
+
+Select signals and open **Signal Explorer**. Relative sources start on independent clocks. In **Time relationships**, choose another dataset or a timezone-aware source-zero timestamp and save the relationship. Source seconds plus offset equal reference-source seconds. References stay within a workspace and cannot form cycles.
+
+Different physical quantities use separate curves sharing time. Overlay mode groups only signals with equal, nonempty units and categories. Set a window, zoom, and move or type the cursor offset to inspect the original value and actual measurement time. Missing values, sampling gaps and stopped-source coverage are distinct. Save the named view to restore signals, per-clock windows, cursor and layout after restarting. Continue with an existing analysis, configure a new one, create an incident, or return to a saved process simulation.
+
+Quality counts include source rows with invalid time. Those rows remain in the original CSV; timed arrays and analyses omit them. Finite-value statistics include those measurements, while usable counts require valid timestamps. Duplicate timestamps retain every row; the cursor shows the first row at the nearest timestamp. Gaps exceed five times the median positive interval; remaining deviations above 5% are irregular. Sample spans do not claim continuous observation. Display reduction preserves extrema and hole boundaries; cursor readings use full arrays. Unit conversion, resampling, interpolation and derived variables are future work.
+
+See the [three synthetic industrial CSV examples](examples/data-foundation/README.md) and [validation record](docs/signal-workspace-validation.md).
 
 ## Continuing an incident investigation
 

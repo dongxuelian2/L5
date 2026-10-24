@@ -6,7 +6,7 @@ import { IncidentLinkDialog, incidentStatuses } from "./IncidentLinkDialog";
 import { Contributions } from "./Results";
 import { IncidentTimeline } from "./IncidentTimeline";
 import { IncidentReport } from "./IncidentReport";
-import { dateLabel, datasetClock, number, timeLabel, type AnalysisResult, type Dataset, type Incident, type IncidentEntry, type IncidentLink, type IncidentSource, type IncidentSummary, type Job, type RuntimeRun, type TimeAxis, type IncidentSelection } from "./types";
+import { dateLabel, datasetClock, datasetTimeLabel, namedSignal, number, signalLabel, timeLabel, type AnalysisResult, type Dataset, type Incident, type IncidentEntry, type IncidentLink, type IncidentSource, type IncidentSummary, type Job, type RuntimeRun, type TimeAxis, type IncidentSelection } from "./types";
 
 const SavedRunView = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.SavedRunView })));
 const entryKinds = { note: "调查笔记", evidence: "证据", hypothesis: "候选解释" };
@@ -16,12 +16,12 @@ const runKinds: Record<string, string> = { tools: "工具调查", tool: "工具�
 const numericAxis: TimeAxis = { kind: "numeric", column: null, origin: null, start: 0, end: 0 };
 function eventTime(incident: IncidentSummary, value: number | null, datasets: Dataset[] = []) {
   const dataset = datasets.find(d => `dataset:${d.id}` === incident.time_axis_key || d.metadata.model && `simulation:${d.metadata.model.simulationId}` === incident.time_axis_key);
-  return value == null ? "未确定" : timeLabel({ ...numericAxis, origin: incident.time_origin || dataset?.metadata.time.origin || null }, value);
+  return value == null ? "未确定" : incident.time_origin ? timeLabel({ ...numericAxis, origin: incident.time_origin }, value) : dataset ? datasetTimeLabel(dataset, value) : timeLabel(numericAxis, value);
 }
 function entryTime(entry: IncidentEntry, incident: Incident, datasets: Dataset[]) {
   const link = incident.links.find(l => l.id === entry.source_link_id);
   const dataset = datasets.find(d => `dataset:${d.id}` === entry.observed_axis_key) || datasets.find(d => d.id === link?.details.datasetId);
-  return entry.observed_at == null ? "" : entry.observed_axis_key?.startsWith("origin:") ? timeLabel({ ...numericAxis, origin: entry.observed_axis_key.slice(7) }, entry.observed_at) : dataset ? timeLabel(dataset.metadata.time, entry.observed_at) : eventTime(incident, entry.observed_at, datasets);
+  return entry.observed_at == null ? "" : entry.observed_axis_key?.startsWith("origin:") ? timeLabel({ ...numericAxis, origin: entry.observed_axis_key.slice(7) }, entry.observed_at) : dataset ? datasetTimeLabel(dataset, entry.observed_at) : eventTime(incident, entry.observed_at, datasets);
 }
 
 export function IncidentsPage({ workspaceId, incidentId, datasets, jobs }: { workspaceId: string; incidentId?: string; datasets: Dataset[]; jobs: Job[] }) {
@@ -213,7 +213,7 @@ function simulationHref(workspaceId: string, source: IncidentLink) {
 }
 function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: Dataset[] }) {
   const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = d.interval;
-  return <><p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>峰值时间 {dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`} · 分数 {number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? "干预实验" : "工具调查"} · 观察至 {String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>观察窗口 {number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)} s · 工作假设 {d.observationWindow.hypothesis}</p>}</>;
+  return <><p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>峰值时间 {dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`} · 分数 {number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.map(s => dataset ? namedSignal(dataset, s) : s).join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? "干预实验" : "工具调查"} · 观察至 {String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>观察窗口 {number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)} s · 工作假设 {d.observationWindow.hypothesis}</p>}</>;
 }
 
 function SourcePreview({ source, datasets, selection, onSelection }: { source: IncidentLink; datasets: Dataset[]; selection: IncidentSelection | null; onSelection: (value: IncidentSelection) => void }) {
@@ -243,8 +243,8 @@ function SourcePreview({ source, datasets, selection, onSelection }: { source: I
     {range && <SharedWindow range={range} at={selectedTime ?? interval?.peakTime ?? range[1]} axis={dataset?.metadata.time || numericAxis} apply={(start, end, at) => onSelection({ ...selection, axisId: clock.axisId, start: start+clock.offset, end: end+clock.offset, at: at+clock.offset, linkId: source.id, analysisId: source.details.analysisId })} />}
     {error && <p className="ws-error" role="alert">{error}</p>}
     {result && dataset && indexes && <Plot title={`${result.algorithmLabel} · 关联时间窗口`} times={indexes.map(v => v.t)} values={indexes.map(v => result.states?.[v.i] === "abstain" ? null : result.scores[v.i])} axis={dataset.metadata.time} threshold={result.threshold} intervals={interval ? [interval] : result.intervals} color="#e9927d" selectedTime={selectedTime} onSelectTime={choose} />}
-    {interval && <Contributions values={interval.contributions} signals={interval.signals} metric={source.details.contributionMetric} locale="zh" />}
-    {dataset && <><fieldset><legend>原始信号曲线</legend><div className="ws-signal-list">{dataset.metadata.columns.map(c => <label key={c.name}><input type="checkbox" checked={signals.includes(c.name)} onChange={e => setSignals(e.target.checked ? [...signals, c.name] : signals.filter(s => s !== c.name))} />{c.name}</label>)}</div></fieldset><SignalPlots dataset={dataset} signals={signals} range={range} intervals={interval ? [interval] : result?.intervals} selectedTime={selectedTime} onSelectTime={choose} />{selectedTime !== undefined && signals.length > 0 && <SignalSnapshot dataset={dataset} signals={signals} at={selectedTime} choose={choose} />}</>}
+    {interval && <Contributions values={interval.contributions} signals={interval.signals} metric={source.details.contributionMetric} locale="zh" label={s => dataset ? namedSignal(dataset, s) : s} />}
+    {dataset && <><fieldset><legend>原始信号曲线</legend><div className="ws-signal-list">{dataset.metadata.columns.map(c => <label key={c.name}><input type="checkbox" checked={signals.includes(c.name)} onChange={e => setSignals(e.target.checked ? [...signals, c.name] : signals.filter(s => s !== c.name))} />{signalLabel(c)}</label>)}</div></fieldset><SignalPlots dataset={dataset} signals={signals} range={range} intervals={interval ? [interval] : result?.intervals} selectedTime={selectedTime} onSelectTime={choose} />{selectedTime !== undefined && signals.length > 0 && <SignalSnapshot dataset={dataset} signals={signals} at={selectedTime} choose={choose} />}</>}
     {source.details.run && <Suspense fallback={<p>正在打开实验结果…</p>}><SavedRunView run={source.details.run} /></Suspense>}
   </section>;
 }
@@ -277,7 +277,7 @@ function SignalSnapshot({ dataset, signals, at, choose }: { dataset: Dataset; si
     <div className="ws-inline"><button disabled={sample.previousTime == null} onClick={() => sample.previousTime != null && choose(sample.previousTime)}>前一样本</button><button disabled={sample.nextTime == null} onClick={() => sample.nextTime != null && choose(sample.nextTime)}>后一样本</button></div>
     <div className="ws-table-scroll"><table><thead><tr><th>变量（原始单位）</th><th>当前测量</th><th>前一样本</th><th>变化量</th></tr></thead><tbody>{signals.map(signal => {
       const value = sample.values[signal], previous = sample.previous[signal];
-      return <tr key={signal}><td>{signal}</td><td>{value == null ? "缺测" : number(value)}</td><td>{previous == null ? "缺测 / 无前样本" : number(previous)}</td><td>{value == null || previous == null ? "—" : number(value-previous)}</td></tr>;
+      return <tr key={signal}><td>{namedSignal(dataset, signal)}</td><td>{value == null ? "缺测" : number(value)}</td><td>{previous == null ? "缺测 / 无前样本" : number(previous)}</td><td>{value == null || previous == null ? "—" : number(value-previous)}</td></tr>;
     })}</tbody></table></div>
   </>}</section>;
 }
