@@ -18,8 +18,8 @@ function plotIndexes(values: (number | null)[]) {
   return [...result].sort((a, b) => a - b);
 }
 
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = "threshold" }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string;
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = "threshold", selectedTime, onSelectTime }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (!times.length) return null;
@@ -43,7 +43,7 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
   const active = hover != null && hover < times.length ? hover : null;
   return <figure className="ws-plot">
     <figcaption><span><i style={{ background: color }} />{title}</span><span className="ws-muted">{active == null ? `${times.length.toLocaleString()} displayed points` : `${timeLabel(axis, times[active])} · ${values[active] == null ? "missing" : number(values[active]!)}`}</span></figcaption>
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} time series${threshold === undefined ? "" : `, threshold ${number(threshold)}`}`}
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} time series${threshold === undefined ? "" : `, threshold ${number(threshold)}`}`} onClick={() => { if (hover != null && onSelectTime) onSelectTime(times[hover]); }}
       onPointerLeave={() => setHover(null)} onPointerMove={e => {
         const rect = e.currentTarget.getBoundingClientRect();
         const t = first + Math.max(0, Math.min(1, ((e.clientX - rect.left) / rect.width * W - L) / (W - L - R))) * span;
@@ -57,12 +57,13 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       <path d={path} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
+      {selectedTime !== undefined && selectedTime >= first && selectedTime <= last && <line data-selected-time={selectedTime} x1={x(selectedTime)} x2={x(selectedTime)} y1={T} y2={H - B} stroke="#e2bc75" strokeDasharray="4 3" />}
       <text x={L} y={H - 5}>{timeLabel(axis, first)}</text><text x={W - R} y={H - 5} textAnchor="end">{timeLabel(axis, last)}</text>
     </svg>
   </figure>;
 });
 
-export function SignalPlots({ dataset, signals, range, intervals }: { dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[] }) {
+export function SignalPlots({ dataset, signals, range, intervals, selectedTime, onSelectTime }: { dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[]; selectedTime?: number; onSelectTime?: (time: number) => void }) {
   const start = range?.[0], end = range?.[1];
   const cache = useMemo(() => cachedSeries(dataset.id, start === undefined || end === undefined ? undefined : [start, end]), [dataset.id, start, end]);
   useSyncExternalStore(cache.subscribe, cache.snapshot, cache.snapshot);
@@ -77,7 +78,7 @@ export function SignalPlots({ dataset, signals, range, intervals }: { dataset: D
   const preview = signals.map(name => cache.signals.get(name)).find(data => data && data.displayRows < data.sourceRows);
   return <div className="ws-signal-plots">{signals.map(name => {
     const data = cache.signals.get(name), error = cache.errors.get(name);
-    return data ? <Plot key={name} times={data.times} values={data.values} title={name} axis={dataset.metadata.time} intervals={intervals} /> :
+    return data ? <Plot key={name} times={data.times} values={data.values} title={name} axis={dataset.metadata.time} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
       <figure className="ws-plot ws-plot-pending" key={name}><figcaption>{name}</figcaption><div className="ws-plot-placeholder">
         {error ? <div role="alert"><p>{error}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>Retry signal</button></div> : <span role="status">Loading {name}…</span>}
       </div></figure>;

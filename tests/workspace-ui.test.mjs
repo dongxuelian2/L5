@@ -374,6 +374,7 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   globalThis.fetch = async (url, options = {}) => {
     if (url.includes('/series?')) return response(seriesFor(url));
     if (url === `/api/analyses/${result.id}`) return response(result);
+    if (url.includes('/timeline?')) return response(incidentView(saved, [result]));
     if (url === '/api/incidents/event-one' && options.method === 'GET') return response(saved);
     const body = options.body ? JSON.parse(options.body) : {};
     writes.push({ url, method: options.method, body });
@@ -385,7 +386,7 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   };
   await mount(React.createElement(IncidentDetail, { initial: structuredClone(saved), datasets: [data], jobs: [] }));
   assert.ok(curve(names[0]), 'linked interval plots the raw dataset');
-  assert.match(container.querySelector('a[href*="/analysis/"]').getAttribute('href'), /incident-detail-analysis\/0$/);
+  assert.match([...container.querySelectorAll('a')].find(a => a.textContent === '打开原始分析 ↗').getAttribute('href'), /incident-detail-analysis\/0$/);
   await click(button('＋ 添加候选解释'));
   await setField(dialogField('记录标题'), '冷却侧变化');
   await setField(dialogField('记录内容'), '先核对冷却回路');
@@ -475,4 +476,145 @@ test('restored tool output stays tied to its saved observation window after swit
   assert.equal(isMasked(container.querySelector('.p-trace-result')), true);
   await click(button('Evidence & topology')); await click(button('Investigation tools'));
   assert.equal(isMasked(container.querySelector('.p-trace-result')), true, 'remounting cannot label a saved 93-second result as current 150-second evidence');
+});
+
+function incidentView(incident, results, selected = results.map(r => r.id)) {
+  const axisId = 'dataset:incident-data';
+  const analyses = results.map(r => ({ id: r.id, result: r, datasetId: r.datasetId, datasetName: '现场数据', axisId, offset: 0, scope: '完整分析', linkId: `link-${r.id}`, observedSpans: [[200, 699]],
+    intervals: r.intervals.map((i, index) => ({ ...i, index, linkId: `link-${r.id}` })) }));
+  return { incident, workspace: { id: 'test', name: '工业调查' }, generatedAt: incident.updated_at, primaryAxisId: axisId, datasets: [dataset('incident-data')],
+    axes: [{ id: axisId, label: '现场数据', origin: null, start: 330, end: 560 }], analyses,
+    comparisons: selected.length ? [{ axisId, analysisIds: selected, firstDetection: 340, firstAlarmSpread: selected.length > 1 ? 0 : null, common: [], unique: [], segments: selected.length > 1 ? [{ kind: 'common', start: 340, end: 379, analysisIds: selected }] : [] }] : [],
+    events: [...analyses.flatMap(a => a.intervals.map(i => ({ id: `alarm-${a.id}-${i.index}`, kind: 'alarm', title: `${a.result.algorithmLabel} · 异常区间`, axisId, start: i.start, end: i.end, peakTime: i.peakTime, peakScore: i.peakScore, analysisId: a.id, intervalIndex: i.index, linkId: a.linkId, recordedAt: incident.created_at, target: 'source' }))),
+      ...incident.entries.map(entry => ({ id: `entry:${entry.id}`, kind: entry.kind, title: entry.title, start: entry.observed_at, end: entry.observed_at, axisId: entry.observed_at == null ? null : axisId, entryId: entry.id, linkId: entry.source_link_id, content: entry.content, recordedAt: entry.created_at, target: 'entry' }))] };
+}
+
+test('incident timeline filters, navigates alarms and evidence, and shares cursor/window with comparison and raw signals', async () => {
+  const maxz = incidentResult('timeline-maxz'), pca = { ...incidentResult('timeline-pca'), algorithmLabel: 'PCA-Q', name: 'PCA 分析' };
+  const saved = emptyIncident(), queries = [], samples = [];
+  saved.links = [maxz, pca].map(result => ({ id: `link-${result.id}`, incident_id: saved.id, kind: 'analysis', reference_id: result.id, selector: '', created_at: saved.created_at,
+    details: { title: result.name, datasetId: result.datasetId, analysisId: result.id, analysisRange: result.config.analysisRange, signals: names.slice(0, 3), algorithmLabel: result.algorithmLabel } }));
+  saved.entries = [{ id: 'observed-note', incident_id: saved.id, kind: 'note', title: '现场温升记录', content: '温度上升已核实', observed_at: 345, source_link_id: saved.links[0].id, stance: 'neutral', hypothesis_id: null, created_at: saved.created_at, updated_at: saved.updated_at }];
+  globalThis.fetch = async url => {
+    if (url.includes('/timeline?')) { queries.push(url); const q = new URL(url, 'http://localhost').searchParams; return response(incidentView(saved, [maxz, pca], q.has('analysis') ? q.getAll('analysis').filter(Boolean) : undefined)); }
+    if (url.includes('/series?')) return response(seriesFor(url));
+    if (url.includes('/sample?')) { samples.push(url); const t = Number(new URL(url, 'http://localhost').searchParams.get('at')); return response({ time: t, previousTime: t-1, nextTime: t+1, values: Object.fromEntries(names.map(s => [s, 30])), previous: Object.fromEntries(names.map(s => [s, 28])) }); }
+    if (url === `/api/analyses/${maxz.id}`) return response(maxz);
+    if (url === `/api/analyses/${pca.id}`) return response(pca);
+    throw new Error(`Unexpected request ${url}`);
+  };
+  await mount(React.createElement(IncidentDetail, { initial: saved, datasets: [dataset('incident-data')], jobs: [] }));
+  const timeline = container.querySelector('#incident-timeline'), comparison = container.querySelector('#incident-comparison');
+  assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 5);
+  await setField(inputFor('分析结果', timeline), pca.id);
+  assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 2);
+  await setField(inputFor('筛选起点', timeline), 500);
+  assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 1);
+  await click(timeline.querySelector('.incident-event-list button'));
+  assert.ok(Number(inputFor('窗口起点').value) < 510);
+  assert.ok(Number(inputFor('窗口终点').value) > 554);
+  assert.equal(inputFor('观察时刻（来源秒数）').value, '520');
+  assert.ok(container.querySelector('.incident-preview svg [data-selected-time="520"]'));
+  assert.match(container.querySelector('.incident-comparison-scores').textContent, /PCA 分析/);
+  await setField(inputFor('同步观察时刻'), 530);
+  assert.ok(container.querySelector('.incident-preview svg [data-selected-time="530"]'));
+  assert.ok(container.querySelector('.incident-comparison-scores svg [data-selected-time="530"]'));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 130)));
+  assert.match(container.querySelector('[aria-label="同一时刻的多变量观测"]').textContent, /30/);
+  assert.ok(samples.some(url => url.includes('at=530')));
+  await click(comparison.querySelector('.ws-option-grid input'));
+  assert.match(queries.at(-1), /analysis=timeline-pca/);
+  assert.equal(comparison.querySelectorAll('tbody')[0].rows.length, 1);
+  await setField(inputFor('分析结果', timeline), ''); await setField(inputFor('筛选起点', timeline), ''); await setField(inputFor('事件类别', timeline), 'note');
+  assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 1);
+  await click(timeline.querySelector('.incident-event-list button'));
+  assert.equal(dialogField('记录标题').value, '现场温升记录');
+  assert.equal(dialogField('观察时间').value, '345');
+});
+
+test('professional report preview/export uses current saved content and invalidates an older generation', async () => {
+  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+  let saved = emptyIncident(), reports = 0;
+  globalThis.fetch = async url => {
+    assert.match(url, /report\.html$/); reports++;
+    return { ok: true, headers: { get: () => 'text/html; charset=utf-8' }, text: async () => `<!doctype html><html><body><h1>真实事件报告</h1><p>${saved.conclusion || '尚未形成结论'}</p><svg><path d="M0 0 L1 2"/></svg></body></html>` };
+  };
+  await mount(React.createElement(IncidentReport, { incident: saved }));
+  assert.equal(button('导出离线 HTML').disabled, true);
+  await click(button('生成报告'));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /尚未形成结论/);
+  let printed = 0;
+  const frame = container.querySelector('iframe');
+  frame.contentWindow.print = () => printed++;
+  frame.contentWindow.focus = () => {};
+  await act(async () => frame.dispatchEvent(new window.Event('load')));
+  await click(button('打印 / 保存 PDF'));
+  assert.equal(printed, 1);
+  const originalCreate = URL.createObjectURL, originalRevoke = URL.revokeObjectURL, originalClick = window.HTMLAnchorElement.prototype.click;
+  let blob, filename;
+  URL.createObjectURL = value => { blob = value; return 'blob:test-report'; };
+  URL.revokeObjectURL = () => {};
+  window.HTMLAnchorElement.prototype.click = function () { filename = this.download; };
+  try {
+    await click(button('导出离线 HTML'));
+    assert.match(filename, /l5-incident-event-one\.html/);
+    assert.match(await blob.text(), /<svg>/);
+  } finally { URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; window.HTMLAnchorElement.prototype.click = originalClick; }
+  saved = { ...saved, conclusion: '更新后的现场结论', updated_at: '2026-10-24T03:00:00Z' };
+  await act(async () => root.render(React.createElement(IncidentReport, { incident: saved })));
+  assert.equal(container.querySelector('iframe'), null);
+  assert.equal(button('打印 / 保存 PDF').disabled, true);
+  await click(button('生成报告'));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /更新后的现场结论/);
+  assert.equal(reports, 2);
+});
+
+test('timeline experiment links reopen the stored run rather than the current cursor window', async () => {
+  const { IncidentTimeline } = require('../src/workspace/IncidentTimeline.tsx');
+  const saved = emptyIncident();
+  saved.links = [{ id: 'trial-link', kind: 'run', details: { title: '保存实验', simulationId: 'sim-one', run: { id: 'trial-one', request: { asOf: 93, windowStart: 0 }, kind: 'intervention' } } }];
+  const view = { ...incidentView(saved, []), axes: [{ id: 'simulation:sim-one', label: '冷却模拟', start: 0, end: 100, origin: null }], primaryAxisId: 'simulation:sim-one', events: [{ id: 'trial-event', kind: 'experiment', title: '干预实验', start: 93, end: 93, axisId: 'simulation:sim-one', linkId: 'trial-link', observationWindow: [0, 93], actionAt: 96, recordedAt: saved.created_at, target: 'source' }] };
+  globalThis.fetch = async () => response(view);
+  let selected;
+  await mount(React.createElement(IncidentTimeline, { incident: saved, selection: null, onSelect: value => selected = value, onRecord() {}, onSection() {} }));
+  await click(container.querySelector('.incident-event-list button'));
+  assert.equal(selected.at, 93); assert.equal(selected.linkId, 'trial-link');
+  assert.equal(container.querySelector('.incident-event-list a').getAttribute('href'), '#/workspaces/test/simulations/sim-one/trial-one');
+});
+
+test('removing an analysis source reconciles the incident comparison selection without stale source requests', async () => {
+  const { IncidentTimeline } = require('../src/workspace/IncidentTimeline.tsx');
+  const results = [incidentResult('remove-maxz'), { ...incidentResult('remove-pca'), name: 'PCA' }];
+  let saved = emptyIncident();
+  saved.links = results.map(r => ({ id: `link-${r.id}`, details: { analysisId: r.id } }));
+  const queries = [];
+  globalThis.fetch = async url => {
+    queries.push(url);
+    const ids = new Set(saved.links.map(l => l.details.analysisId)), selected = new URL(url, 'http://localhost').searchParams;
+    return response(incidentView(saved, results.filter(r => ids.has(r.id)), selected.has('analysis') ? selected.getAll('analysis').filter(Boolean) : undefined));
+  };
+  const render = () => React.createElement(IncidentTimeline, { incident: saved, selection: null, onSelect() {}, onRecord() {}, onSection() {} });
+  await mount(render());
+  await click(container.querySelector('#incident-comparison input'));
+  saved = { ...saved, links: [saved.links[0]], updated_at: '2026-10-24T04:00:00Z' };
+  await act(async () => root.render(render()));
+  assert.equal(new URL(queries.at(-1), 'http://localhost').searchParams.get('analysis'), '');
+  assert.equal(container.querySelector('#incident-comparison input').checked, false);
+  assert.equal(container.querySelector('[role=alert]'), null);
+});
+
+test('late report responses cannot replace a newer saved incident generation', async () => {
+  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+  let resolveOld;
+  globalThis.fetch = () => new Promise(resolve => resolveOld = resolve);
+  let saved = emptyIncident();
+  await mount(React.createElement(IncidentReport, { incident: saved }));
+  await click(button('生成报告'));
+  saved = { ...saved, conclusion: '最新结论' };
+  await act(async () => root.render(React.createElement(IncidentReport, { incident: saved })));
+  globalThis.fetch = async () => ({ ok: true, headers: { get: () => 'text/html' }, text: async () => '<html><body>最新结论</body></html>' });
+  await click(button('生成报告'));
+  await act(async () => resolveOld({ ok: true, headers: { get: () => 'text/html' }, text: async () => '<html><body>旧结论</body></html>' }));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /最新结论/);
+  assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /旧结论/);
 });
