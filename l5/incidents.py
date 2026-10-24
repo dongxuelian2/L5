@@ -365,6 +365,8 @@ class IncidentService:
                 link['details'] = dict(analysisId=reference, datasetId=result['datasetId'], title=result['name'],
                                        algorithmLabel=result['algorithmLabel'], analysisRange=result['config']['analysisRange'],
                                        signals=result['relatedSignals'], contributionMetric=result.get('contributionMetric'))
+                if result.get('experiment'):
+                    link['details']['experiment'] = result['experiment']
                 if kind == 'interval':
                     index = int(link['selector'])
                     link['details'].update(intervalIndex=index, interval=result['intervals'][index])

@@ -24,6 +24,9 @@ class WorkspaceStore:
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
+            # Batch progress and analysis commits must coexist with Workspace
+            # readers (including nested signal/clock projections).
+            db.execute('PRAGMA journal_mode = WAL')
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS workspaces (
                     id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -44,6 +47,8 @@ class WorkspaceStore:
         self.signals = SignalWorkspace(self)
         from .transformations import TransformationService
         self.transformations = TransformationService(self)
+        from .experiments import ExperimentService
+        self.experiments = ExperimentService(self)
 
     @contextmanager
     def connect(self):
@@ -214,7 +219,7 @@ class WorkspaceStore:
                     previous={s: value(index-1, s) if index else None for s in signals},
                     **self.provenance_sample(dataset, index, signals))
 
-    def analyze(self, workspace_id: str, body: dict) -> dict:
+    def analyze(self, workspace_id: str, body: dict, *, experiment=None) -> dict:
         self.workspace(workspace_id)
         dataset = self.dataset(body.get('datasetId', ''))
         if dataset['workspace_id'] != workspace_id:
@@ -228,6 +233,8 @@ class WorkspaceStore:
         identity, stamp = uuid4().hex, now()
         name = self.name(body.get('name') or f"{result['algorithmLabel']} · {dataset['name']}")
         result.update({'id': identity, 'workspaceId': workspace_id, 'datasetId': dataset['id'], 'name': name, 'createdAt': stamp})
+        if experiment is not None:
+            result['experiment'] = experiment
         folder = self.root / workspace_id / 'results'
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f'{identity}.json'

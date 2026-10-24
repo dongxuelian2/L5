@@ -357,6 +357,8 @@ def render_report(store, identity):
     parts.append(table(['数据集 / 标识', '采样与时间元数据', '变量 / 原始列名'], [[e(d['name']) + '<br>' + e(d['id']), e(json.dumps(dict(source=d['metadata']['time'], browsingClock=d['metadata']['clock']), ensure_ascii=False)) + '<br>' + str(d['metadata']['rowCount']) + ' 行', e('、'.join(signal_label(d['id'], c['name']) + ' / ' + c['name'] for c in d['metadata']['columns']))] for d in view['datasets']]))
     for a in view['analyses']:
         parts.append('<h3>' + e(a['result']['name']) + '</h3><p>分析 ID：' + e(a['id']) + '；贡献度语义：' + e(METRIC.get(a['result'].get('contributionMetric'), '历史排序')) + '</p>' + parameters(a['result']['config']))
+        if a['result'].get('experiment'):
+            parts.append('<h4>来源分析实验 / 执行 / 任务</h4>' + technical(a['result']['experiment']))
     parts.append(table(['关联记录 ID', '类型', '原始记录 ID / 区间序号', '创建时间'], [[e(l['id']), e(l['kind']), e(l['reference_id']) + '<br>' + e(l['selector']), e(recorded_time(l['created_at']))] for l in incident['links']]))
     parts.append(f'<footer>L5 工业事件调查 · {e(identity)} · 生成于 {e(recorded_time(view["generatedAt"]))}<br>离线独立报告；重新生成将读取最新保存内容。调查结论保留用户原文。</footer></main></body></html>')
     return ''.join(parts)

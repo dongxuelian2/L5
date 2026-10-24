@@ -15,9 +15,11 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 | Professional incident reports | `l5/reports.py`, `src/workspace/IncidentReport.tsx` | Saved-data Chinese reports, inline SVG figures, offline HTML, preview and A4 browser PDF printing |
 | CSV ingestion | `l5/datasets.py` | Named numeric columns, timestamp/numeric/generated time, missing measurements, display previews |
 | Generic analysis | `l5/analysis.py`, `l5/monitoring.py` | Max-Z, PCA, EWMA, CUSUM, window CUSUM, DPCA, Adaptive Max-Z; chronological normal fit/calibration; full-resolution scoring |
+| Analysis experiments | `l5/experiments.py`, `experiment_routes.py`, `src/workspace/ExperimentWorkspace.tsx` | Editable SQLite definitions, finite studies, bounded local batches, immutable input snapshots, per-task AnalysisResult references and research record revisions |
+| Experiment evaluation and reports | `l5/experiment_evaluation.py`, `experiment_reports.py`, `src/workspace/ExperimentComparison.tsx`, `ExperimentLabels.tsx`, `ExperimentReport.tsx` | Explicit truth versions, separate sample/event evaluation, clock-aware comparisons, shared measurement cursor and offline research reports |
 | Runtime model sessions | `l5/runtime.py`, `simulation/platform.py` | Configurable simulation, cached prefix evidence, user tools, fitted/known-model forecasts and optional recovery grid search |
 | Analysis assistant | `l5/assistant.py` | Selected deterministic tools, keyword routing and an optional evidence summarizer |
-| Local API | `l5/api.py`, `server.py` | Synchronous JSON routes on the same local HTTP server as the built React application |
+| Local API | `l5/api.py`, `server.py` | JSON routes and experiment progress polling on the local HTTP server serving the built React application |
 | Workspace workstation | `src/workspace/`, `src/App.tsx` | Projects, import, signal plots, analysis configuration, saved results and history |
 
 `data/workspace.sqlite3` stores projects, dataset metadata and completed job summaries. Each project has `datasets/<id>/source.csv`, `datasets/<id>/series.npz` and `results/<id>.json`. Originals remain available locally; previews never replace stored measurements. A result file is written atomically before its job is committed. `--data-dir` or `L5_DATA_DIR` selects another persistent directory. Restarting the service uses the same directory; browser storage is not part of the workspace persistence path.
@@ -27,6 +29,40 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
 `npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+
+## Analysis experiments
+
+`WorkspaceStore.experiments` adds `experiments`, `experiment_runs`, `experiment_tasks`, `experiment_labels` and `experiment_records` with cascading Workspace/Dataset ownership. These additive migrations leave previous datasets, analyses, incidents and simulation files in place. Definitions have stable IDs and optimistic revisions. Notes/conclusions and their run references receive independent immutable research records when changed; copies start without execution history or inherited conclusion references.
+
+The definition contains one shared dataset, signal selection, chronological baseline/target windows, alpha, fit fraction, observation policy, minimum coverage, required signals and persistence. Each selected algorithm contains applicable scalar parameters and optional candidate lists. Expansion takes a Cartesian product within each method, caps candidates at eight per dimension and the whole batch at 64 tasks, and saves the concrete effective configuration for every task. Algorithms continue through `WorkspaceStore.analyze` → `run_analysis` → `build_monitor`; no detector is reimplemented.
+
+An execution saves its definition revision, input dataset metadata/clock/lineage, NPZ and source CSV SHA-256, label version, engine source hashes and environment versions before it enters the queue. One daemon worker per store processes tasks sequentially; at most four runs may be queued/running across the local store. SQLite uses WAL so Workspace read snapshots and nested source/clock projections do not block batch commits. Each task has a stable ID, status, start/end, wall duration, error, metrics and ordinary AnalysisResult reference. A completed result carries server-authored `{experimentId, runId, taskId}`. Partial failures retain successful work. At startup, queued/running rows become interrupted; retry creates a different run using the original snapshot and only unfinished task configurations. This is a single-process local runner, not a durable distributed scheduler or an exact code/environment replay system.
+
+Label versions are immutable and owned by one Dataset. They contain explicit `dataset-seconds`, a human-readable time source, a clock snapshot and nonoverlapping closed normal/anomaly intervals. TripLens labels read saved simulation fault/configuration and map onset through an explicitly compatible source clock; derived datasets can use a uniquely identified or explicitly selected simulation source. The original onset remains in provenance even when the dataset clips the event. Labels never enter detector fitting or calibration.
+
+Evaluation stores behavior separately from truth-dependent results. Sample TP/FP/TN/FN require a labelled non-abstained row. Unknown time remains unknown; zero-denominator ratios are null. An eligible truth event needs at least one evaluated observation; a hit needs an alarm inside it, with delay from the original onset. Completely unobserved events are counted outside recall. False alarm events count contiguous alarms in explicit normal intervals and split at annotation boundaries, abstention and acquisition gaps. Alarm durations sum last minus first timestamps of contiguous spans, with zero duration for point alarms. Positive-only annotation cannot establish global precision or false alarm rates. `RULES` travels with snapshots and is shown in reports.
+
+Detailed comparison loads only selected successful task results (up to 12) and uses the run’s frozen clock, not today’s editable dataset reference. It reuses `observed_spans`/`compare_intervals`, groups independent clocks separately, reports differing windows/coverage/inputs/baselines/label versions, and pairs exact shared timestamps for agreement without interpolating states. Duplicate timestamps make that pairing ambiguous and produce an explicit unavailable result. Plot ordinates and contribution units remain independent. React reuses `Plot`, `SignalPlots` and contribution views; obsolete experiment, comparison, label and cursor responses are discarded.
+
+Incident association validates all selected task/result/interval identities before adding existing source-link types in a transaction. New interval-only incidents retain that scope; they do not silently add the whole analysis. Existing incident investigation and report logic is reused. Source details and report appendices include the experiment/run/task IDs; the browser links back to the experiment.
+
+Experiment HTML reports read saved runs and records without rerunning detection. They reuse incident SVG/table/A4 facilities, embed method-specific curves, measured input curves, timeline comparisons, labelled evaluations, provenance and technical result IDs. Measurement figures are omitted if the input hash no longer matches; saved detection results remain available. Measurement figures show at most eight input signals, and detailed common/unique/agreeing-task figures use at most 12 successful tasks per run; full configurations, summaries and individual method curves remain in the report. HTML is offline and PDF uses browser printing.
+
+| API | Purpose |
+|---|---|
+| `GET/POST /api/workspaces/:id/experiments` | List/create saved definitions |
+| `POST /api/workspaces/:id/experiments/preview` | Validate and expand a concrete bounded plan |
+| `GET/PATCH /api/experiments/:id` | Open/edit definition, run summaries and research record history |
+| `POST /api/experiments/:id/copy` | Copy configuration into a new experiment |
+| `GET/POST /api/experiments/:id/runs` | Inspect history or queue execution; optional `retryRunId` |
+| `GET /api/experiment-runs/:id` | Immutable snapshot and live task progress/results |
+| `POST /api/experiments/:id/comparison` | Summary plus selected `taskIds` and clock-aware comparisons |
+| `GET/POST /api/datasets/:id/labels` | List/create independent label versions |
+| `POST /api/datasets/:id/labels/triplens` | Import known simulator truth, with optional explicit `simulationId` |
+| `POST /api/experiment-runs/:id/incidents` | Associate selected tasks/scoped intervals with a new/existing incident |
+| `GET /api/experiments/:id/report.html` | Offline report; optional `run` and `download=1` |
+
+Verification covers nine-method execution, studies and bounds, partial failures/retries, immutable history, restart recovery, labels/unknown/abstain/gaps, source clocks, derived observation policies, simulator truth, scoped incident lineage and HTML evidence. DOM tests cover the actual editor, filters/notes/references, stale loads, label import, synchronous cursors and report generations. [Browser validation](experiment-validation.md) records the actual exercised workflows and remaining limits.
 
 ## Signal & Time-Series Workspace
 

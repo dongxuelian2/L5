@@ -214,6 +214,8 @@ function simulationHref(workspaceId: string, source: IncidentLink) {
 }
 function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: Dataset[] }) {
   const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = d.interval;
+  const experiment = d.experiment;
+  if (experiment) return <><p><a className="ws-link" href={`#/workspaces/${dataset?.workspace_id}/experiments/${experiment.experimentId}`}>返回来源实验 ↗</a> · run {experiment.runId} · task {experiment.taskId}</p><SourceSummary source={{ ...source, details: { ...d, experiment: undefined } }} datasets={datasets} /></>;
   return <><p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>峰值时间 {dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`} · 分数 {number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.map(s => dataset ? namedSignal(dataset, s) : s).join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? "干预实验" : "工具调查"} · 观察至 {String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>观察窗口 {number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)} s · 工作假设 {d.observationWindow.hypothesis}</p>}</>;
 }
 
