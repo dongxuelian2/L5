@@ -1,0 +1,12 @@
+.transform-editor { border: 0; padding: 0; margin: 0; min-width: 0; }
+.transform-catalog { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 18px; max-height: 360px; overflow: auto; }
+.transform-source-choice { display: flex !important; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--ws-border, #303a35); border-radius: 5px; }
+.transform-source-choice input { width: auto; flex-shrink: 0; }
+.transform-source-choice small, .transform-cell-note { display: block; font-size: 11px; color: var(--ws-muted, #a0afa7); margin-top: 5px; }
+.transform-signal { border: 1px solid var(--ws-border, #303a35); border-radius: 5px; margin: 18px 0; padding: 18px; min-width: 0; }
+.transform-signal legend { padding: 0 8px; }
+.transform-expression, .transform-json { font-family: 'IBM Plex Mono', monospace; }
+.transform-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.transform-lineage { margin: 20px 0; overflow-wrap: anywhere; }
+.transform-lineage summary { cursor: pointer; }
+.transform-json { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 480px; overflow: auto; }

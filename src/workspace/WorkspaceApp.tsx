@@ -6,6 +6,7 @@ import { AlgorithmControls } from "./AlgorithmControls";
 import { AnalysisComparison } from "./AnalysisComparison";
 import { IncidentsPage } from "./Incidents";
 import { SignalWorkspace } from "./SignalWorkspace";
+import { TransformationWorkspace, TransformationLineage } from "./TransformationWorkspace";
 const RuntimeWorkbench = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.RuntimeWorkbench })));
 import { dateLabel, number, signalLabel, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
@@ -128,6 +129,7 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title="Signals to plot and analyze" />
         <SignalPlots dataset={dataset} signals={chosen} />
+        <TransformationLineage dataset={dataset} />
         {dataset.metadata.model && <a className="ws-primary" href={`#/workspaces/${workspaceId}/simulations/${dataset.metadata.model.simulationId}`}>Open process investigation & interventions ↗</a>}
         <div className="ws-inline ws-between"><a className="ws-link" href={`#/workspaces/${workspaceId}/explorer/${dataset.metadata.columns.filter(c => chosen.includes(c.name)).map(c => c.id).filter(Boolean).join(",")}`}>Open Signal Explorer ↗</a><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
       </section>
@@ -200,6 +202,7 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
     return () => controller.abort();
   }, [revision, workspaceId]);
   useEffect(() => { setWorkspace(null); setDatasets([]); setJobs([]); setSelected(""); setLoading(Boolean(workspaceId)); }, [workspaceId]);
+  useEffect(() => { if (tab === "datasets" && jobId) setSelected(jobId); }, [tab, jobId]);
   useEffect(() => {
     if (!workspaceId) return;
     const controller = new AbortController();
@@ -210,6 +213,7 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
   }, [workspaceId, revision]);
   const dataMode = tab === "signals" || tab === "quality" || tab === "explorer" ? tab : null;
   const content = loading ? <p role="status">Opening workspace…</p> : !workspace ? null :
+    tab === "transformations" ? <TransformationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} definitionId={jobId} initialSignalIds={path[4]} onGenerated={dataset => { setSelected(dataset.id); setAnalysisDraft(null); refresh(); }} /> :
     dataMode ? <SignalWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} jobs={jobs} mode={dataMode} initialSignalIds={jobId} onChanged={refresh} onAnalyze={(datasetId, signals, range) => {
       setSelected(datasetId); setPreferences(p => ({ ...p, [datasetId]: signals })); setAnalysisDraft({ datasetId, range }); go(`workspaces/${workspaceId}/analysis`);
     }} /> : tab === "incidents" ? <IncidentsPage workspaceId={workspaceId!} incidentId={jobId} datasets={datasets} jobs={jobs} /> :
@@ -219,7 +223,7 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
     <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); setAnalysisDraft(null); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   return <div className="ws-shell">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>WORKSPACE</span><small>2.0</small></a><nav aria-label="Application"><a href="#/" className="ws-active">Workspaces</a><a href="#/examples">TripLens examples ↗</a></nav><span className="ws-connection"><i />LOCAL ENGINE</span></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["signals", "02", "Signal catalog", "↗"], ["quality", "03", "Data quality", "↗"], ["explorer", "04", "Signal Explorer", "↗"], ["analysis", "05", "Analysis", "↗"], ["history", "06", "History", jobs.length], ["simulations", "07", "Process simulator", "↗"], ["incidents", "08", "事件", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["signals", "02", "Signal catalog", "↗"], ["quality", "03", "Data quality", "↗"], ["explorer", "04", "Signal Explorer", "↗"], ["transformations", "05", "Transformations", "↗"], ["analysis", "06", "Analysis", "↗"], ["history", "07", "History", jobs.length], ["simulations", "08", "Process simulator", "↗"], ["incidents", "09", "事件", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
       <main className="ws-main"><ErrorText error={error} />{content}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>L5 / OPEN INDUSTRIAL ANALYSIS</span><span>CSV → BASELINE → ANALYSIS → HISTORY</span></footer>

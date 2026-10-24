@@ -17,6 +17,7 @@ export function AlgorithmControls({config,onChange}:{config:Config;onChange:(c:C
       {(parameters[config.algorithm] || []).map(([key,label,initial,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} step={key === "lags" || key === "window" ? 1 : "any"} required value={(config[key] as number | undefined) ?? initial} onChange={e=>set(key,Number(e.target.value))} /></label>)}
     </div>
     {config.algorithm==="adaptive-maxz" && <p className="ws-notice">Experimental: guarded adaptation can absorb a slow fault. Compare with a fixed reference detector.</p>}
+    <label>Transformation observation policy<select value={config.observationPolicy || "measured"} onChange={e => set("observationPolicy", e.target.value)}><option value="measured">Original observations · processed points do not count toward coverage</option><option value="processed">Include processed values · interpolation and fills count toward coverage</option></select></label>
     <details><summary>Coverage, abstention & sensor perturbations</summary><div className="ws-form-grid ws-three">
       <label>Normal fit fraction<input type="number" min={.5} max={.9} step="any" value={config.fitFraction??.7} onChange={e=>set("fitFraction",Number(e.target.value))} /></label>
       <label>Minimum observed fraction<input type="number" min={.000001} max={1} step="any" value={config.minCoverage??.9} onChange={e=>set("minCoverage",Number(e.target.value))} /></label>

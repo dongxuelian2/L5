@@ -3,6 +3,7 @@ import { Plot, SignalPlots } from "./Charts";
 import { intervalWindow, keyFindings } from "./findings";
 import { dateLabel, namedSignal, number, timeLabel, type AnalysisResult, type Contribution, type ContributionMetric, type Dataset, type Interval } from "./types";
 import { IncidentLinkDialog } from "./IncidentLinkDialog";
+import { TransformationLineage } from "./TransformationWorkspace";
 
 const metrics: Record<ContributionMetric, { label: string; description: string }> = {
   "history-contribution": { label: "History-based channel contribution", description: "Causal channel statistics use the observed sequence through this timestamp. State resets after insufficient observation coverage." },
@@ -62,6 +63,7 @@ export function ResultView({ result, dataset, signalPicker, initialIntervalIndex
   }
 
   return <section className="ws-results" aria-label="Analysis result">
+    {dataset.metadata.transformation && <><p className="ws-notice">Transformation data · observation policy: {result.config.observationPolicy === "processed" ? "processed values included in coverage" : "original observations only"}. Interpolation and fill provenance is retained.</p><TransformationLineage dataset={dataset} /></>}
     <div className="ws-section-heading"><div><span className="ws-kicker">RESULT / {result.algorithmLabel}</span><h2>{result.name}</h2></div><button className="ws-outlined" onClick={exportResult}>Export result JSON ↓</button></div>
     <p className="ws-saved" role="status">● Saved to workspace · {dateLabel(result.completedAt)} · {number(result.durationMs)} ms</p>
     <div className="ws-stats ws-result-stats"><div><strong className={result.intervals.length ? "ws-coral" : "ws-accent"}>{result.intervals.length}</strong><span>detected intervals</span></div><div><strong>{summary.flaggedSamples.toLocaleString()} / {summary.analysisSamples.toLocaleString()}</strong><span>samples above threshold</span></div><div><strong>{number(result.threshold)}</strong><span>fixed threshold</span></div><div><strong>{summary.firstDetection === null ? "None" : timeLabel(axis, summary.firstDetection)}</strong><span>first detected sample</span></div></div>
@@ -81,7 +83,7 @@ export function ResultView({ result, dataset, signalPicker, initialIntervalIndex
 
     <Plot title={`${result.algorithmLabel} anomaly score · full analysis window`} times={result.times} values={result.scores.map((s,i) => result.states?.[i] === "abstain" ? null : s)} axis={axis} gaps={dataset.metadata.quality?.gaps} threshold={result.threshold} intervals={result.intervals} color="#e9927d" />
     <div className="ws-notice">{summary.fitSamples} assumed-normal samples fitted the model; {summary.calibrationSamples} subsequent normal samples calibrated the threshold at α={result.config.alpha}. Alarm persistence: {result.config.persistence ?? 1} samples. Shading marks confirmed alarm intervals.</div>
-    {result.observedFraction && <><p className="ws-notice">Observation coverage: {number((summary.coverageFraction ?? 1)*100)}% of rows eligible · {summary.abstainedSamples ?? 0} abstained samples. Abstain is neither normal nor alarm.</p><Plot title="Original sensor observation fraction" times={result.times} values={result.observedFraction} axis={axis} threshold={result.config.minCoverage ?? .9} color="#b4a0db" /></>}
+    {result.observedFraction && <><p className="ws-notice">Observation coverage: {number((summary.coverageFraction ?? 1)*100)}% of rows eligible · {summary.abstainedSamples ?? 0} abstained samples. Abstain is neither normal nor alarm.</p><Plot title={dataset.metadata.transformation && result.config.observationPolicy === "processed" ? "Available processed value fraction" : "Original sensor observation fraction"} times={result.times} values={result.observedFraction} axis={axis} threshold={result.config.minCoverage ?? .9} color="#b4a0db" /></>}
 
     <section ref={detail} className="ws-interval-detail" tabIndex={-1} aria-label="Interval details and raw signals" hidden={summary.abstainedSamples === summary.analysisSamples}>
       <div className="ws-section-heading"><div><h3>{focused ? "Selected interval" : "Peak signal contributions"}</h3><p className="ws-muted">{focused ? `${timeLabel(axis, focused.start)} → ${timeLabel(axis, focused.end)} · peak at ` : "Highest-score sample · "}{peakTime !== undefined ? timeLabel(axis, peakTime) : ""}</p></div>
