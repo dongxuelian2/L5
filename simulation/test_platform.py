@@ -82,13 +82,13 @@ class InvestigationTests(unittest.TestCase):
             self.assertEqual(len(action['trials']),221)
         self.assertEqual(case['recovery']['evaluated'],1547)
 
-    def test_generated_observation_analysis_matches_engine(self):
-        artifact=json.loads((Path(__file__).parents[1]/'src/data/platform.json').read_text(encoding='utf-8'))
-        for case in artifact['cases']:
-            self.assertEqual(case['diagnosis'],diagnose(case['rows']))
-            for snapshot in case['snapshots']:
-                prefix=[r for r in case['rows'] if r['t']<=snapshot['time']]
-                self.assertEqual(snapshot['diagnosis'],diagnose(prefix))
+    def test_observation_analysis_recomputes_an_arbitrary_prefix(self):
+        rows = simulate(Config(start=47, duration=317, step=.5, seed=293))
+        before = analyze_rows([r for r in rows if r['t'] <= 37])
+        after = analyze_rows([r for r in rows if r['t'] <= 93])
+        self.assertEqual(before['diagnosis']['status'], 'nominal')
+        self.assertEqual(after['diagnosis']['candidates'][0]['id'], 'cooling_valve')
+        self.assertTrue(all(e['t'] <= 93 for e in after['alarms']['events']))
 
     def test_alarm_events_preserve_returns_and_reannunciations(self):
         rows=simulate(Config(fault='healthy'))

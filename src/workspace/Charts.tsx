@@ -18,15 +18,16 @@ function plotIndexes(values: (number | null)[]) {
   return [...result].sort((a, b) => a - b);
 }
 
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a" }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string;
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = "threshold" }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (!times.length) return null;
   let low = Infinity, high = -Infinity;
   for (const value of values) if (value != null) { low = Math.min(low, value); high = Math.max(high, value); }
   if (!Number.isFinite(low)) return <div className="ws-notice">{title}: no measured values in this window.</div>;
-  if (threshold !== undefined) { low = Math.min(0, low, threshold); high = Math.max(high, threshold); }
+  if (domain) [low, high] = domain;
+  if (threshold !== undefined) { low = Math.min(domain ? low : 0, low, threshold); high = Math.max(high, threshold); }
   const margin = Math.max((high - low) * .08, Math.abs(high) * .002, .001);
   low -= margin; high += margin;
   const first = times[0], last = times[times.length - 1], span = last - first || 1;
@@ -50,10 +51,10 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
         while (a < b) { const m = (a + b) >> 1; if (times[m] < t) a = m + 1; else b = m; }
         setHover(a);
       }}>
-      <title>{title} — shaded areas exceed the detection threshold</title>
+      <title>{title}{threshold !== undefined ? ` — ${thresholdLabel} ${number(threshold)}` : ""}</title>
       {[0, .5, 1].map(f => <g key={f}><line x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} stroke="#30392d" strokeDasharray="3 5" /><text x={L - 10} y={T + f * (H - T - B) + 4} textAnchor="end">{number(high - f * (high - low))}</text></g>)}
       {intervals.filter(i => i.end >= first && i.start <= last).map((interval, i) => <rect key={i} x={x(Math.max(first, interval.start))} width={Math.max(2, x(Math.min(last, interval.end)) - x(Math.max(first, interval.start)))} y={T} height={H - T - B} fill="#e9927d" opacity=".14" />)}
-      {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">threshold {number(threshold)}</text></>}
+      {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       <path d={path} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
       <text x={L} y={H - 5}>{timeLabel(axis, first)}</text><text x={W - R} y={H - 5} textAnchor="end">{timeLabel(axis, last)}</text>

@@ -4,6 +4,7 @@ import { intervalWindow, keyFindings } from "./findings";
 import { dateLabel, number, timeLabel, type AnalysisResult, type Contribution, type ContributionMetric, type Dataset, type Interval } from "./types";
 
 const metrics: Record<ContributionMetric, { label: string; description: string }> = {
+  "history-contribution": { label: "History-based channel contribution", description: "Causal channel statistics use the observed sequence through this timestamp. State resets after insufficient observation coverage." },
   "absolute-robust-z": { label: "Absolute robust z-score", description: "Absolute distance from the normal center, divided by the fitted robust scale. The largest value is the Max-Z score." },
   "squared-residual": { label: "PCA-Q squared residual", description: "Each signal’s squared standardized residual outside the PCA model. Contributions sum to the Q score." },
   "model-leverage": { label: "PCA-T² model-space leverage", description: "Absolute back-projection of the variance-scaled PCA scores. These descriptive values rank signals and do not sum to T²." },
@@ -66,21 +67,23 @@ export function ResultView({ result, dataset, signalPicker }: { result: Analysis
       </article>)}</div>
     </section>}
 
-    <Plot title={`${result.algorithmLabel} anomaly score · full analysis window`} times={result.times} values={result.scores} axis={axis} threshold={result.threshold} intervals={result.intervals} color="#e9927d" />
-    <div className="ws-notice">{summary.fitSamples} assumed-normal samples fitted the model; {summary.calibrationSamples} subsequent normal samples calibrated the threshold at α={result.config.alpha}. The target window did not select the threshold. Shading marks score &gt; threshold.</div>
+    <Plot title={`${result.algorithmLabel} anomaly score · full analysis window`} times={result.times} values={result.scores.map((s,i) => result.states?.[i] === "abstain" ? null : s)} axis={axis} threshold={result.threshold} intervals={result.intervals} color="#e9927d" />
+    <div className="ws-notice">{summary.fitSamples} assumed-normal samples fitted the model; {summary.calibrationSamples} subsequent normal samples calibrated the threshold at α={result.config.alpha}. Alarm persistence: {result.config.persistence ?? 1} samples. Shading marks confirmed alarm intervals.</div>
+    {result.observedFraction && <><p className="ws-notice">Observation coverage: {number((summary.coverageFraction ?? 1)*100)}% of rows eligible · {summary.abstainedSamples ?? 0} abstained samples. Abstain is neither normal nor alarm.</p><Plot title="Original sensor observation fraction" times={result.times} values={result.observedFraction} axis={axis} threshold={result.config.minCoverage ?? .9} color="#b4a0db" /></>}
 
-    <section ref={detail} className="ws-interval-detail" tabIndex={-1} aria-label="Interval details and raw signals">
+    <section ref={detail} className="ws-interval-detail" tabIndex={-1} aria-label="Interval details and raw signals" hidden={summary.abstainedSamples === summary.analysisSamples}>
       <div className="ws-section-heading"><div><h3>{focused ? "Selected interval" : "Peak signal contributions"}</h3><p className="ws-muted">{focused ? `${timeLabel(axis, focused.start)} → ${timeLabel(axis, focused.end)} · peak at ` : "Highest-score sample · "}{peakTime !== undefined ? timeLabel(axis, peakTime) : ""}</p></div>
         {focused && <button type="button" className="ws-outlined" onClick={() => setFocused(null)}>Show full analysis window</button>}
       </div>
       <Contributions values={contributions} signals={related} metric={result.contributionMetric} />
       <p className="ws-muted">Missing target measurements use normal-fit medians ({summary.imputedValues.analysis} values filled).</p>
+      {result.config.stress && ((result.config.stress.noise ?? 0) !== 0 || (result.config.stress.offset ?? 0) !== 0 || (result.config.stress.missingFraction ?? 0) > 0 || (result.config.stress.missingSignals?.length ?? 0) > 0) && <p className="ws-notice">Scores and coverage include the saved artificial perturbations. The raw curves below show the original dataset.</p>}
       {signalPicker(plotted, setPlotted)}
       <SignalPlots dataset={dataset} signals={plotted} range={range} intervals={result.intervals} />
     </section>
 
     <div className="ws-section-heading"><h3>Complete anomaly record</h3><span className="ws-muted">{result.intervals.length} intervals · chronological order</span></div>
-    {result.intervals.length ? <div className="ws-table-scroll"><table><thead><tr><th>Start</th><th>End</th><th>Samples</th><th>Peak score</th><th>Related signals at peak</th><th>Curves</th></tr></thead><tbody>{(allIntervals ? result.intervals : result.intervals.slice(0, 30)).map((interval, i) => <tr key={i}><td>{timeLabel(axis, interval.start)}</td><td>{timeLabel(axis, interval.end)}</td><td>{interval.samples}</td><td className="ws-coral">{number(interval.peakScore)}</td><td>{interval.signals.join(" · ")}</td><td><button type="button" onClick={() => focus(interval)}>Inspect</button></td></tr>)}</tbody></table>{result.intervals.length > 30 && <button type="button" onClick={() => setAllIntervals(!allIntervals)}>{allIntervals ? "Show first 30" : `Show all ${result.intervals.length} intervals`}</button>}</div> : <p className="ws-notice">No samples exceeded the normal-data threshold in this analysis window.</p>}
+    {result.intervals.length ? <div className="ws-table-scroll"><table><thead><tr><th>Start</th><th>End</th><th>Samples</th><th>Peak score</th><th>Related signals at peak</th><th>Curves</th></tr></thead><tbody>{(allIntervals ? result.intervals : result.intervals.slice(0, 30)).map((interval, i) => <tr key={i}><td>{timeLabel(axis, interval.start)}</td><td>{timeLabel(axis, interval.end)}</td><td>{interval.samples}</td><td className="ws-coral">{number(interval.peakScore)}</td><td>{interval.signals.join(" · ")}</td><td><button type="button" onClick={() => focus(interval)}>Inspect</button></td></tr>)}</tbody></table>{result.intervals.length > 30 && <button type="button" onClick={() => setAllIntervals(!allIntervals)}>{allIntervals ? "Show first 30" : `Show all ${result.intervals.length} intervals`}</button>}</div> : <p className="ws-notice">No confirmed alarm intervals. {summary.abstainedSamples ? `${summary.abstainedSamples} samples lack sufficient coverage and are excluded from normal/alarm decisions.` : "Observed scores did not meet the configured alarm rule."}</p>}
     <details><summary>Saved model and parameters</summary><pre>{JSON.stringify({ config: result.config, model: result.model, summary: result.summary }, null, 2)}</pre></details>
   </section>;
 }

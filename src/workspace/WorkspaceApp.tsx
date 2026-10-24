@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, go, message } from "./api";
 import { Plot, SignalPlots } from "./Charts";
 import { ResultView } from "./Results";
+import { AlgorithmControls } from "./AlgorithmControls";
+import { AnalysisComparison } from "./AnalysisComparison";
+const RuntimeWorkbench = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.RuntimeWorkbench })));
 import { dateLabel, number, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
 
@@ -41,7 +44,7 @@ function WorkspaceHome({ workspaces, refresh }: { workspaces: Workspace[]; refre
       <div className="ws-inline ws-between"><span className="ws-kicker">PROJECT {String(i + 1).padStart(2, "0")}</span><button aria-label={`Manage ${workspace.name}`} onClick={() => { setManage(workspace); setNewName(workspace.name); setDeleting(false); }}>Manage</button></div>
       <a href={`#/workspaces/${workspace.id}/datasets`}><h2>{workspace.name}</h2><p>{workspace.dataset_count || 0} datasets <span> / </span> {workspace.analysis_count || 0} analyses</p><div className="ws-inline ws-between"><small>Updated {dateLabel(workspace.updated_at)}</small><span className="ws-accent">Open workspace ↗</span></div></a>
     </article>)}</div>}
-    <a className="ws-examples-card" href="#/examples"><div><span className="ws-kicker">BUILT-IN EXAMPLES</span><h2>Explore TripLens</h2><p>12 simulated incidents · evidence investigation · intervention search</p></div><span>Open examples ↗</span></a>
+    <a className="ws-examples-card" href="#/examples"><div><span className="ws-kicker">BUILT-IN EXAMPLES</span><h2>Explore TripLens</h2><p>12 fault templates · runtime investigation · intervention search</p></div><span>Open examples ↗</span></a>
     {manage && <div className="ws-modal-backdrop"><form className="ws-modal" role="dialog" aria-modal="true" aria-label="Manage workspace" onSubmit={update}><h2>{deleting ? "Delete this workspace?" : "Manage workspace"}</h2>
       {deleting ? <p>“{manage.name}”, its datasets and analysis history will be permanently removed from this machine.</p> : <label>Workspace name<input value={newName} onChange={e => setNewName(e.target.value)} required maxLength={160} autoFocus /></label>}
       <ErrorText error={error} /><div className="ws-inline"><button type="button" onClick={() => setManage(null)}>Cancel</button>{!deleting && <button type="button" className="ws-danger" onClick={() => setDeleting(true)}>Delete workspace</button>}<button disabled={busy} className={deleting ? "ws-danger ws-outlined" : "ws-primary"}>{deleting ? "Delete permanently" : "Save name"}</button></div>
@@ -73,7 +76,6 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
     if (!file) return;
     setFilename(file.name); setName(file.name); setColumns([]); setCsv(""); setError(""); setTimeColumn("__auto");
     try {
-      if (file.size > 45 * 1024 * 1024) throw new Error("Choose a CSV smaller than 45 MiB.");
       const data = await file.arrayBuffer();
       let text: string;
       try { text = new TextDecoder("utf-8", { fatal: true }).decode(data); }
@@ -90,7 +92,7 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
     <div className="ws-section-heading"><h2>Import a CSV</h2><span className="ws-kicker">01 / DATA IN</span></div>
     <div className="ws-file"><input ref={fileInput} aria-label="Choose CSV file" type="file" hidden accept=".csv,.tsv,.txt,text/csv" onChange={e => void chooseFile(e.target.files?.[0])} />
       <div className="ws-inline"><button type="button" className="ws-file-button" onClick={() => fileInput.current?.click()} aria-describedby="csv-filename csv-help">Choose file</button><span id="csv-filename" className="ws-file-name" aria-live="polite">{filename || "No file selected"}</span></div>
-      <span id="csv-help">CSV / TSV · named numeric signals · up to 45 MiB</span>
+      <span id="csv-help">CSV / TSV · named numeric signals</span>
     </div>
     {csv && <>
       <div className="ws-form-grid"><label>Dataset name<input value={name} onChange={e => setName(e.target.value)} required maxLength={160} /></label><label>Time axis<select value={timeColumn} onChange={e => setTimeColumn(e.target.value)}><option value="__auto">Auto-detect time column</option><option value="__generated">Generate from sampling interval</option>{columns.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
@@ -116,13 +118,14 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
   const dataset = datasets.find(d => d.id === selected) || datasets[0];
   const chosen = dataset ? preferences[dataset.id] ?? dataset.metadata.columns.slice(0, 4).map(c => c.name) : [];
   return <>
-    <div className="ws-page-title"><div><div className="ws-kicker">01 / DATASETS</div><h1>Your process data<span className="ws-accent">.</span></h1><p>Bring a new dataset into this workspace. Every column keeps its own meaning.</p></div>{datasets.length > 0 && <button className="ws-primary" onClick={() => setImporting(!importing)}>{importing ? "Close import" : "+ Import CSV"}</button>}</div>
+    <div className="ws-page-title"><div><div className="ws-kicker">01 / DATASETS</div><h1>Your process data<span className="ws-accent">.</span></h1><p>Bring a new dataset into this workspace. Every column keeps its own meaning. <a className="ws-link" href={`#/workspaces/${workspaceId}/simulations`}>Generate process data ↗</a></p></div>{datasets.length > 0 && <button className="ws-primary" onClick={() => setImporting(!importing)}>{importing ? "Close import" : "+ Import CSV"}</button>}</div>
     {(importing || datasets.length === 0) && <ImportDataset workspaceId={workspaceId} onImport={d => { setSelected(d.id); setImporting(false); refresh(); }} />}
     {dataset && <>
       <div className="ws-section-heading"><h2>Saved datasets <span className="ws-muted">/ {datasets.length}</span></h2><label className="ws-inline">Dataset<select aria-label="Saved dataset" value={dataset.id} onChange={e => setSelected(e.target.value)}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label></div>
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title="Signals to plot and analyze" />
         <SignalPlots dataset={dataset} signals={chosen} />
+        {dataset.metadata.model && <a className="ws-primary" href={`#/workspaces/${workspaceId}/simulations/${dataset.metadata.model.simulationId}`}>Open process investigation & interventions ↗</a>}
         <div className="ws-inline ws-between"><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
       </section>
     </>}
@@ -163,10 +166,10 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
     <div className="ws-page-title"><div><div className="ws-kicker">02 / ANALYSIS ENGINE</div><h1>Find what changed<span className="ws-accent">.</span></h1><p>Fit a normal baseline, then score a later window of your measurements.</p></div><span className="ws-badge">FULL-RESOLUTION COMPUTATION</span></div>
     {loading ? <p role="status">Opening saved analysis…</p> : config && <form className="ws-panel ws-analysis-form" onSubmit={run}>
       <div className="ws-form-grid"><label>Dataset<select value={dataset.id} onChange={e => { setSelected(e.target.value); if (jobId) go(`workspaces/${workspaceId}/analysis`); }}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Analysis name (optional)<input maxLength={160} value={config.name || ""} onChange={e => set("name", e.target.value)} placeholder="e.g. Temperature excursion review" /></label></div>
-      <SignalPicker columns={dataset.metadata.columns} selected={config.signals} onChange={signals => set("signals", signals)} />
+      <SignalPicker columns={dataset.metadata.columns} selected={config.signals} onChange={signals => setConfig({ ...config, signals, requiredSignals:config.requiredSignals?.filter(s=>signals.includes(s)), stress:{ ...config.stress, missingSignals:config.stress?.missingSignals?.filter(s=>signals.includes(s)) } })} />
       <div className="ws-window-grid">{(["baselineRange", "analysisRange"] as const).map(key => <fieldset key={key}><legend>{key === "baselineRange" ? "Normal baseline · assumed healthy" : "Analysis window · target data"}</legend><div className="ws-form-grid"><label>{key === "baselineRange" ? "Baseline start (s)" : "Analysis start (s)"}<input type="number" step="any" min={dataset.metadata.time.start} max={dataset.metadata.time.end} value={config[key][0]} onChange={e => set(key, [Number(e.target.value), config[key][1]])} required /></label><label>{key === "baselineRange" ? "Baseline end (s)" : "Analysis end (s)"}<input type="number" step="any" min={dataset.metadata.time.start} max={dataset.metadata.time.end} value={config[key][1]} onChange={e => set(key, [config[key][0], Number(e.target.value)])} required /></label></div></fieldset>)}</div>
-      <p className="ws-notice">Choose a baseline you believe is normal, ending before the analysis window. At least 100 baseline samples: first 70% for fitting, final 30% for threshold calibration.{dataset.metadata.time.origin && ` Times are elapsed seconds from ${timeLabel(dataset.metadata.time, 0)}.`}</p>
-      <div className="ws-form-grid ws-three"><label>Detection algorithm<select value={config.algorithm} onChange={e => set("algorithm", e.target.value)}><option value="robust-maxz">Robust Max-Z</option><option value="pca-q" disabled={config.signals.length < 2}>PCA-Q · residual deviation</option><option value="pca-t2" disabled={config.signals.length < 2}>PCA-T² · model-space deviation</option></select></label><label>Calibration alpha<input type="number" min="0.000001" max="0.499999" step="any" value={config.alpha} onChange={e => set("alpha", Number(e.target.value))} required /></label>{config.algorithm !== "robust-maxz" && <label>PCA retained variance<input type="number" min="0.5" max="0.999999" step="any" value={config.variance} onChange={e => set("variance", Number(e.target.value))} required /></label>}</div>
+      <p className="ws-notice">Choose a baseline you believe is normal, ending before the analysis window. Use at least 30 fit and 30 calibration observations; the fit fraction can be configured below.{dataset.metadata.time.origin && ` Times are elapsed seconds from ${timeLabel(dataset.metadata.time, 0)}.`}</p>
+      <AlgorithmControls config={config} onChange={setConfig} />
       <ErrorText error={error} /><div className="ws-inline ws-between"><span className="ws-muted">Every completed run is saved automatically to History.</span><button className="ws-primary" disabled={busy || loading || !config.signals.length}>{busy ? "Computing and saving…" : result ? "Run again with these parameters ↗" : "Run analysis and save ↗"}</button></div>
     </form>}
     {!config && <ErrorText error={error} />}
@@ -176,6 +179,7 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
 
 function HistoryPage({ jobs, datasets, workspaceId }: { jobs: Job[]; datasets: Dataset[]; workspaceId: string }) {
   return <><div className="ws-page-title"><div><div className="ws-kicker">03 / HISTORY</div><h1>Every run, retained<span className="ws-accent">.</span></h1><p>Reopen a result or use its saved parameters for another analysis.</p></div><span className="ws-badge">{jobs.length} SAVED RUNS</span></div>
+    {jobs.length > 1 && <AnalysisComparison jobs={jobs} datasets={datasets} />}
     {jobs.length === 0 ? <Empty title="Your analyses will appear here"><a className="ws-link" href={`#/workspaces/${workspaceId}/analysis`}>Start an analysis →</a></Empty> : <div className="ws-history">{jobs.map(job => <a href={`#/workspaces/${workspaceId}/analysis/${job.id}`} className="ws-history-row" key={job.id}><div><span className="ws-kicker">{job.config.algorithm} / {dateLabel(job.created_at)}</span><h2>{job.name}</h2><p>{datasets.find(d => d.id === job.dataset_id)?.name} · {job.config.signals.length} signals · {number(job.config.analysisRange[0])}–{number(job.config.analysisRange[1])} s</p></div><div><strong className={job.summary.flaggedSamples ? "ws-coral" : "ws-accent"}>{job.summary.flaggedSamples.toLocaleString()} flagged</strong><span>Open result ↗</span></div></a>)}</div>}
   </>;
 }
@@ -202,8 +206,8 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
   }, [workspaceId, revision]);
   return <div className="ws-shell">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>WORKSPACE</span><small>2.0</small></a><nav aria-label="Application"><a href="#/" className="ws-active">Workspaces</a><a href="#/examples">TripLens examples ↗</a></nav><span className="ws-connection"><i />LOCAL ENGINE</span></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["analysis", "02", "Analysis", "↗"], ["history", "03", "History", jobs.length]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
-      <main className="ws-main"><ErrorText error={error} />{loading ? <p role="status">Opening workspace…</p> : workspace && (tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId} /> : tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} refresh={refresh} /> : <DatasetPage workspaceId={workspaceId} datasets={datasets} refresh={refresh} selected={selected} setSelected={setSelected} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />)}</main>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["analysis", "02", "Analysis", "↗"], ["history", "03", "History", jobs.length], ["simulations", "04", "Process simulator", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
+      <main className="ws-main"><ErrorText error={error} />{loading ? <p role="status">Opening workspace…</p> : workspace && (tab === "simulations" ? <Suspense fallback={<p>Opening process simulator…</p>}><RuntimeWorkbench key={workspaceId} workspaceId={workspaceId} simulationId={jobId} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> : tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId} /> : tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} refresh={refresh} /> : <DatasetPage workspaceId={workspaceId} datasets={datasets} refresh={refresh} selected={selected} setSelected={setSelected} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />)}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>L5 / OPEN INDUSTRIAL ANALYSIS</span><span>CSV → BASELINE → ANALYSIS → HISTORY</span></footer>
   </div>;

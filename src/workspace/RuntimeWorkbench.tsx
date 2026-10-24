@@ -1,0 +1,207 @@
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { EvidenceView, AlarmView, TraceView, EvidenceResult } from "../components/ProcessEvidence";
+import type { Analysis, Row, Trace } from "../lib/platform";
+import { downloadFile } from "../lib/download";
+import { api, message } from "./api";
+import { Plot } from "./Charts";
+import { dateLabel, number, type Dataset, type Workspace } from "./types";
+import "./workspace.css";
+import "./runtime.css";
+import { observationKey, useObservation, type Observation, type ObservationContext } from "./useObservation";
+
+type SimulationConfig = { fault: string; start: number; severity: number; operating: number; noise: number; response: number; delay: number; seed: number | null; duration: number; step: number };
+type Session = { id: string; title: string; config: SimulationConfig; rows: Row[]; createdAt: string; workspaceId: string | null; datasetId: string | null };
+type Catalog = { faults: Record<string, string>; defaults: SimulationConfig; signals: { key: string; tag: string }[]; actions: { id: string; name: string }[]; actionParameters: Record<string, { default: number; min: number; max: number }>; tools: string[] };
+type ForecastPath = { times: number[]; pressure: number[]; physicalPeak: number; trip: number | null; productionLoss: number; qualityLoss: number; utilityCost: number; safe: boolean; action?: string };
+type Forecast = { mode: string; hypothesis: string; observedThrough: number; at: number; horizon: number; threshold: number; fitError: number | null; baseline: ForecastPath; branches: ForecastPath[]; search?: { resolution: number; evaluated: number; actions: {id:string;name:string;latest:number|null;intervals:number[][]}[] } };
+type Run = { id: string; kind: string; request: Record<string, unknown>; result: unknown; createdAt: string };
+type Tab = "evidence" | "alarms" | "tools" | "interventions" | "compare" | "history";
+const labels: Record<Tab, string> = { evidence: "Evidence & topology", alarms: "Alarm history", tools: "Investigation tools", interventions: "Interventions", compare: "Compare sessions", history: "Saved experiments" };
+const fields: [keyof SimulationConfig, string, number, number, number][] = [
+  ["start", "Fault onset (s)", 0, Infinity, .1], ["severity", "Fault severity multiplier", 0, Infinity, .05],
+  ["operating", "Initial temperature offset (°C)", -20, 20, .1], ["noise", "Measurement noise multiplier", 0, Infinity, .1],
+  ["response", "Controller response multiplier", .05, Infinity, .05], ["delay", "Actuator delay (s)", 0, Infinity, .1],
+  ["duration", "Simulation duration (s)", 1, Infinity, .1], ["step", "Integration step (s)", .05, 1, .05],
+];
+const parameterLabels: Record<string, string> = { feedReduction: "Feed reduction fraction", setpointDrop: "Setpoint reduction (°C)", bypassFlow: "Bypass cooling flow (%)", pumpSpeed: "Backup pump speed (%)", emergencyFlow: "Emergency cooling flow (%)" };
+const applicable: Record<string, string[]> = { feed_reduce: ["feedReduction"], setpoint: ["setpointDrop"], bypass: ["bypassFlow"], backup_pump: ["pumpSpeed"], emergency: ["emergencyFlow"], shutdown: [], combined: ["feedReduction", "bypassFlow"] };
+function ErrorText({ error }: { error: string }) { return error ? <p className="ws-error" role="alert">{error}</p> : null; }
+function exportJSON(name: string, value: unknown) {
+  downloadFile(name, JSON.stringify(value, null, 2));
+}
+
+export function RuntimeWorkbench({ workspaceId, simulationId, onSaved, initialTab = "evidence" }: { workspaceId?: string; simulationId?: string; onSaved?: (d: Dataset) => void; initialTab?: Tab }) {
+  const [catalog, setCatalog] = useState<Catalog | null>(null), [sessions, setSessions] = useState<Session[]>([]);
+  const [session, setSession] = useState<Session | null>(null), [chosen, setChosen] = useState(simulationId || "");
+  const [config, setConfig] = useState<SimulationConfig | null>(null), [title, setTitle] = useState("");
+  const [configOpen, setConfigOpen] = useState(true);
+  const [time, setTime] = useState(93), [windowStart, setWindowStart] = useState(0);
+  const [hypothesis, setHypothesis] = useState<{key:string;id:string} | null>(null), [tab, setTab] = useState<Tab>(initialTab), [runs, setRuns] = useState<Run[]>([]), [restore, setRestore] = useState<Run | null>(null);
+  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]), [saveWorkspace, setSaveWorkspace] = useState(workspaceId || "");
+  const sessionReady = Boolean(session && session.id === chosen);
+  const context: ObservationContext | null = session && sessionReady ? { sessionId: session.id, asOf: time, windowStart } : null;
+  const observation = useObservation(context);
+  const analysis = observation.analysis;
+  const displayedAnalysis = observation.retained && observation.retained.context.sessionId === session?.id ? observation.retained.analysis : null;
+  const contextKey = observation.key;
+  const activeChoice = useRef(chosen);
+  activeChoice.current = chosen;
+  const activeSession = useRef<string | null>(null);
+  activeSession.current = session?.id ?? null;
+  useEffect(() => { if (simulationId) setChosen(simulationId); }, [simulationId]);
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
+  useEffect(() => {
+    const controller = new AbortController();
+    Promise.all([api<Catalog>("/simulations/catalog", undefined, "GET", controller.signal), api<{ simulations: Session[] }>(`/simulations${workspaceId ? `?workspaceId=${workspaceId}` : ""}`, undefined, "GET", controller.signal), api<{workspaces:Workspace[]}>("/workspaces", undefined, "GET", controller.signal)])
+      .then(([c, s, w]) => { if (controller.signal.aborted) return; setCatalog(c); setConfig(current => current ?? { ...c.defaults, step: .2, seed: null }); setSessions(s.simulations); setWorkspaces(w.workspaces); setSaveWorkspace(workspaceId || w.workspaces[0]?.id || ""); if (!simulationId && s.simulations.length) setChosen(current => current || s.simulations[0].id); })
+      .catch(e => { if (!controller.signal.aborted) setError(message(e)); });
+    return () => controller.abort();
+  }, [workspaceId]);
+  useEffect(() => {
+    if (!chosen) return;
+    const controller = new AbortController(); setError("");
+    Promise.all([api<Session>(`/simulations/${chosen}`, undefined, "GET", controller.signal), api<{runs:Run[]}>(`/simulations/${chosen}/runs`, undefined, "GET", controller.signal)])
+      .then(([s, r]) => { if (controller.signal.aborted || activeChoice.current !== chosen) return; setSession(s); setConfig(s.config); setConfigOpen(false); setTitle(s.title); setTime(Math.min(93, s.config.duration)); setWindowStart(0); setHypothesis(null); setRestore(null); setRuns(r.runs); })
+      .catch(e => { if (!controller.signal.aborted) setError(message(e)); });
+    return () => controller.abort();
+  }, [chosen]);
+  async function create(e: FormEvent) {
+    e.preventDefault(); if (!config) return; setBusy(true); setError(""); setNotice("");
+    try {
+      const data = await api<Session>("/simulations", { config, title: title || undefined, workspaceId });
+      setSessions(previous => [data, ...previous]); setChosen(data.id); setConfigOpen(false); setNotice("New trajectory computed and saved locally.");
+    } catch (e) { setError(message(e)); } finally { setBusy(false); }
+  }
+  async function save() {
+    if (!session || !sessionReady) return; setBusy(true); setError("");
+    const savingId = session.id;
+    try {
+      const dataset = await api<Dataset>(`/simulations/${session.id}/save`, { workspaceId: saveWorkspace, name: session.title });
+      setSession(s => s?.id === savingId ? { ...s, workspaceId: saveWorkspace, datasetId: dataset.id } : s); onSaved?.(dataset);
+      if (activeSession.current === savingId) setNotice("Dataset and process model linked to the workspace. Saved experiments reopen with this session.");
+    } catch (e) { setError(message(e)); } finally { setBusy(false); }
+  }
+  function record(run: Run) { if (activeSession.current === session?.id) setRuns(previous => [run, ...previous]); }
+  const currentHypothesis = analysis ? (hypothesis?.key === contextKey ? hypothesis.id : analysis.diagnosis.candidates[0]?.id || "") : "";
+  function selectHypothesis(id:string) { if (analysis && contextKey) setHypothesis({key:contextKey,id}); }
+  return <div className="ws-shell ws-runtime platform-workspace">
+    <div className="ws-page-title"><div><div className="ws-kicker">PROCESS MODEL / RUNTIME COMPUTATION</div><h1>Build a scenario. Follow the evidence.</h1><p>Generate observations, investigate any moment, and compare your own model experiments.</p></div><span className="ws-badge">18 CHANNELS · 12 FAULT MODELS</span></div>
+    <ErrorText error={error} />
+    {catalog && config && <details className="ws-panel runtime-config" open={configOpen} onToggle={e => setConfigOpen(e.currentTarget.open)}><summary>Configure a simulation / create a new trajectory</summary><form onSubmit={create}>
+      <div className="ws-form-grid ws-three"><label>Scenario name<input value={title} onChange={e => setTitle(e.target.value)} maxLength={160} placeholder="Name this experiment" /></label><label>Fault template<select value={config.fault} onChange={e => setConfig({ ...config, fault: e.target.value })}>{Object.entries(catalog.faults).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label>Random seed<input type="number" min={0} step={1} value={config.seed ?? ""} placeholder="Random on each new run" onChange={e => setConfig({ ...config, seed: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+        {fields.map(([key, label, min, max]) => <label key={key}>{label}<input type="number" min={min} max={Number.isFinite(max) ? max : undefined} step="any" required value={config[key] ?? ""} onChange={e => setConfig({ ...config, [key]: Number(e.target.value) })} /></label>)}
+      </div><p className="ws-notice">A stable first 20 seconds supports process diagnosis. Integration step 0.05–1 s; numerical runs use at most 100,000 steps.</p><button className="ws-primary" disabled={busy}>Run new simulation ↗</button>
+    </form></details>}
+    {sessions.length > 0 && <div className="ws-panel runtime-sessionbar"><label>Saved simulation<select value={chosen} onChange={e => setChosen(e.target.value)}>{sessions.map(s => <option value={s.id} key={s.id}>{s.title} · {s.id.slice(0, 8)}</option>)}</select></label>{session && sessionReady && <><label>Save dataset to workspace<select value={saveWorkspace} onChange={e => setSaveWorkspace(e.target.value)}><option value="">Choose a workspace</option>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label><button onClick={save} disabled={busy || !saveWorkspace}>Save dataset & model ↗</button>{session.datasetId && <a className="ws-link" href={`#/workspaces/${session.workspaceId}/datasets`}>Open saved dataset ↗</a>}</>}</div>}
+    {notice && <p className="ws-notice" role="status">{notice}</p>}
+    {chosen && !sessionReady && <p role="status">Opening selected simulation…</p>}
+    {session && sessionReady && context && <>
+      <section className="ws-panel runtime-timeline" aria-label="Observation window"><div className="ws-inline ws-between"><h2>{session.title}</h2><span className="ws-muted">{session.rows.length} samples · seed {session.config.seed} · step {session.config.step}s</span></div>
+        {session.config.fault !== "healthy" && session.config.start < 20 && <p className="ws-notice">The configured fault overlaps the initial 20-second reference interval. Process diagnosis assumes that interval is stable; adjust onset for observation fitting or use an explicit known-model trial.</p>}
+        <div className="ws-form-grid"><label>Observation window start (s)<input type="number" min={0} max={time} step="any" value={windowStart} onChange={e => setWindowStart(Number(e.target.value))} /></label><label>Observe through (s)<input type="number" min={windowStart} max={session.config.duration} step="any" value={time} onChange={e => setTime(Number(e.target.value))} /></label></div>
+        <input aria-label="Observation time" type="range" min={0} max={session.config.duration} step="any" value={time} onChange={e => setTime(Number(e.target.value))} />
+        <p className="ws-muted" aria-live="polite">{analysis ? `Showing ${analysis.windowStart}–${analysis.observedThrough}s · ${analysis.samples} observed samples` : observation.pending ? `Updating evidence for ${windowStart}–${time}s…` : "No diagnosis available for the selected window."}</p><ErrorText error={observation.error} />
+        <div className="ws-inline"><button disabled={!analysis} onClick={() => analysis && exportJSON(`${session.id}-t${analysis.observedThrough}.json`, { sessionId:session.id, title:session.title, hypothesis:currentHypothesis, analysis, rows:session.rows.filter(r => r.t >= analysis.windowStart && r.t <= analysis.observedThrough) })}>Export observed dossier JSON ↓</button><button disabled={!catalog} onClick={() => { const keys=["t", ...catalog!.signals.map(s=>s.key)]; downloadFile(`${session.id}-observations.csv`, keys.join(",")+"\n"+session.rows.filter(r=>r.t>=windowStart&&r.t<=time).map(r=>keys.map(k=>r[k]??"").join(",")).join("\n"), "text/csv"); }}>Export observations CSV ↓</button></div>
+      </section>
+      <nav className="runtime-tabs" aria-label="Process tools">{(Object.keys(labels) as Tab[]).map(t => <button key={t} className={t === tab ? "active" : ""} aria-pressed={tab === t} onClick={() => setTab(t)}>{labels[t]}</button>)}</nav>
+      {analysis?.diagnosis.status === "insufficient_data" && <p className="ws-notice">Not enough observed data for diagnosis. Include a stable 20-second baseline and at least four seconds of subsequent observations.</p>}
+      {tab === "evidence" && displayedAnalysis && <EvidenceView incident={{rows:session.rows.filter(r=>r.t>=windowStart && r.t<=time)}} analysis={analysis ?? displayedAnalysis} time={time} hypothesis={currentHypothesis} onHypothesis={selectHypothesis} updating={!analysis} />}
+      {tab === "alarms" && displayedAnalysis && <EvidenceResult pending={!analysis}><AlarmView analysis={analysis ?? displayedAnalysis} /></EvidenceResult>}
+      {catalog && (tab === "tools" || tab === "interventions") && <label className="runtime-hypothesis">Working hypothesis · choose any candidate<select value={currentHypothesis} disabled={!analysis} onChange={e => selectHypothesis(e.target.value)}><option value="" disabled>{observation.pending ? "Updating current-window hypotheses…" : "Select a hypothesis"}</option>{Object.entries(catalog.faults).filter(([id]) => id !== "healthy").map(([id, name]) => <option value={id} key={id}>{name} · support {analysis?.diagnosis.candidates.find(c => c.id === id)?.score ?? "pending"}</option>)}</select></label>}
+      {tab === "tools" && catalog && <ToolConsole key={`${session.id}/${restore?.id || "new"}`} restore={restore} session={session} catalog={catalog} context={context} hypothesis={currentHypothesis} record={record} ready={Boolean(analysis)} />}
+      {tab === "interventions" && catalog && <Interventions key={`${session.id}/${restore?.id || "new"}`} restore={restore} session={session} catalog={catalog} context={context} hypothesis={currentHypothesis} record={record} ready={Boolean(analysis)} />}
+      {tab === "compare" && <SessionComparison session={session} sessions={sessions} context={context} analysis={analysis} />}
+      {tab === "history" && <section className="ws-panel"><h2>Saved model experiments & investigations</h2><p>Each record retains the observation cutoff, chosen hypothesis, parameters and calculated output.</p>{!runs.length && <p className="ws-notice">Invoke a tool or run an intervention to save an experiment.</p>}{runs.map(r => <details key={r.id}><summary>{r.kind} · {dateLabel(r.createdAt)} · as of {String(r.request.asOf)}s</summary><div className="ws-inline"><button onClick={() => exportJSON(`${r.id}.json`, r)}>Export result JSON ↓</button><button onClick={() => { setTime(Number(r.request.asOf)); setWindowStart(Number(r.request.windowStart || 0)); if (typeof r.request.hypothesis === "string") setHypothesis({key:observationKey({sessionId:session.id,asOf:Number(r.request.asOf),windowStart:Number(r.request.windowStart || 0)}),id:r.request.hypothesis}); setRestore(r); setTab(r.kind === "intervention" ? "interventions" : "tools"); }}>Reopen context & parameters ↗</button></div><details><summary>Saved inputs</summary><pre>{JSON.stringify(r.request,null,2)}</pre></details>{r.kind === "intervention" ? <ForecastView forecast={r.result as Forecast} /> : <pre>{JSON.stringify(r.result, null, 2)}</pre>}</details>)}</section>}
+    </>}
+  </div>;
+}
+
+function useRunContext(context: ObservationContext) {
+  const key = observationKey(context), active = useRef(key), version = useRef(0);
+  active.current = key;
+  useEffect(() => () => { version.current++; }, [key]);
+  return { key, begin() { const current = ++version.current; return () => active.current === key && version.current === current; } };
+}
+
+function ToolConsole({ session, catalog, context, hypothesis, record, restore, ready }: { session: Session; catalog: Catalog; context: ObservationContext; hypothesis:string; record:(r:Run)=>void;restore:Run|null;ready:boolean }) {
+  const initial = (restore?.kind !== "intervention" ? restore?.request.calls : undefined) as {tool:string;args:{signal?:string;controller?:string}}[] | undefined;
+  const [tool, setTool] = useState(initial?.[0]?.tool || "inspect_signal_window"), [signal, setSignal] = useState(initial?.[0]?.args.signal || "valve"), [controller, setController] = useState(initial?.[0]?.args.controller || "TIC-101");
+  const [comparison, setComparison] = useState("__all");
+  const scope = useRunContext(context);
+  const [output, setOutput] = useState<{key:string;trace:Trace[];reply:string} | null>(null), [prompt, setPrompt] = useState("");
+  const [status, setStatus] = useState({key:scope.key,busy:false,error:""});
+  const busy = status.key === scope.key && status.busy, error = status.key === scope.key ? status.error : "";
+  function calls() {
+    const args = tool === "inspect_signal_window" || tool === "trace_downstream" ? { signal } : tool === "inspect_controller" ? { controller } : tool === "compare_hypotheses" ? { hypotheses: comparison === "__all" ? Object.keys(catalog.faults).filter(id=>id!=="healthy") : Array.from(new Set([hypothesis,comparison])) } : tool === "simulate_fault" ? { hypothesis } : {};
+    return [{ tool, args }];
+  }
+  async function invoke(assistant = false) {
+    if (!ready || !hypothesis) return;
+    const isCurrent = scope.begin();
+    setStatus({key:scope.key,busy:true,error:""});
+    try {
+      if (assistant) {
+        const data = await api<{summary:string;limitation:string;trace:Trace[];provider:string;record:Run}>("/analyze", { simulationId: session.id, ...context, hypothesis, prompt, calls: calls() });
+        record(data.record);
+        if (isCurrent()) setOutput({key:scope.key,trace:data.trace,reply:`${data.provider}: ${data.summary}\n${data.limitation}`});
+      } else {
+        const run = await api<Run>(`/simulations/${session.id}/tools`, { ...context, calls: calls(), hypothesis }); record(run);
+        if (isCurrent()) setOutput({key:scope.key,trace:(run.result as {trace:Trace[]}).trace,reply:""});
+      }
+    } catch (e) { if (isCurrent()) setStatus({key:scope.key,busy:false,error:message(e)}); }
+    finally { if (isCurrent()) setStatus(previous => ({...previous,busy:false})); }
+  }
+  return <section className="ws-panel"><h2>Invoke an investigation tool</h2><div className="ws-form-grid ws-three"><label>Tool<select value={tool} onChange={e => setTool(e.target.value)}>{catalog.tools.map(t => <option value={t} key={t}>{t.replaceAll("_", " ")}</option>)}</select></label>{["inspect_signal_window", "trace_downstream"].includes(tool) && <label>Signal<select value={signal} onChange={e => setSignal(e.target.value)}>{catalog.signals.map(s => <option key={s.key} value={s.key}>{s.tag} / {s.key}</option>)}</select></label>}{tool === "inspect_controller" && <label>Control loop<select value={controller} onChange={e => setController(e.target.value)}><option>TIC-101</option><option>FIC-102</option></select></label>}{tool === "compare_hypotheses" && <label>Compare with hypothesis<select value={comparison} onChange={e=>setComparison(e.target.value)}><option value="__all">All twelve hypotheses</option>{Object.entries(catalog.faults).filter(([id])=>id!=="healthy").map(([id,name])=><option value={id} key={id}>{name}</option>)}</select></label>}</div><p className="ws-notice">Uses observations in {context.windowStart}–{context.asOf}s. Hypothesis: {hypothesis}. Window analysis uses its first 20 seconds as the assumed stable baseline.</p><button className="ws-primary" disabled={busy || !ready || !hypothesis} onClick={() => void invoke()}>Compute tool result & save ↗</button>
+    <div className="ws-section-heading"><h3>Analysis assistant</h3></div><label>Question or instruction<input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Ask about this window and the selected tool" /></label><p className="ws-muted">Runs the selected Python tool. An optional configured external model summarizes its results.</p><button disabled={busy || !ready || !hypothesis || !prompt.trim()} onClick={() => void invoke(true)}>Ask using current observations ↗</button><ErrorText error={error} />{output && <EvidenceResult pending={!ready || output.key !== scope.key} pendingLabel="Run the tool for the selected observation window to view results.">{output.reply && <p className="ws-notice">{output.reply}</p>}{output.trace.length > 0 && <TraceView analysis={{ trace:output.trace } as Analysis} />}</EvidenceResult>}
+  </section>;
+}
+
+function Interventions({ session, catalog, context, hypothesis, record, restore, ready }: {session:Session;catalog:Catalog;context:ObservationContext;hypothesis:string;record:(r:Run)=>void;restore:Run|null;ready:boolean}) {
+  const initial = restore?.kind === "intervention" ? restore.request : {};
+  const [mode, setMode] = useState((initial.mode as string) || "observed"), [at, setAt] = useState((initial.at as number) ?? context.asOf), [horizon, setHorizon] = useState((initial.horizon as number) ?? session.config.duration);
+  const [actions, setActions] = useState((initial.actions as string[]) || ["bypass"]), [parameters, setParameters] = useState<Record<string,number>>(() => (initial.parameters as Record<string,number>) || Object.fromEntries(Object.entries(catalog.actionParameters).map(([k,v])=>[k,v.default])));
+  const [search, setSearch] = useState(Boolean(initial.search)), [resolution, setResolution] = useState((initial.search as {resolution:number}|undefined)?.resolution ?? 5);
+  const scope = useRunContext(context);
+  const [forecast, setForecast] = useState<{key:string;value:Forecast} | null>(() => restore?.kind === "intervention" ? {key:observationKey({sessionId:session.id,asOf:Number(initial.asOf),windowStart:Number(initial.windowStart || 0)}),value:restore.result as Forecast} : null);
+  const [previous, setPrevious] = useState<Forecast | null>(null), [status, setStatus] = useState({key:scope.key,busy:false,error:""});
+  const busy = status.key === scope.key && status.busy, error = status.key === scope.key ? status.error : "";
+  useEffect(() => { setAt(v => Math.max(v, context.asOf)); }, [context.asOf]);
+  async function run(e:FormEvent) {
+    e.preventDefault();
+    if (!ready || !hypothesis || !actions.length) return;
+    const isCurrent = scope.begin();
+    setStatus({key:scope.key,busy:true,error:""});
+    try {
+      const r = await api<Run>(`/simulations/${session.id}/interventions`, { ...context, mode, hypothesis, at, horizon, actions, parameters, search: search ? { resolution } : undefined });
+      record(r);
+      if (isCurrent()) { setPrevious(forecast?.key === scope.key ? forecast.value : null); setForecast({key:scope.key,value:r.result as Forecast}); }
+    } catch (e) { if (isCurrent()) setStatus({key:scope.key,busy:false,error:message(e)}); }
+    finally { if (isCurrent()) setStatus(previous => ({...previous,busy:false})); }
+  }
+  const keys = new Set(actions.flatMap(a => applicable[a]));
+  return <section className="ws-panel"><h2>Test a counterfactual</h2><form onSubmit={run}><div className="ws-form-grid ws-three"><label>Model source<select value={mode} onChange={e => setMode(e.target.value)}><option value="observed">Fit only the current observation window</option><option value="known">Known simulator parameters · hypothesis trial</option></select></label><label>Intervention starts at (s)<input type="number" min={context.asOf} max={horizon} step="any" value={at} onChange={e => setAt(Number(e.target.value))} required /></label><label>Prediction ends at (s)<input type="number" min={Math.max(context.asOf, at)} step="any" value={horizon} onChange={e => setHorizon(Number(e.target.value))} required /></label></div>
+      <fieldset><legend>Actions to compare</legend><div className="ws-option-grid">{catalog.actions.map(a => <label key={a.id}><input type="checkbox" checked={actions.includes(a.id)} onChange={e => setActions(e.target.checked ? [...actions, a.id] : actions.filter(id => id !== a.id))} />{a.name}</label>)}</div></fieldset>
+      <div className="ws-form-grid ws-three">{[...keys].map(k => <label key={k}>{parameterLabels[k]}<input type="number" min={catalog.actionParameters[k].min} max={catalog.actionParameters[k].max} step="any" required value={parameters[k]} onChange={e => setParameters(p => ({ ...p, [k]: Number(e.target.value) }))} /></label>)}</div>
+      <div className="ws-form-grid"><label className="ws-inline"><input type="checkbox" checked={search} onChange={e => setSearch(e.target.checked)} />Search safe intervention start times</label>{search && <label>Search resolution (seconds)<input type="number" min={session.config.step} step="any" value={resolution} onChange={e => setResolution(Number(e.target.value))} /></label>}</div>
+      <p className="ws-notice">{mode === "observed" ? `Fits ${hypothesis} using only ${context.windowStart}–${context.asOf}s. Predictions are conditional on that fitted hypothesis.` : `Uses your configured simulator parameters with the selected ${hypothesis} model. This is a known-model experiment.`} Pressure limits use physical pressure. All control is simulated.</p><ErrorText error={error} /><button className="ws-primary" disabled={busy || !ready || !hypothesis || !actions.length}>{busy ? "Computing predictions…" : "Run intervention comparison & save ↗"}</button></form>
+      {forecast && <EvidenceResult pending={!ready || forecast.key !== scope.key} pendingLabel="Run the intervention for the selected observation window to view predictions."><ForecastView forecast={forecast.value} />{previous && <details><summary>Compare with previous parameter run · {previous.mode}, start {previous.at}s</summary><ForecastView forecast={previous} /></details>}</EvidenceResult>}
+    </section>;
+}
+
+function ForecastView({ forecast }: {forecast:Forecast}) {
+  const paths = [forecast.baseline, ...forecast.branches];
+  const domain: [number, number] = [forecast.threshold, forecast.threshold];
+  for (const path of paths) for (const value of path.pressure) { domain[0] = Math.min(domain[0], value); domain[1] = Math.max(domain[1], value); }
+  const axis = { kind:"numeric" as const, column:"t", origin:null, start:forecast.baseline.times[0], end:forecast.horizon };
+  return <div className="runtime-forecast">{forecast.search && <><h3>Recovery window search</h3><p className="ws-muted">Grid resolution {forecast.search.resolution}s · {forecast.search.evaluated} simulated trials. Latest starts refer to tested grid points.</p><table><thead><tr><th>Action</th><th>Latest tested safe start</th><th>Safe tested intervals</th></tr></thead><tbody>{forecast.search.actions.map(a=><tr key={a.id}><td>{a.name}</td><td>{a.latest == null ? "No recoverable trip boundary" : `${a.latest}s`}</td><td>{a.intervals.map(i=>i.join("–")+"s").join(", ") || "None"}</td></tr>)}</tbody></table></>}<p className="ws-notice">{forecast.mode} model · {forecast.hypothesis} · observed through {forecast.observedThrough}s · action at {forecast.at}s · forecast to {forecast.horizon}s{forecast.fitError != null && ` · normalized fit error ${forecast.fitError}`}</p><div className="ws-table-scroll"><table><thead><tr><th>Branch</th><th>Max physical pressure (kPa)</th><th>Simulated limit crossing</th><th>Production loss (%)</th><th>Quality loss (pp)</th><th>Utility use (%·s)</th></tr></thead><tbody>{paths.map((p,i) => <tr key={i}><td>{p.action || "No intervention"}</td><td>{number(p.physicalPeak)}</td><td>{p.trip === null ? "None in horizon" : `${p.trip}s`}</td><td>{p.productionLoss}</td><td>{p.qualityLoss}</td><td>{p.utilityCost}</td></tr>)}</tbody></table></div>{paths.map((p,i) => <Plot key={i} title={`${p.action || "Baseline"} · physical pressure`} times={p.times} values={p.pressure} threshold={forecast.threshold} thresholdLabel="pressure limit" domain={domain} axis={axis} color={i ? "#b5ed9a" : "#e9927d"} />)}<p className="ws-muted">Conditional reduced-order forecasts; model mismatch is not bounded.</p></div>;
+}
+
+function SessionComparison({ session, sessions, context, analysis }: {session:Session;sessions:Session[];context:ObservationContext;analysis:Observation|null}) {
+  const [other, setOther] = useState(sessions.find(s => s.id !== session.id)?.id || "");
+  const comparison = useObservation(other ? {...context,sessionId:other} : null);
+  const result = comparison.analysis;
+  return <section className="ws-panel"><h2>Compare observations at the same time</h2><label>Comparison session<select value={other} onChange={e => setOther(e.target.value)}><option value="">Choose a second simulation</option>{sessions.filter(s => s.id !== session.id).map(s => <option value={s.id} key={s.id}>{s.title} · {s.id.slice(0,8)}</option>)}</select></label><ErrorText error={comparison.error} />{comparison.pending && <p role="status">Updating comparison for the selected observation window…</p>}{analysis && result && <><div className="ws-table-scroll"><table><thead><tr><th>Observed evidence</th><th>{session.title}</th><th>{sessions.find(s => s.id === other)?.title}</th></tr></thead><tbody>{[
+    ["Observed through", `${analysis.observedThrough}s`, `${result.observedThrough}s`], ["Status",analysis.diagnosis.status,result.diagnosis.status], ["Leading hypothesis",analysis.diagnosis.candidates[0].name,result.diagnosis.candidates[0].name], ["Evidence support",analysis.diagnosis.candidates[0].score,result.diagnosis.candidates[0].score], ["Alarm events",analysis.alarms.eventCount,result.alarms.eventCount], ["First detection",analysis.diagnosis.firstDetection ?? "None",result.diagnosis.firstDetection ?? "None"], ["Observed propagation paths",analysis.diagnosis.paths.length,result.diagnosis.paths.length]
+  ].map(([name,a,b]) => <tr key={name}><th>{name}</th><td>{a}</td><td>{b}</td></tr>)}</tbody></table></div><button onClick={() => exportJSON("session-comparison.json", { first:session.id, second:other, context, observations:[analysis,result] })}>Export comparison JSON ↓</button></>}</section>;
+}

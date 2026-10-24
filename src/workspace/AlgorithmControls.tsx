@@ -1,0 +1,30 @@
+import type { Config } from "./types";
+
+export const algorithms: Record<string,string> = { "robust-maxz":"Robust Max-Z", "pca-q":"PCA-Q", "pca-t2":"PCA-T²", ewma:"EWMA", cusum:"Page CUSUM", "window-cusum":"Finite-window CUSUM", "dpca-q":"Dynamic PCA-Q", "dpca-t2":"Dynamic PCA-T²", "adaptive-maxz":"Adaptive Max-Z · Experimental" };
+const parameters: Record<string, [keyof Config, string, number, number, number, number][]> = {
+  ewma:[["smoothing","EWMA smoothing λ",.25,.00001,1,.01]],
+  cusum:[["reference","CUSUM reference drift k",.5,.00001,100,.05]],
+  "window-cusum":[["reference","CUSUM reference drift k",.5,.00001,100,.05],["window","Lookback window (samples)",12,2,100000,1]],
+  "dpca-q":[["lags","Historical lags (samples)",2,1,8,1]], "dpca-t2":[["lags","Historical lags (samples)",2,1,8,1]],
+  "adaptive-maxz":[["rate","Adaptation rate",.02,.00001,.99999,.01],["guard","Update guard (z)",2.5,.00001,100,.1],["maxShift","Maximum center shift (z)",1.5,.00001,100,.1]],
+};
+export function AlgorithmControls({config,onChange}:{config:Config;onChange:(c:Config)=>void}) {
+  function set(key:keyof Config,value:unknown) { onChange({...config,[key]:value}); }
+  return <>
+    <div className="ws-form-grid ws-three"><label>Detection algorithm<select value={config.algorithm} onChange={e=>set("algorithm",e.target.value)}>{Object.entries(algorithms).map(([id,name])=><option key={id} value={id} disabled={id.startsWith("pca-") && config.signals.length<2}>{name}</option>)}</select></label>
+      <label>Calibration alpha<input type="number" min="0.000001" max="0.499999" step="any" value={config.alpha} onChange={e=>set("alpha",Number(e.target.value))} required /></label>
+      {config.algorithm.includes("pca") && <label>PCA retained variance<input type="number" min="0.5" max="0.999999" step="any" value={config.variance} onChange={e=>set("variance",Number(e.target.value))} required /></label>}
+      {(parameters[config.algorithm] || []).map(([key,label,initial,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} step={key === "lags" || key === "window" ? 1 : "any"} required value={(config[key] as number | undefined) ?? initial} onChange={e=>set(key,Number(e.target.value))} /></label>)}
+    </div>
+    {config.algorithm==="adaptive-maxz" && <p className="ws-notice">Experimental: guarded adaptation can absorb a slow fault. Compare with a fixed reference detector.</p>}
+    <details><summary>Coverage, abstention & sensor perturbations</summary><div className="ws-form-grid ws-three">
+      <label>Normal fit fraction<input type="number" min={.5} max={.9} step="any" value={config.fitFraction??.7} onChange={e=>set("fitFraction",Number(e.target.value))} /></label>
+      <label>Minimum observed fraction<input type="number" min={.000001} max={1} step="any" value={config.minCoverage??.9} onChange={e=>set("minCoverage",Number(e.target.value))} /></label>
+      <label>Alarm persistence (samples)<input type="number" min={1} step={1} value={config.persistence??1} onChange={e=>set("persistence",Number(e.target.value))} /></label>
+    </div><fieldset><legend>Required observed signals</legend><div className="ws-option-grid">{config.signals.map(signal=><label key={signal}><input type="checkbox" checked={config.requiredSignals?.includes(signal)??false} onChange={e=>set("requiredSignals", e.target.checked ? [...(config.requiredSignals||[]),signal] : config.requiredSignals?.filter(s=>s!==signal))} />{signal}</label>)}</div></fieldset>
+    <p className="ws-notice">Insufficient original coverage produces abstain, even after imputation. Temporal state and alarm persistence reset across abstained rows. Artificial perturbations affect the analysis window; the saved source data, normal fit and calibration remain intact.</p>
+    <div className="ws-form-grid ws-three">{([['missingFraction','Random missing fraction',0,0,1],['noise','Added noise (normal-fit std)',0,0,100],['offset','Sensor offset (normal-fit std)',0,-100,100],['seed','Perturbation seed',1,0,2**31-1]] as const).map(([key,label,initial,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} step={key==='seed'?1:'any'} value={config.stress?.[key]??initial} onChange={e=>set("stress",{...config.stress,[key]:Number(e.target.value)})} /></label>)}</div>
+    <fieldset><legend>Simulate complete loss of selected sensors</legend><div className="ws-option-grid">{config.signals.map(signal=><label key={signal}><input type="checkbox" checked={config.stress?.missingSignals?.includes(signal)??false} onChange={e=>set("stress", {...config.stress, missingSignals:e.target.checked ? [...(config.stress?.missingSignals||[]),signal] : config.stress?.missingSignals?.filter(s=>s!==signal)})} />{signal}</label>)}</div></fieldset>
+    </details>
+  </>;
+}

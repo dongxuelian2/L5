@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import traceback
 from urllib.parse import parse_qs, urlparse
 
@@ -11,21 +12,44 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations'):
         return False
     store = handler.server.workspace_store
     try:
         body = {}
         if method in ('POST', 'PATCH'):
             length = int(handler.headers.get('Content-Length', '0'))
-            if not 0 < length <= 64 * 1024 * 1024:
-                handler.send_json(413, {'error': 'Request must be between 1 byte and 64 MiB.'})
+            limit = int(os.environ.get('L5_MAX_REQUEST_BYTES', 256 * 1024 * 1024))
+            if not 0 < length <= limit:
+                handler.send_json(413, {'error': f'Request exceeds the configured {limit}-byte server budget (L5_MAX_REQUEST_BYTES).'})
                 return True
             body = json.loads(handler.rfile.read(length))
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'workspaces']:
+        if parts[1] == 'simulations':
+            runtime = store.runtime
+            if parts == ['api', 'simulations', 'catalog'] and method == 'GET':
+                from .runtime import catalog
+                result = catalog()
+            elif len(parts) == 2:
+                if method == 'POST':
+                    result, status = runtime.create(body), 201
+                elif method == 'GET':
+                    query = parse_qs(url.query)
+                    result = {'simulations':runtime.list(query.get('workspaceId', [None])[0])}
+            elif len(parts) == 3 and method == 'GET':
+                result = runtime.get(parts[2])
+            elif len(parts) == 4:
+                identity, operation = parts[2:]
+                if operation == 'runs' and method == 'GET':
+                    result = {'runs':runtime.runs(identity)}
+                elif method == 'POST':
+                    operations = {'analysis':runtime.analysis, 'tools':runtime.tools,
+                                  'interventions':runtime.intervene, 'save':runtime.save}
+                    if operation in operations:
+                        result = operations[operation](identity, body)
+        elif parts == ['api', 'workspaces']:
             if method == 'GET':
                 result = {'workspaces': store.list_workspaces()}
             elif method == 'POST':
