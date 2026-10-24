@@ -166,6 +166,26 @@ class WorkspaceStore:
             return [{**dict(r), 'config': json.loads(r['config']), 'summary': json.loads(r['summary'])} for r in
                     db.execute('SELECT * FROM jobs WHERE workspace_id=? ORDER BY created_at DESC', (workspace_id,))]
 
+    def sample(self, identity, at, signals=None):
+        """Nearest full-resolution observation for a shared incident cursor."""
+        if not np.isfinite(at):
+            raise ValueError('请选择有限的观察时间。')
+        dataset = self.dataset(identity)
+        names = [c['name'] for c in dataset['metadata']['columns']]
+        signals = names[:4] if signals is None else signals
+        if not signals or any(s not in names for s in signals):
+            raise ValueError('请选择此数据集的数值变量。')
+        times, values = self.load_data(dataset)
+        right = min(len(times)-1, int(np.searchsorted(times, at)))
+        index = right-1 if right and abs(times[right-1]-at) <= abs(times[right]-at) else right
+        def value(row, column):
+            v = values[row, names.index(column)]
+            return float(v) if np.isfinite(v) else None
+        return dict(time=float(times[index]), previousTime=float(times[index-1]) if index else None,
+                    nextTime=float(times[index+1]) if index+1 < len(times) else None,
+                    values={s: value(index, s) for s in signals},
+                    previous={s: value(index-1, s) if index else None for s in signals})
+
     def analyze(self, workspace_id: str, body: dict) -> dict:
         self.workspace(workspace_id)
         dataset = self.dataset(body.get('datasetId', ''))

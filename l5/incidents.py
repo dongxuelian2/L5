@@ -61,9 +61,17 @@ class IncidentService:
                     model_hypothesis TEXT,
                     observed_at REAL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS incident_entries_owner ON incident_entries(incident_id, created_at);
+                CREATE TABLE IF NOT EXISTS incident_history (
+                    id TEXT PRIMARY KEY,
+                    incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+                    changes TEXT NOT NULL, recorded_at TEXT NOT NULL);
             ''')
             if 'model_hypothesis' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
                 db.execute('ALTER TABLE incident_entries ADD COLUMN model_hypothesis TEXT')
+            if 'time_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incidents)')}:
+                db.execute('ALTER TABLE incidents ADD COLUMN time_axis_key TEXT')
+            if 'observed_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
+                db.execute('ALTER TABLE incident_entries ADD COLUMN observed_axis_key TEXT')
 
     def row(self, identity):
         with self.store.connect() as db:
@@ -96,7 +104,7 @@ class IncidentService:
                 FROM incidents i WHERE {' AND '.join(where)} ORDER BY i.updated_at DESC, i.id''', args)]
 
     def fields(self, body, previous=None):
-        allowed = ('title', 'description', 'start_time', 'end_time', 'time_origin', 'status', 'conclusion')
+        allowed = ('title', 'description', 'start_time', 'end_time', 'time_origin', 'status', 'conclusion', 'time_axis_key')
         result = {k: body.get(k, (previous or {}).get(k)) for k in allowed}
         result['title'] = self.store.name(result['title'])
         for key in ('description', 'conclusion'):
@@ -129,24 +137,65 @@ class IncidentService:
         source = body.get('source')
         prepared = self.prepare_link(workspace_id, source) if source is not None else None
         values = self.fields(body)
+        if prepared and not values['time_axis_key']:
+            values['time_axis_key'] = self.prepared_axis(prepared)
+        self.validate_axis(workspace_id, values['time_axis_key'])
         identity, stamp = uuid4().hex, now()
         with self.store.connect() as db:
             db.execute('''INSERT INTO incidents
-                (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
+                (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,created_at,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
                 (identity, workspace_id, *values.values(), stamp, stamp))
             if prepared:
                 self.insert_link(db, identity, prepared)
+            self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
             self.touch(db, identity, workspace_id)
         return self.get(identity)
 
     def update(self, identity, body):
         incident = self.row(identity)
         values = self.fields(body, incident)
+        self.validate_axis(incident['workspace_id'], values['time_axis_key'])
         with self.store.connect() as db:
             db.execute(f"UPDATE incidents SET {','.join(k+'=?' for k in values)} WHERE id=?", (*values.values(), identity))
+            changes = {k: {'before': incident.get(k), 'after': v} for k, v in values.items() if incident.get(k) != v}
+            if changes:
+                self.record_change(db, identity, changes)
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
+
+    @staticmethod
+    def record_change(db, identity, changes):
+        db.execute('INSERT INTO incident_history VALUES (?,?,?,?)',
+                   (uuid4().hex, identity, json.dumps(changes, ensure_ascii=False), now()))
+
+    def history(self, identity):
+        self.row(identity)
+        with self.store.connect() as db:
+            return [{**dict(r), 'changes': json.loads(r['changes'])} for r in db.execute(
+                'SELECT * FROM incident_history WHERE incident_id=? ORDER BY recorded_at,id', (identity,))]
+
+    def prepared_axis(self, source):
+        kind, reference = source['kind'], source['reference_id']
+        if kind in ('simulation', 'run'):
+            return 'simulation:' + reference
+        did = self.store.result(reference)['datasetId'] if kind in ('analysis', 'interval') else reference
+        dataset = self.store.dataset(did)
+        simulation = dataset['metadata'].get('model', {}).get('simulationId')
+        return 'simulation:' + simulation if simulation else 'dataset:' + did
+
+    def validate_axis(self, workspace_id, key):
+        if not key:
+            return
+        if not isinstance(key, str):
+            raise ValueError('请选择事件时间轴的来源。')
+        if key.startswith('dataset:'):
+            if self.store.dataset(key.split(':', 1)[1])['workspace_id'] != workspace_id:
+                raise ValueError('时间轴数据集不属于此 Workspace。')
+        elif key.startswith('simulation:'):
+            self.simulation(workspace_id, key.split(':', 1)[1])
+        else:
+            raise ValueError('请选择数据集或模拟会话的时间轴。')
 
     def simulation(self, workspace_id, identity):
         session = self.store.runtime.get(identity)
@@ -226,7 +275,13 @@ class IncidentService:
 
     def remove_link(self, identity, link_id):
         incident = self.row(identity)
+        source = next((link for link in self.links(identity) if link['id'] == link_id), None)
         with self.store.connect() as db:
+            if source:
+                from .incident_timeline import source_clock
+                db.execute('''UPDATE incident_entries SET observed_axis_key=?
+                    WHERE incident_id=? AND source_link_id=? AND observed_at IS NOT NULL AND observed_axis_key IS NULL''',
+                    (source_clock(self.store, source)['key'], identity, link_id))
             if not db.execute('DELETE FROM incident_links WHERE id=? AND incident_id=?', (link_id, identity)).rowcount:
                 raise KeyError('事件关联不存在。')
             self.touch(db, identity, incident['workspace_id'])
@@ -263,14 +318,21 @@ class IncidentService:
             if values['source_link_id'] and not db.execute('SELECT id FROM incident_links WHERE incident_id=? AND id=?',
                                                          (identity, values['source_link_id'])).fetchone():
                 raise ValueError('证据来源必须属于本事件。')
+            # Retain the clock even if its source link is subsequently removed.
+            source = next((l for l in self.links(identity) if l['id'] == values['source_link_id']), None)
+            from .incident_timeline import source_clock, incident_clock
+            clock = source_clock(self.store, source) if source else incident_clock(self.store, incident)
+            values['observed_axis_key'] = (previous.get('observed_axis_key') if entry_id
+                and previous.get('source_link_id') == values['source_link_id']
+                and previous.get('observed_at') == values['observed_at'] else None) or clock['key']
             stamp = now()
             if entry_id:
                 db.execute(f"UPDATE incident_entries SET {','.join(k+'=?' for k in values)},updated_at=? WHERE id=? AND incident_id=?",
                            (*values.values(), stamp, entry_id, identity))
             else:
                 db.execute('''INSERT INTO incident_entries
-                    (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,created_at,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, *values.values(), stamp, stamp))
+                    (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,observed_axis_key,created_at,updated_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, *values.values(), stamp, stamp))
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
 

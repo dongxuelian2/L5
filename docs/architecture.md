@@ -8,6 +8,8 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 |---|---|---|
 | Workspace repository | `l5/workspace.py` | Workspace CRUD, dataset metadata, completed analysis jobs; SQLite with cascading ownership |
 | Persistent incident investigation | `l5/incidents.py`, `src/workspace/Incidents.tsx` | User-maintained incidents, source links, editable notes/evidence/hypotheses/conclusions, source-window plots and experiment reopening |
+| Incident timeline and comparison | `l5/incident_timeline.py`, `src/workspace/IncidentTimeline.tsx`, `IncidentComparison.tsx` | Clock-aware event aggregation, linked interval comparison, shared source navigation and observation cursor |
+| Professional incident reports | `l5/reports.py`, `src/workspace/IncidentReport.tsx` | Saved-data Chinese reports, inline SVG figures, offline HTML, preview and A4 browser PDF printing |
 | CSV ingestion | `l5/datasets.py` | Named numeric columns, timestamp/numeric/generated time, missing measurements, display previews |
 | Generic analysis | `l5/analysis.py`, `l5/monitoring.py` | Max-Z, PCA, EWMA, CUSUM, window CUSUM, DPCA, Adaptive Max-Z; chronological normal fit/calibration; full-resolution scoring |
 | Runtime model sessions | `l5/runtime.py`, `simulation/platform.py` | Configurable simulation, cached prefix evidence, user tools, fitted/known-model forecasts and optional recovery grid search |
@@ -46,6 +48,22 @@ Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:i
 Workspace 侧边栏的「事件」进入列表和详情。`IncidentLinkDialog` 为异常结果和 RuntimeWorkbench 提供创建／加入事件的交互。`Results.tsx` 使用分析 ID 与真实区间序号携带来源，事件详情复用 `SignalPlots`、分数曲线和贡献度组件。`#/workspaces/:wid/analysis/:analysisId/:intervalIndex` 重开来源窗口。`RuntimeWorkbench` 复用已完成的工具与干预记录；事件通过实验 ID 恢复观察窗口、候选假设和干预参数，当前候选解释也可保留其观察上下文。通用 CSV 事件独立可用，过程计算继续由已有运行时引擎承担。
 
 `tests/test_incidents.py` 实际导入普通 CSV、运行 Max-Z／PCA、把多个区间与第二份数据加入同一事件，编辑记录和结论，重启 HTTP 服务后恢复并继续修改；另一条流程生成 TripLens 会话、完成工具调用与干预实验，关联事件并在重启后继续调查。前端测试覆盖区间入口、事件编辑、证据关系、列表筛选和实验参数恢复。
+
+## 事件时间线、共享窗口与报告
+
+`incident_timeline.investigation` 从持久化的 Incident、关联分析文件、数据集元数据与模拟实验派生一个调查视图，不重新计算检测。`GET /api/incidents/:id/timeline` 返回时间轴、带真实来源定位器的事件、去重后的分析及区间比较。可重复传入 `analysis=<id>` 选择参与比较的本事件分析，`analysis=` 表示不选；时间线仍保留全部关联记录。只关联异常区间时使用实际保存的区间序号，关联完整分析时使用其全部区间，重复关联不会重复计数。
+
+时间轴拥有明确的身份和秒数偏移。带日期时间起点的数据先加上该起点的 Unix 秒数，归入 UTC 绝对时间轴。数值／生成时间轴使用 `dataset:<id>`；同一过程模型的数据和实验使用 `simulation:<id>`。不同相对时间源不因数值相近而合并。事件新增可选 `time_axis_key`，从来源创建时自动写入；旧事件不推断原点，可由用户指定参考来源。显式 `time_origin` 优先。调查记录新增 `observed_axis_key`，解除来源关联后仍保留观察时刻所属的时钟。状态、结论和事件信息变更以同一事务写入 `incident_history`，保存前后值及记录时间，放在独立的调查操作序列，不冒充设备观察时间。迁移只添加表与可空列。
+
+比较按已关联的闭区间边界分段，保留开始等于结束的单点报警。持续时间是首末样本时间差，不外推采样周期。全部共同检出、独有检出和部分共同检出仅在各所选分析同时有有效观测的时间内判断；abstain 间隙和未覆盖窗口标为「缺少共同观测，未比较」。分数、阈值、峰值与贡献度保留所属算法的原始含义，不做跨算法归一化或分数排名。
+
+`IncidentDetail` 持有规范化的 `IncidentSelection`（时间轴、窗口、游标、来源、分析及真实区间序号），供时间线、比较与来源预览共享。选择报警定位原始曲线，选择调查记录打开现有编辑器，选择实验保留其不可变请求并沿已有模拟路由恢复窗口与控制参数。`Plot` / `SignalPlots` 增加可选游标与点击回调，原有调用保持原行为。`GET /api/datasets/:id/sample?at=<seconds>&signal=<name>` 从完整数组读取最近的原始样本、相邻时刻及前样本值，用于多变量同步查看；曲线显示仍复用保留极值的采样缓存。
+
+`GET /api/incidents/:id/report.html` 直接从同一个调查视图和原始数组生成中文独立 HTML；`?download=1` 返回附件。报告无需前端截图，不依赖外部脚本、字体、图片、当前 React 状态或后续 API 请求。测量、分数与阈值、区间叠加及干预方案均以带标题和坐标说明的 SVG 嵌入。长曲线仅在显示阶段保留极值采样，缺测／abstain 保留断点，分析仍使用完整数据。普通事件不包含模拟章节；模拟报告从保存的工具输出和干预分支读取参数、物理压力及方案指标。所有用户文本经 HTML 转义，未填写内容保持未记录。
+
+`IncidentReport` 提供预览、相同预览内容的 HTML 下载、浏览器打印／保存 PDF，以及事件 JSON 导出。保存事件后预览失效，重新生成读取最新记录；过期生成请求不能覆盖新状态。打印样式设置 A4、页边距、标题层级、可重复表头、可换行技术参数和尽量保持完整的图表。PDF 由本机浏览器打印引擎生成，不增加运行时报告依赖。关键原始变量按关联峰值贡献选取前三项，完整分析参数、数据集列名、来源和实验标识进入附录。
+
+`tests/test_incident_reporting.py` 经真实 HTTP 验证 CSV 双算法时间线／报告、UTC 不同原点、相对时间隔离、解除来源后保留时钟、完整样本读取、HTML 离线依赖与文本转义、服务重启和结论历史，以及真实 TripLens 工具／干预曲线。前端交互测试补充时间线筛选与定位、共享窗口／游标、比较选择、报告预览失效与 HTML／打印入口、实验恢复链接。
 
 ## TripLens examples and research
 

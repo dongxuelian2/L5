@@ -256,3 +256,31 @@
 
 .ws-option-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:12px 0; }
 .ws-shell .ws-option-grid label { display:flex; flex-direction:row; align-items:center; gap:8px; }
+
+.incident-workstation .timeline-filters { grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); }
+.incident-lanes { overflow:auto; margin:20px 0; border-block:1px solid #30392d; padding:16px 0; }
+.incident-lanes svg { width:100%; min-width:650px; height:auto; display:block; }
+.incident-lanes text { fill:#a9b4a1; font-size:10px; font-family:inherit; }
+.incident-lanes g[role=button] { cursor:pointer; outline:none; }
+.incident-lanes g[role=button]:focus-visible rect { stroke:#fff; stroke-width:2px; }
+.incident-event-list { list-style:none; padding:0; max-height:520px; overflow:auto; margin:0 0 20px; }
+.incident-event-list li { border-left:2px solid #44513d; margin-bottom:8px; background:#151c13; }
+.incident-event-list li.incident-selected { border-color:#b5ed9a; background:#202b1b; }
+.incident-event-list li>button { width:100%; display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:8px; white-space:normal; padding:14px 18px; }
+.incident-event-list strong { color:#e1e8db; font-size:13px; }
+.incident-event-list span,.incident-event-list small { font-size:10px; overflow-wrap:anywhere; line-height:1.7; }
+.incident-event-list small { color:#84907f; }
+.incident-event-list li>a { display:block; margin:0 18px 16px; font-size:11px; }
+.incident-recorded { border-top:1px solid #30392d; padding-top:15px; }
+.incident-recorded>div { border-bottom:1px solid #30392d; padding:12px 0; }
+.incident-change { max-height:170px; overflow:auto; padding-left:14px; font-size:11px; white-space:pre-wrap; }
+.incident-comparison-group { border-top:1px solid #3d4936; margin-top:24px; padding-top:18px; }
+.incident-comparison-group>p { line-height:1.9; font-size:11px; }
+.incident-comparison-group td button { white-space:normal; text-align:left; color:#b5ed9a; }
+.incident-comparison-scores details { margin:15px 0; }
+.incident-window-controls { border:1px solid #44513d; background:#172013; padding:20px; margin:20px 0; }
+.incident-window-controls>label { margin-top:15px; }
+.incident-window-controls input[type=range] { padding:0; accent-color:#b5ed9a; }
+.incident-report iframe { width:100%; height:850px; margin-top:24px; border:1px solid #54634c; background:white; border-radius:3px; }
+.incident-report .incident-actions { margin:18px 0; }
+.incident-report .ws-notice { margin-top:18px; }

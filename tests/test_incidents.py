@@ -25,7 +25,7 @@ def csv_with_excursions():
         str(t) + ',' + ','.join(str(v) for v in row) for t, row in enumerate(values))
 
 
-class IncidentHTTPTests(unittest.TestCase):
+class IncidentHTTPFixture(unittest.TestCase):
     def setUp(self):
         self.temp = TemporaryDirectory()
         self.folder = Path(self.temp.name)
@@ -66,6 +66,7 @@ class IncidentHTTPTests(unittest.TestCase):
             signals=['temperature', 'feed', 'vibration'], algorithm=algorithm,
             baselineRange=[0, 199], analysisRange=[200, 699], alpha=.01), expected=201)
 
+class IncidentHTTPTests(IncidentHTTPFixture):
     def test_csv_incident_multiple_intervals_algorithms_records_restart_and_resume(self):
         wid = self.workspace()
         dataset = self.request(f'/workspaces/{wid}/datasets', {'csv': csv_with_excursions(), 'name': '反应器记录'}, expected=201)
@@ -191,6 +192,25 @@ class IncidentHTTPTests(unittest.TestCase):
 
 
 class IncidentMigrationTests(unittest.TestCase):
+    def test_existing_incident_schema_adds_clocks_and_history_without_rewriting_records(self):
+        with TemporaryDirectory() as folder:
+            store = WorkspaceStore(Path(folder))
+            workspace = store.create_workspace('PR16 原有项目')
+            incident = store.incidents.create(workspace['id'], dict(title='已有调查', conclusion='保留原文', start_time=10, end_time=20))
+            store.incidents.save_entry(incident['id'], dict(kind='note', title='历史观察', content='仍需复核', observed_at=15))
+            with store.connect() as db:
+                db.execute('DROP TABLE incident_history')
+                db.execute('ALTER TABLE incidents DROP COLUMN time_axis_key')
+                db.execute('ALTER TABLE incident_entries DROP COLUMN observed_axis_key')
+            migrated = WorkspaceStore(Path(folder))
+            restored = migrated.incidents.get(incident['id'])
+            self.assertEqual(restored['conclusion'], '保留原文')
+            self.assertEqual(restored['entries'][0]['observed_at'], 15)
+            self.assertIsNone(restored['time_axis_key'])
+            self.assertEqual(migrated.incidents.history(incident['id']), [])
+            migrated.incidents.update(incident['id'], {'conclusion': '迁移后继续调查'})
+            self.assertEqual(migrated.incidents.history(incident['id'])[0]['changes']['conclusion']['before'], '保留原文')
+
     def test_additive_tables_preserve_existing_workspace_and_files(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)

@@ -35,7 +35,23 @@ def dispatch(handler, method: str) -> bool:
                 elif method == 'PATCH':
                     result = incidents.update(parts[2], body)
             elif len(parts) == 4:
-                if parts[3] == 'entries':
+                if parts[3] == 'timeline' and method == 'GET':
+                    from .incident_timeline import investigation
+                    query = parse_qs(url.query, keep_blank_values=True)
+                    result = investigation(store, parts[2], [v for v in query['analysis'] if v] if 'analysis' in query else None)
+                elif parts[3] == 'report.html' and method == 'GET':
+                    from .reports import render_report
+                    payload = render_report(store, parts[2]).encode('utf-8')
+                    handler.send_response(200)
+                    handler.send_header('Content-Type', 'text/html; charset=utf-8')
+                    handler.send_header('Content-Length', str(len(payload)))
+                    handler.send_header('Cache-Control', 'no-store')
+                    if parse_qs(url.query).get('download') == ['1']:
+                        handler.send_header('Content-Disposition', f'attachment; filename="l5-incident-{parts[2]}.html"')
+                    handler.end_headers()
+                    handler.wfile.write(payload)
+                    return True
+                elif parts[3] == 'entries':
                     if method == 'GET':
                         result = {'entries': incidents.entries(parts[2])}
                     elif method == 'POST':
@@ -120,6 +136,9 @@ def dispatch(handler, method: str) -> bool:
             result = store.series(parts[2], query.get('signal'),
                                   float(query['start'][0]) if 'start' in query else None,
                                   float(query['end'][0]) if 'end' in query else None)
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'sample' and method == 'GET':
+            query = parse_qs(url.query)
+            result = store.sample(parts[2], float(query.get('at', ['0'])[0]), query.get('signal'))
         elif len(parts) == 3 and parts[1] == 'analyses' and method == 'GET':
             result = store.result(parts[2])
         handler.send_json(status if result is not None else 404, result if result is not None else {'error': 'Unknown workspace endpoint.'})
