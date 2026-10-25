@@ -71,6 +71,8 @@
 .ws-danger { color:#e9927d!important; }
 .ws-inline { display:flex!important; flex-direction:row!important; align-items:center; gap:12px; }
 .ws-inline input { flex:1; }
+.ws-dataset-actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin:18px 0; }
+.ws-dataset-actions>a { display:inline-flex; }
 .ws-between { justify-content:space-between; }
 .ws-section-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:28px 0 15px; }
 .ws-section-heading h3 { margin:0; }

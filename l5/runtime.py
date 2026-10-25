@@ -1,32 +1,23 @@
-"""Runtime process sessions, prefix analysis and persistent user experiments."""
+"""Shared model lifecycle, causal windows, durable runs and Dataset export."""
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import asdict
+from copy import deepcopy
 import json
 from pathlib import Path
 import re
-import secrets
 from threading import RLock
 from uuid import uuid4
 
-from simulation.platform import (
-    ACTIONS, ACTION_PARAMETERS, Config, EDGES, FAULTS, KEYS, META, SYNTHETIC_SCHEMA,
-    THRESHOLD, action_parameters, analyze_rows, finite, fit_hypothesis, interventions, run_tools, simulate,
-)
+from .models import resolve
+from .models.base import finite
 
-MODEL_ID = SYNTHETIC_SCHEMA.id
-TOOLS = ['inspect_signal_window', 'analyze_window', 'find_change_point', 'inspect_controller',
-         'trace_downstream', 'inspect_alarm_history', 'compare_hypotheses', 'sensor_consistency',
-         'recommend_next_measurement', 'query_sop', 'simulate_fault']
+MODEL_ID = 'triplens-synthetic-18-v2'
 
 
 def catalog():
-    return dict(modelId=MODEL_ID, model='TripLens coupled process model',
-                faults={'healthy': 'Healthy operation', **FAULTS}, defaults=asdict(Config()),
-                signals=list(META.values()), edges=[dict(source=a, target=b, kind=k) for a,b,k in EDGES],
-                actions=ACTIONS, actionParameters={k: dict(default=v[0], min=v[1], max=v[2]) for k,v in ACTION_PARAMETERS.items()}, tools=TOOLS,
-                capabilities=['simulation', 'diagnosis', 'topology', 'alarms', 'interventions'])
+    """Compatibility endpoint for the established TripLens workbench."""
+    return resolve(MODEL_ID).describe()
 
 
 class SimulationService:
@@ -52,29 +43,61 @@ class SimulationService:
         path = self.folder(identity) / 'session.json'
         if not path.exists():
             raise KeyError('Simulation not found.')
-        return json.loads(path.read_text(encoding='utf-8'))
+        session = json.loads(path.read_text(encoding='utf-8'))
+        # Additive projection; reading a legacy session does not rewrite it.
+        session.setdefault('modelId', MODEL_ID)
+        if any(key not in session for key in ('modelVersion', 'modelDescriptor', 'groundTruth')):
+            model = resolve(session['modelId'])
+            session.setdefault('modelVersion', model.version)
+            session.setdefault('modelDescriptor', model.describe())
+            if 'groundTruth' not in session:
+                session['groundTruth'] = model.truth(session['config']) if 'ground-truth' in model.describe()['capabilities'] else None
+        session.setdefault('scenarioId', None)
+        session.setdefault('scenarioVersion', None)
+        session.setdefault('status', 'completed')
+        return session
+
+    def model(self, session, capability=None):
+        model = resolve(session.get('modelId', MODEL_ID))
+        if session.get('modelVersion', model.version) != model.version:
+            raise ValueError('Saved model version unavailable for new computations; saved results remain readable.')
+        if capability and capability not in model.describe()['capabilities']:
+            raise ValueError(f'This model does not support {capability}.')
+        return model
 
     def list(self, workspace_id=None):
+        referenced = set()
         if workspace_id:
             self.store.workspace(workspace_id)
+            referenced = {d['metadata']['model']['simulationId'] for d in self.store.datasets(workspace_id) if d['metadata'].get('model')}
         sessions = []
         for path in self.root.glob('*/session.json'):
-            session = json.loads(path.read_text(encoding='utf-8'))
-            if workspace_id is None or session.get('workspaceId') == workspace_id:
-                sessions.append({k:v for k,v in session.items() if k != 'rows'})
+            session = self.get(path.parent.name)
+            if workspace_id is None or session.get('workspaceId') == workspace_id or session['id'] in referenced:
+                sessions.append({k:v for k,v in session.items() if k not in ('rows', 'modelDescriptor')})
         return sorted(sessions, key=lambda s:s['createdAt'], reverse=True)
 
     def create(self, body):
-        raw = body.get('config', {})
-        if not isinstance(raw, dict) or set(raw) - Config.__dataclass_fields__.keys():
-            raise ValueError('Unknown simulation parameters.')
-        config = Config(**{**raw, 'seed': raw.get('seed') if raw.get('seed') is not None else secrets.randbelow(2**31)})
-        workspace_id = body.get('workspaceId')
+        scenario = self.store.scenarios.get(body['scenarioId'], body.get('scenarioVersion')) if body.get('scenarioId') else None
+        if scenario and ('config' in body or body.get('modelId', scenario['modelId']) != scenario['modelId']):
+            raise ValueError('Saved scenarios run their exact version; save parameter edits as a new version first.')
+        model = resolve(scenario['modelId'] if scenario else body.get('modelId', MODEL_ID))
+        if scenario and scenario['modelVersion'] != model.version:
+            raise ValueError('The scenario model version is unavailable for new runs.')
+        config = model.validate(scenario['config'] if scenario else body.get('config', {}), randomize=True)
+        workspace_id = body.get('workspaceId', scenario['workspaceId'] if scenario else None)
+        if scenario and workspace_id != scenario['workspaceId']:
+            raise ValueError('Scenario belongs to another Workspace.')
         if workspace_id:
             self.store.workspace(workspace_id)
         from .workspace import now
-        session = dict(id=uuid4().hex, title=self.store.name(body.get('title') or f"{catalog()['faults'][config.fault]} experiment"),
-                       modelId=MODEL_ID, config=asdict(config), rows=simulate(config),
+        descriptor = deepcopy(model.describe())
+        if 'simulation' not in descriptor['capabilities']:
+            raise ValueError('This model does not support simulation.')
+        session = dict(id=uuid4().hex, title=self.store.name(body.get('title') or (scenario['name'] if scenario else f"{descriptor['faults'][config['fault']]} experiment")),
+                       modelId=model.id, modelVersion=model.version, modelDescriptor=descriptor, config=config, rows=model.simulate(config),
+                       scenarioId=scenario['id'] if scenario else None, scenarioVersion=scenario['version'] if scenario else None,
+                       scenarioSnapshot=deepcopy(scenario), groundTruth=model.truth(config) if 'ground-truth' in descriptor['capabilities'] else None, status='completed',
                        createdAt=now(), workspaceId=workspace_id, datasetId=None)
         folder = self.folder(session['id'])
         folder.mkdir()
@@ -94,13 +117,15 @@ class SimulationService:
 
     def analysis(self, identity, body):
         session, rows = self.window(identity, body)
+        model = self.model(session, 'observation')
         key = (identity, rows[0]['t'], rows[-1]['t'])
         with self.lock:
             if key in self.cache:
                 self.cache.move_to_end(key)
                 return {**self.cache[key], 'asOf':body.get('asOf', rows[-1]['t'])}
-        result = dict(**analyze_rows(rows, source_id=identity), asOf=body.get('asOf', rows[-1]['t']),
-                      observedThrough=rows[-1]['t'], windowStart=rows[0]['t'], samples=len(rows))
+        result = dict(**model.observe(session, rows), asOf=body.get('asOf', rows[-1]['t']),
+                      observedThrough=rows[-1]['t'], windowStart=rows[0]['t'], samples=len(rows),
+                      modelId=session['modelId'], modelVersion=session['modelVersion'])
         with self.lock:
             self.cache[key] = result
             while len(self.cache) > 128:
@@ -109,7 +134,10 @@ class SimulationService:
 
     def record(self, identity, kind, body, result):
         from .workspace import now
-        record = dict(id=uuid4().hex, kind=kind, request=body, result=result, createdAt=now())
+        session = self.get(identity)
+        record = dict(id=uuid4().hex, kind=kind, request=deepcopy(body), result=result, createdAt=now(),
+                      modelId=session['modelId'], modelVersion=session['modelVersion'],
+                      scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'])
         folder = self.folder(identity) / 'runs'
         folder.mkdir(exist_ok=True)
         self.write(folder / f"{record['id']}.json", record)
@@ -129,77 +157,30 @@ class SimulationService:
         return json.loads(path.read_text(encoding='utf-8'))
 
     def tools(self, identity, body):
-        _, rows = self.window(identity, body)
-        result = dict(asOf=rows[-1]['t'], trace=run_tools(rows, body.get('calls')))
+        session, rows = self.window(identity, body)
+        result = self.model(session, 'investigation-tools').tools(session, rows, body)
         return self.record(identity, 'tools', body, result)
 
     def intervene(self, identity, body):
         session, rows = self.window(identity, body)
-        mode = body.get('mode', 'observed')
-        hypothesis = body.get('hypothesis')
-        if hypothesis not in FAULTS:
-            raise ValueError('Choose a fault hypothesis, including a non-leading candidate if desired.')
-        horizon = body.get('horizon', session['config']['duration'])
-        at = body.get('at', rows[-1]['t'])
-        if not finite(horizon) or not finite(at) or not rows[-1]['t'] <= at <= horizon:
-            raise ValueError('Intervention must start at or after the current observations and within the prediction horizon.')
-        if mode == 'known':
-            if rows[0]['t'] != 0:
-                raise ValueError('Known-model forecasts start at the simulation origin; set window start to zero.')
-            config = Config(**{**session['config'], 'fault':hypothesis, 'duration':horizon})
-            error, origin = None, 0
-        elif mode == 'observed':
-            origin = rows[0]['t']
-            config, error = fit_hypothesis(rows, analyze_rows(rows)['diagnosis'], hypothesis=hypothesis, duration=horizon-origin)
-        else:
-            raise ValueError('Model mode must be observed or known.')
-        actions = body.get('actions', ['bypass'])
-        if not isinstance(actions, list) or not actions or len(set(actions)) != len(actions) or any(a not in {x['id'] for x in ACTIONS} for a in actions):
-            raise ValueError('Choose one or more unique intervention actions.')
-        parameters = action_parameters(body.get('parameters'))
-        base = simulate(config, compact=True)
-        branches = [dict(action=a, parameters=parameters, **simulate(config, a, at-origin, compact=True, parameters=parameters)) for a in actions]
-        for path in [base, *branches]:
-            path['times'] = [round(t+origin, 9) for t in path['times']]
-            if path['trip'] is not None:
-                path['trip'] += origin
-            path['safe'] = path['trip'] is None
-            path['margin'] = THRESHOLD - path['physicalPeak']
-        result = dict(mode=mode, hypothesis=hypothesis, observedThrough=rows[-1]['t'], at=at,
-                      horizon=horizon, threshold=THRESHOLD, fitError=error, fittedParameters=asdict(config),
-                      baseline=base, branches=branches, scope='simulation-only',
-                      uncertainty='Conditional reduced-order model forecast; model mismatch is not bounded.')
-        if body.get('search'):
-            search = body['search']
-            if not isinstance(search, dict):
-                raise ValueError('Search needs a resolution in seconds.')
-            resolution = search.get('resolution', max(config.step, (horizon-at)/30))
-            if not finite(resolution) or resolution <= 0:
-                raise ValueError('Search resolution must be positive.')
-            steps = (int((horizon-at)/resolution)+2) * len(actions) * (int(config.duration/config.step)+1)
-            if steps > 3_000_000:
-                raise ValueError('This search exceeds 3,000,000 integration steps. Increase the search resolution or shorten the prediction horizon.')
-            recovery = interventions(config, fit_error=error, from_time=at-origin,
-                                     resolution=resolution, parameters=parameters, actions=actions)
-            for action in recovery['actions']:
-                if action['latest'] is not None:
-                    action['latest'] += origin
-                action['intervals'] = [[round(a+origin,9),round(b+origin,9)] for a,b in action['intervals']]
-                for trial in action['trials']:
-                    trial['time'] += origin
-            result['search'] = recovery
+        result = self.model(session, 'interventions').intervene(session, rows, body)
         return self.record(identity, 'intervention', body, result)
 
     def save(self, identity, body):
-        session = self.get(identity)
-        workspace_id = body.get('workspaceId') or session.get('workspaceId')
-        self.store.workspace(workspace_id)
-        if session.get('datasetId') and session.get('workspaceId') == workspace_id:
-            return self.store.dataset(session['datasetId'])
-        columns = ['t', *KEYS]
-        text = ','.join(columns) + '\n' + '\n'.join(','.join(str(r[k]) for k in columns) for r in session['rows'])
-        dataset = self.store.import_dataset(workspace_id, dict(csv=text, name=body.get('name') or session['title'], filename=f'{identity}.csv'),
-                                            model=dict(id=MODEL_ID, simulationId=identity, capabilities=catalog()['capabilities']))
-        session.update(workspaceId=workspace_id, datasetId=dataset['id'])
-        self.write(self.folder(identity) / 'session.json', session)
-        return dataset
+        with self.lock:
+            session = self.get(identity)
+            workspace_id = body.get('workspaceId') or session.get('workspaceId')
+            self.store.workspace(workspace_id)
+            if session.get('datasetId') and session.get('workspaceId') == workspace_id:
+                return self.store.dataset(session['datasetId'])
+            descriptor = session['modelDescriptor']
+            columns = ['t', *[s['key'] for s in descriptor['signals']]]
+            text = ','.join(columns) + '\n' + '\n'.join(','.join(str(r[k]) for k in columns) for r in session['rows'])
+            dataset = self.store.import_dataset(workspace_id, dict(csv=text, name=body.get('name') or session['title'], filename=f'{identity}.csv'),
+                                                model=dict(id=session['modelId'], version=session['modelVersion'], name=descriptor['name'],
+                                                    simulationId=identity, scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'],
+                                                    scenarioSnapshot=session.get('scenarioSnapshot'), config=session['config'], groundTruth=session['groundTruth'],
+                                                    signals=descriptor['signals'], capabilities=descriptor['capabilities']))
+            session.update(workspaceId=workspace_id, datasetId=dataset['id'])
+            self.write(self.folder(identity) / 'session.json', session)
+            return dataset

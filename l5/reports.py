@@ -306,14 +306,26 @@ def render_report(store, identity):
             detail = link['details']
             parts.append(f'<h3 id="source-{link["id"]}">{e(detail["title"])}</h3>')
             session = store.runtime.get(detail['simulationId'])
+            parts.append('<h4>模型与场景来源</h4>' + parameters(dict(modelId=session['modelId'], modelVersion=session['modelVersion'],
+                modelName=session['modelDescriptor']['name'], scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'])))
             parts.append('<h4>过程模型配置</h4>' + parameters(session['config']))
+            parts.append(table(['信号','单位'], [[e(s.get('label', s.get('tag', s['key']))), e(s.get('unit','未知'))] for s in session['modelDescriptor']['signals']]))
             run = detail.get('run')
             if not run:
                 parts.append('<p>已保存观察上下文：</p>' + parameters(detail.get('observationWindow', {})))
                 continue
             parts.append(f'<p>实验 ID：{e(run["id"])}；类型：{e(run["kind"])}；记录时间：{e(recorded_time(run["createdAt"]))}</p><h4>实验参数与观察窗口</h4>' + parameters(run['request']))
             result = run['result']
-            if run['kind'] == 'intervention':
+            if run['kind'] == 'intervention' and result.get('format') == 'model-forecast-v1':
+                paths = [result['baseline'], *result['branches']]
+                definitions = result['metricDefinitions']
+                parts.append(table(['方案', *[e(m['label']+' ('+m['unit']+')') for m in definitions]],
+                    [[e(p.get('action') or '不干预基线'), *[n(p['metrics'][m['key']]) for m in definitions]] for p in paths]))
+                for signal in result['signalDefinitions']:
+                    parts.append(chart(signal.get('label', signal['key']), paths[0]['times'],
+                        [dict(label=p.get('action') or '不干预基线', values=p['values'][signal['key']], color=['#a34e3b','#246b63','#536daf','#9565a6','#957123'][i % 5]) for i,p in enumerate(paths)], unit=signal['unit']))
+                parts.append(prose(result['uncertainty']))
+            elif run['kind'] == 'intervention':
                 paths = [result['baseline'], *result['branches']]
                 parts.append(table(['方案', '物理峰值压力 kPa', '预测越限时间 s', '产量损失 %', '质量损失 pp', '能耗 %·s'], [
                     [e(p.get('action', '不干预基线')), n(p['physicalPeak']), n(p['trip']), n(p['productionLoss']), n(p['qualityLoss']), n(p['utilityCost'])] for p in paths]))

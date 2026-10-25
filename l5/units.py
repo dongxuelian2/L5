@@ -19,6 +19,7 @@ UNITS = {
     'Δ°C': Unit('temperature-difference'), 'ΔK': Unit('temperature-difference'),
     'Δ°F': Unit('temperature-difference', 5 / 9),
     'Pa': Unit('pressure'), 'kPa': Unit('pressure', 1000),
+    'm': Unit('length'), 'cm': Unit('length', .01), 'mm': Unit('length', .001),
     'MPa': Unit('pressure', 1e6), 'bar': Unit('pressure', 1e5),
     'm³/s': Unit('flow'), 'm³/h': Unit('flow', 1 / 3600), 'L/min': Unit('flow', 1 / 60000),
     'W': Unit('power'), 'kW': Unit('power', 1000), 'MW': Unit('power', 1e6),

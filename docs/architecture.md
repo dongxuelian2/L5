@@ -177,9 +177,10 @@ The workstation and external monitoring studies share evidence contracts while r
 
 ## Signal spaces
 
-| Schema | Width | Clock | Interpretation |
+| Schema / model descriptor | Width | Clock | Interpretation |
 |---|---:|---|---|
 | `triplens-synthetic-18-v2` | 18 | seconds, configured 0.05–1 s | Explicit synthetic engineering keys and units; accepted by current diagnosis/CSV API |
+| `coupled-tanks` descriptor | 7 | seconds, sampling 0.02–10 s | Separate hydraulic measurements and units; generic Dataset analysis and model-local tools, without TripLens diagnosis |
 | `tep-classic-52-v1` | 52 | 180 s | Original XMEAS(1…41), XMV(1…11) order; Braatz/Rieth source provenance is retained in each report/run identity |
 | `thufdd-tep-native-53-v1` | 53 | source sample index | Original columns 0…52; physical meanings/units and seconds remain unknown; last 28 raw disturbance columns excluded |
 
@@ -198,6 +199,14 @@ Runtime analysis filters the selected observation window before diagnosis or too
 Simulation branches preserve their fitted baseline prefix before action. They do not assert a perfect observed prefix when the fitted model differs from the measurements. `physicalPeak` and the physical trip flag retain the safety calculation; rounded display peaks must not replace them. Missing observations break alarm continuity without generating a normal-return event. Durations use timestamp seconds and do not bridge unobserved gaps.
 
 Pressure-intervention rankings are withheld when the fitted physical baseline remains below its pressure limit. Other reported rankings are conditional simulator comparisons, without predictive intervals or external intervention validation. Parameter/model uncertainty remains open research, not an operational guarantee.
+
+## Model & Scenario Workspace
+
+`l5.models` 显式注册 TripLens 与双水箱，`ProcessModel` 约定描述、验证、模拟、观察、调查与干预。`l5.runtime` 按 Model ID 和能力分发，公共层只维护会话、时间窗口、缓存、运行记录和 Dataset 导出。TripLens 算法保留在原模拟模块和独立适配器内；双水箱具有独立方程、7 通道、工具和指标，不调用 TripLens 的 18 通道诊断。外部助手入口同样检查诊断能力。
+
+`ScenarioService` 在 SQLite 中添加定义和不可变版本表。会话固定模型描述、配置、场景版本、测量和真值，保存后编辑或再次运行不会重写已有轨迹。旧 TripLens 文件读取时仅补充投影元数据。模型数据与派生数据保留来源快照，实验真值入口读取保存的故障区间并映射时钟；有限故障结束后的恢复时间保持未知标签。
+
+前端 Models 从实际目录生成配置表单、保存与复制场景、恢复版本及会话。TripLens 使用原专业调查组件，双水箱使用公共曲线、窗口和通用指标展示。Incident、实验研究索引及报告保留各自模型、场景、单位和评价分母。[接口、方程、数值方法与存储细节](model-workspace.md) 和 [实际验收](model-workspace-validation.md) 单独记录。
 
 ## Verification and operation
 

@@ -42,6 +42,11 @@ const { ExperimentWorkspace, newExperimentConfig } = require('../src/workspace/E
 const { ExperimentLabels } = require('../src/workspace/ExperimentLabels.tsx');
 const { ExperimentReport } = require('../src/workspace/ExperimentReport.tsx');
 const { ExperimentComparison } = require('../src/workspace/ExperimentComparison.tsx');
+const { ModelWorkspace } = require('../src/workspace/ModelWorkspace.tsx');
+const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
+const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
+const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
+const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -1033,4 +1038,114 @@ test('experiment report discards late generation and requires saved notes before
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /Current saved conclusion/);
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Stale/);
   assert.ok(container.querySelector('a[download]'));
+});
+
+function modelFixture(id = 'independent-process') {
+  const model = { modelId:id,name:'Independent tank model',version:'1.0.0',category:'Hydraulic',description:'A distinct registered model',source:{name:'Local physical model'},limitations:['Known-model forecasts only'],
+    defaults:{fault:'healthy',duration:120,step:.2,start:40,seed:7,area:1},configFields:[{key:'area',label:'Tank area',unit:'m²',group:'Initial conditions',type:'number',min:.1,max:10,nullable:false}],
+    signals:[{key:'level',tag:'LT-1',unit:'m',label:'Measured level'}],faults:{healthy:'Healthy',leak:'Leak'},capabilities:['simulation','observation','investigation-tools','interventions','forecast'],
+    tools:['flow_balance'],toolDefinitions:[{id:'flow_balance',name:'Observed balance'}],actions:[{id:'adjust_pump',name:'Adjust pump',parameters:['pumpControl']}],actionParameters:{pumpControl:{label:'Pump command',unit:'%',min:0,max:150,default:100}},edges:[] };
+  const scenario={id:'scenario-1',workspaceId:'test',modelId:id,modelVersion:'1.0.0',version:1,name:'Saved leak scenario',description:'Old description',config:{...model.defaults,fault:'leak'},createdAt:'2026-10-25T00:00:00Z',updatedAt:'2026-10-25T00:00:00Z'};
+  const session={id:'model-session',title:'Tank run',modelId:id,modelVersion:'1.0.0',modelDescriptor:model,scenarioId:scenario.id,scenarioVersion:1,scenarioSnapshot:scenario,config:scenario.config,
+    rows:Array.from({length:601},(_,i)=>({t:i*.2,level:1+i*.001})),workspaceId:'test',datasetId:null,status:'completed',createdAt:'2026-10-25T00:00:00Z',groundTruth:{}};
+  return {model,scenario,session};
+}
+
+test('model catalog uses registered metadata and generates model-specific scenario fields',async()=>{
+  const {model}=modelFixture('a-new-model-id');
+  globalThis.fetch=async url=>response(url==='/api/models' ? {models:[model]} : url.includes('/scenarios') ? {scenarios:[]} : {simulations:[]});
+  await mount(React.createElement(ModelWorkspace,{workspaceId:'test',onSaved(){}}));
+  assert.ok(container.textContent.includes('Independent tank model'));
+  assert.equal(inputFor('Tank area').value,'1');
+  assert.equal(container.querySelectorAll('.model-card').length,1);
+  assert.ok(!container.textContent.includes('18 CHANNELS'));
+  assert.ok(!container.textContent.includes('cooling_valve'));
+});
+
+test('scenario edits save a new version before a run and retain the original input object',async()=>{
+  const {model,scenario,session}=modelFixture(),writes=[],original=JSON.stringify(scenario),saved=[];
+  globalThis.fetch=async(url,options={})=>{
+    if(!options.body) return response({versions:[scenario]});
+    const body=JSON.parse(options.body);writes.push({url,body,method:options.method});
+    return response(url.endsWith('/run') ? session : {...scenario,version:2,name:body.name,config:body.config});
+  };
+  await mount(React.createElement(ScenarioEditor,{workspaceId:'test',model,scenario,onSaved:s=>saved.push(s),onSelect(){},onRun(){}}));
+  await setField(inputFor('Tank area'),2.4);
+  await click(button('Save & run scenario'));
+  assert.equal(writes[0].method,'PATCH');assert.equal(writes[0].body.expectedVersion,1);
+  assert.equal(writes[0].body.config.area,2.4);
+  assert.deepEqual(writes[1].body,{scenarioVersion:2,workspaceId:'test'});
+  assert.equal(saved[0].version,2);assert.equal(JSON.stringify(scenario),original);
+});
+
+test('generic intervention records restore their own action parameters and observation window',async()=>{
+  const {session}=modelFixture(),writes=[];
+  const result={format:'model-forecast-v1',mode:'known',modelId:session.modelId,at:63.17,horizon:120,observedThrough:60,
+    baseline:{action:null,times:[0,60,120],values:{level:[1,1,.8]},metrics:{delivered:2}},branches:[{action:'adjust_pump',times:[0,60,120],values:{level:[1,1,1.1]},metrics:{delivered:3}}],
+    metricDefinitions:[{key:'delivered',label:'Delivered water',unit:'m³'}],signalDefinitions:session.modelDescriptor.signals,uncertainty:'Conditional known model'};
+  const run={id:'tank-trial',kind:'intervention',modelId:session.modelId,createdAt:'2026-10-25T00:00:00Z',request:{windowStart:10,asOf:60,mode:'known',at:63.17,horizon:120,actions:['adjust_pump'],parameters:{pumpControl:117}},result};
+  globalThis.fetch=async(url,options={})=>{
+    if(url.endsWith('/runs')) return response({runs:[run]});
+    const body=JSON.parse(options.body || '{}');
+    if(url.endsWith('/analysis')) return response({observedThrough:body.asOf,windowStart:body.windowStart,samples:201});
+    writes.push({url,body});return response({...run,id:"new-tank-trial"});
+  };
+  await mount(React.createElement(ModelSimulation,{workspaceId:'test',session,sessions:[session],runId:run.id,onSaved(){},onDataset(){}}));
+  assert.equal(inputFor('Action time').value,'63.17');assert.equal(inputFor('Window start').value,'10');assert.equal(inputFor('Pump command').value,'117');
+  assert.ok(container.textContent.includes('Delivered water (m³)'));
+  assert.ok(!container.textContent.includes('physical pressure'));
+  await click(button('Simulate actions & save comparison'));
+  assert.equal(writes[0].body.parameters.pumpControl,117);assert.equal(writes[0].body.asOf,60);
+  await setField(inputFor('Observe through'),70);
+  assert.ok(container.textContent.includes('different observation window'));
+});
+
+test('Incident saved result renders model-declared forecast metrics without TripLens fields',async()=>{
+  const forecast={format:'model-forecast-v1',mode:'known',at:60,horizon:120,observedThrough:60,baseline:{action:null,times:[0,120],values:{height:[1,.7]},metrics:{water:2}},branches:[],metricDefinitions:[{key:'water',label:'Delivered water',unit:'m³'}],signalDefinitions:[{key:'height',label:'Physical level',unit:'m'}],uncertainty:'Known tank model'};
+  await mount(React.createElement(SavedRunView,{run:{id:'saved-tank',kind:'intervention',result:forecast,request:{}}}));
+  assert.ok(container.textContent.includes('Delivered water (m³)'));assert.ok(curve('Physical level (m)'));
+  assert.ok(!container.textContent.includes('pressure'));
+});
+
+test('leaving a scenario during a pending save does not navigate back to its old model',async()=>{
+  const first=modelFixture('first-model'),second=modelFixture('second-model');
+  let complete,callbacks=0;
+  globalThis.fetch=(url,options={})=>options.body ? new Promise(resolve=>{complete=resolve;}) : Promise.resolve(response({versions:[first.scenario]}));
+  const props={workspaceId:'test',model:first.model,scenario:first.scenario,onSaved(){callbacks++;},onSelect(){},onRun(){callbacks++;}};
+  await mount(React.createElement(ScenarioEditor,{...props,key:'first'}));
+  await setField(inputFor('Tank area'),2);
+  await click(button('Save & run scenario'));
+  await act(async()=>root.render(React.createElement(ScenarioEditor,{...props,key:'second',model:{...second.model,name:'Second selected process'},scenario:null})));
+  await act(async()=>complete(response({...first.scenario,version:2})));
+  assert.equal(callbacks,0);assert.equal(inputFor('Scenario name').value,'Second selected process scenario');
+});
+
+test('late model session response cannot replace a newer selected session',async()=>{
+  const {model,session}=modelFixture();let complete;
+  const second={...session,id:'newer-session',title:'Newer selected process'};
+  globalThis.fetch=(url,options={})=>{
+    if(url==='/api/models') return Promise.resolve(response({models:[model]}));
+    if(url.includes('/scenarios')) return Promise.resolve(response({scenarios:[]}));
+    if(url.includes('/model-research')) return Promise.resolve(response({rows:[]}));
+    if(url.includes('/simulations?')) return Promise.resolve(response({simulations:[session,second]}));
+    if(url.endsWith('/'+session.id)) return new Promise(resolve=>{complete=resolve;});
+    if(url.endsWith('/'+second.id)) return Promise.resolve(response(second));
+    if(url.endsWith('/runs')) return Promise.resolve(response({runs:[]}));
+    return Promise.resolve(response({observedThrough:93,windowStart:0,samples:466}));
+  };
+  await mount(React.createElement(ModelWorkspace,{workspaceId:'test',simulationId:session.id,onSaved(){}}));
+  await act(async()=>root.render(React.createElement(ModelWorkspace,{workspaceId:'test',simulationId:second.id,onSaved(){}})));
+  await act(async()=>complete(response(session)));
+  assert.ok(container.querySelector('.model-provenance').textContent.includes(second.title));
+  assert.ok(!container.querySelector('.model-provenance').textContent.includes('Tank run'));
+});
+
+test('model research retains separate model identities, label versions and evaluation denominators',async()=>{
+  const rows=['TripLens','Coupled tanks'].map((name,i)=>({experimentId:'e'+i,experimentName:name+' study',runId:'run'+i,taskId:'task'+i,datasetId:'d'+i,datasetName:name+' signals',models:[{id:name,name,version:'1.0',scenarioId:'scenario'+i,scenarioVersion:i+1}],algorithm:'robust-maxz',status:'succeeded',resultId:'result'+i,labelVersion:i+1,
+    metrics:{behavior:{alarmSamples:20,validSamples:100+i,coverageFraction:1},labelled:{sample:{precision:.8,recall:.9,f1:.847}}}}));
+  globalThis.fetch=async()=>response({rows,scope:'Persisted research only'});
+  await mount(React.createElement(ModelResearch,{workspaceId:'test'}));
+  assert.ok(container.textContent.includes('TripLens v1.0'));assert.ok(container.textContent.includes('Coupled tanks v1.0'));
+  assert.ok(container.textContent.includes('20 / 100'));assert.ok(container.textContent.includes('20 / 101'));
+  assert.equal(container.querySelectorAll('tbody tr').length,2);
 });

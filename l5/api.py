@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,28 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts[1] == 'experiments' and len(parts) == 4 and parts[3] == 'report.html' and method == 'GET':
+        if parts[1] == 'models' and method == 'GET':
+            from .models import catalog, resolve
+            if len(parts) == 2:
+                result = {'models': catalog()}
+            elif len(parts) == 3:
+                result = resolve(parts[2]).describe()
+        elif parts[1] == 'scenarios':
+            if len(parts) == 3:
+                if method == 'GET':
+                    query = parse_qs(url.query)
+                    result = store.scenarios.get(parts[2], int(query['version'][0]) if 'version' in query else None)
+                elif method == 'PATCH':
+                    previous = store.scenarios.get(parts[2])
+                    result = store.scenarios.save(previous['workspaceId'], body, parts[2])
+            elif len(parts) == 4:
+                if parts[3] == 'versions' and method == 'GET':
+                    result = {'versions': store.scenarios.versions(parts[2])}
+                elif parts[3] == 'copy' and method == 'POST':
+                    result, status = store.scenarios.copy(parts[2], body), 201
+                elif parts[3] == 'run' and method == 'POST':
+                    result, status = store.runtime.create({**body, 'scenarioId': parts[2]}), 201
+        elif parts[1] == 'experiments' and len(parts) == 4 and parts[3] == 'report.html' and method == 'GET':
             from .experiment_routes import report
             report(handler, store, parts[2], url.query)
             return True
@@ -132,7 +153,15 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'experiments':
+            if parts[3] == 'model-research' and method == 'GET':
+                from .model_research import research
+                result = research(store, parts[2])
+            elif parts[3] == 'scenarios':
+                if method == 'GET':
+                    result = {'scenarios': store.scenarios.list(parts[2])}
+                elif method == 'POST':
+                    result, status = store.scenarios.save(parts[2], body), 201
+            elif parts[3] == 'experiments':
                 if method == 'GET':
                     result = {'experiments': store.experiments.list(parts[2])}
                 elif method == 'POST':
@@ -188,8 +217,8 @@ def dispatch(handler, method: str) -> bool:
                 result = {'labels': store.experiments.label_sets(parts[2])}
             elif method == 'POST':
                 result, status = store.experiments.save_labels(parts[2], body), 201
-        elif len(parts) == 5 and parts[1] == 'datasets' and parts[3:] == ['labels', 'triplens'] and method == 'POST':
-            result, status = store.experiments.triplens_labels(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'datasets' and parts[3] == 'labels' and parts[4] in ('triplens', 'simulation') and method == 'POST':
+            result, status = store.experiments.simulation_labels(parts[2], body), 201
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'quality' and method == 'GET':
             result = store.dataset(parts[2])['metadata']['quality']
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'time-reference':

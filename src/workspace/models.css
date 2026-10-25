@@ -1,0 +1,31 @@
+.model-workspace { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; min-width:0; }
+.model-workspace>*,.model-simulation>* { min-width:0; }
+.model-workspace .ws-page-title { margin-bottom:4px; }
+.model-catalog { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; min-width:0; }
+.ws-shell .model-card { text-align:left; display:flex; flex-direction:column; gap:12px; border:1px solid var(--ws-border,#34412f); cursor:pointer; padding:24px; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.model-card.selected { border-color:#b5ed9a; background:#1c291b; }
+.model-card h2,.model-card p { margin:0; }
+.model-card p { line-height:1.65; color:#b5bfb0; font-weight:400; }
+.model-card small { margin-top:auto; color:#a8b6a0; }
+.model-capabilities { display:flex; flex-wrap:wrap; gap:6px; }
+.model-capabilities span { padding:4px 7px; border:1px solid #3d4a36; border-radius:4px; font-size:10px; color:#bdd0b1; }
+.model-workspace details summary { cursor:pointer; padding:10px 0; }
+.model-provenance p { overflow-wrap:anywhere; }
+.model-workspace details pre { max-height:360px; overflow:auto; font-size:12px; padding:12px; background:#11180f; }
+.scenario-editor fieldset { border:0; padding:0; margin:14px 0; }
+.scenario-editor fieldset:disabled { opacity:.65; }
+.scenario-editor small { font-size:10px; color:#8f9d86; }
+.model-actions { margin:14px 0; gap:10px; flex-wrap:wrap; }
+.model-simulation { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; min-width:0; }
+.model-simulation .ws-option-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
+.model-workspace input[type=range] { width:100%; accent-color:#b5ed9a; }
+.model-topology { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; }
+.model-topology div { background:#1c2819; padding:12px; border:1px solid #3d4a36; border-radius:6px; font-size:12px; }
+.model-topology span { color:#8d9d83; }
+.model-tool-values { display:grid; gap:8px; }
+.model-tool-values div { display:grid; grid-template-columns:minmax(150px,1fr) 3fr; gap:15px; padding:10px 0; border-bottom:1px solid #34412f; }
+.model-tool-values dt { color:#aebba4; }
+.model-tool-values dd { margin:0; overflow-wrap:anywhere; }
+.model-specialist { padding:0 !important; width:100% !important; }
+.model-forecast .ws-table-scroll { margin:15px 0; }
+@media(max-width:850px) { .model-catalog { grid-template-columns:1fr; } .model-card { padding:18px; } }

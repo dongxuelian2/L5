@@ -9,9 +9,10 @@ import { IncidentLinkDialog, type IncidentDraft } from "./IncidentLinkDialog";
 import "./workspace.css";
 import "./runtime.css";
 import { observationKey, useObservation, type Observation, type ObservationContext } from "./useObservation";
+import { isModelForecast, ModelForecastView, ModelToolResult } from "./ModelResults";
 
 type SimulationConfig = { fault: string; start: number; severity: number; operating: number; noise: number; response: number; delay: number; seed: number | null; duration: number; step: number };
-type Session = { id: string; title: string; config: SimulationConfig; rows: Row[]; createdAt: string; workspaceId: string | null; datasetId: string | null };
+type Session = { id: string; modelId?: string; title: string; config: SimulationConfig; rows: Row[]; createdAt: string; workspaceId: string | null; datasetId: string | null };
 type Catalog = { faults: Record<string, string>; defaults: SimulationConfig; signals: { key: string; tag: string }[]; actions: { id: string; name: string }[]; actionParameters: Record<string, { default: number; min: number; max: number }>; tools: string[] };
 type ForecastPath = { times: number[]; pressure: number[]; physicalPeak: number; trip: number | null; productionLoss: number; qualityLoss: number; utilityCost: number; safe: boolean; action?: string };
 type Forecast = { mode: string; hypothesis: string; observedThrough: number; at: number; horizon: number; threshold: number; fitError: number | null; baseline: ForecastPath; branches: ForecastPath[]; search?: { resolution: number; evaluated: number; actions: {id:string;name:string;latest:number|null;intervals:number[][]}[] } };
@@ -31,7 +32,7 @@ function exportJSON(name: string, value: unknown) {
   downloadFile(name, JSON.stringify(value, null, 2));
 }
 
-export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWindow, onSaved, initialTab = "evidence" }: { workspaceId?: string; simulationId?: string; runId?: string; initialWindow?: { windowStart: number; asOf: number; hypothesis?: string }; onSaved?: (d: Dataset) => void; initialTab?: Tab }) {
+export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWindow, onSaved, initialTab = "evidence", embedded = false }: { workspaceId?: string; simulationId?: string; runId?: string; initialWindow?: { windowStart: number; asOf: number; hypothesis?: string }; onSaved?: (d: Dataset) => void; initialTab?: Tab; embedded?: boolean }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null), [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null), [chosen, setChosen] = useState(simulationId || "");
   const [config, setConfig] = useState<SimulationConfig | null>(null), [title, setTitle] = useState("");
@@ -56,7 +57,7 @@ export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWind
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([api<Catalog>("/simulations/catalog", undefined, "GET", controller.signal), api<{ simulations: Session[] }>(`/simulations${workspaceId ? `?workspaceId=${workspaceId}` : ""}`, undefined, "GET", controller.signal), api<{workspaces:Workspace[]}>("/workspaces", undefined, "GET", controller.signal)])
-      .then(([c, s, w]) => { if (controller.signal.aborted) return; setCatalog(c); setConfig(current => current ?? { ...c.defaults, step: .2, seed: null }); setSessions(s.simulations); setWorkspaces(w.workspaces); setSaveWorkspace(workspaceId || w.workspaces[0]?.id || ""); if (!simulationId && s.simulations.length) setChosen(current => current || s.simulations[0].id); })
+      .then(([c, s, w]) => { if (controller.signal.aborted) return; setCatalog(c); setConfig(current => current ?? { ...c.defaults, step: .2, seed: null }); const compatible = s.simulations.filter(session => !session.modelId || session.modelId === "triplens-synthetic-18-v2"); setSessions(compatible); setWorkspaces(w.workspaces); setSaveWorkspace(workspaceId || w.workspaces[0]?.id || ""); if (!simulationId && compatible.length) setChosen(current => current || compatible[0].id); })
       .catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();
   }, [workspaceId]);
@@ -111,10 +112,10 @@ export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWind
   function record(run: Run) { if (activeSession.current === session?.id) setRuns(previous => [run, ...previous]); }
   const currentHypothesis = analysis ? (hypothesis?.key === contextKey ? hypothesis.id : analysis.diagnosis.candidates[0]?.id || "") : "";
   function selectHypothesis(id:string) { if (analysis && contextKey) setHypothesis({key:contextKey,id}); }
-  return <div className="ws-shell ws-runtime platform-workspace">
-    <div className="ws-page-title"><div><div className="ws-kicker">PROCESS MODEL / RUNTIME COMPUTATION</div><h1>Build a scenario. Follow the evidence.</h1><p>Generate observations, investigate any moment, and compare your own model experiments.</p></div><span className="ws-badge">18 CHANNELS · 12 FAULT MODELS</span></div>
+  return <div className={`ws-shell ws-runtime platform-workspace${embedded ? " model-specialist" : ""}`}>
+    {!embedded && <div className="ws-page-title"><div><div className="ws-kicker">PROCESS MODEL / RUNTIME COMPUTATION</div><h1>Build a scenario. Follow the evidence.</h1><p>Generate observations, investigate any moment, and compare your own model experiments.</p></div><span className="ws-badge">18 CHANNELS · 12 FAULT MODELS</span></div>}
     <ErrorText error={error} />
-    {catalog && config && <details className="ws-panel runtime-config" open={configOpen} onToggle={e => setConfigOpen(e.currentTarget.open)}><summary>Configure a simulation / create a new trajectory</summary><form onSubmit={create}>
+    {!embedded && catalog && config && <details className="ws-panel runtime-config" open={configOpen} onToggle={e => setConfigOpen(e.currentTarget.open)}><summary>Configure a simulation / create a new trajectory</summary><form onSubmit={create}>
       <div className="ws-form-grid ws-three"><label>Scenario name<input value={title} onChange={e => setTitle(e.target.value)} maxLength={160} placeholder="Name this experiment" /></label><label>Fault template<select value={config.fault} onChange={e => setConfig({ ...config, fault: e.target.value })}>{Object.entries(catalog.faults).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label>Random seed<input type="number" min={0} step={1} value={config.seed ?? ""} placeholder="Random on each new run" onChange={e => setConfig({ ...config, seed: e.target.value === "" ? null : Number(e.target.value) })} /></label>
         {fields.map(([key, label, min, max]) => <label key={key}>{label}<input type="number" min={min} max={Number.isFinite(max) ? max : undefined} step="any" required value={config[key] ?? ""} onChange={e => setConfig({ ...config, [key]: Number(e.target.value) })} /></label>)}
       </div><p className="ws-notice">A stable first 20 seconds supports process diagnosis. Integration step 0.05–1 s; numerical runs use at most 100,000 steps.</p><button className="ws-primary" disabled={busy}>Run new simulation ↗</button>
@@ -226,6 +227,8 @@ function ForecastView({ forecast }: {forecast:Forecast}) {
 }
 
 export function SavedRunView({ run }: { run: RuntimeRun }) {
+  if (isModelForecast(run.result)) return <ModelForecastView forecast={run.result} />;
+  if (run.modelId && run.modelId !== "triplens-synthetic-18-v2") return <ModelToolResult run={run} />;
   if (run.kind === "intervention") return <ForecastView forecast={run.result as Forecast} />;
   const result = run.result as { trace?: Trace[]; summary?: string; limitation?: string };
   return <div className="incident-saved-run">{result.summary && <p className="ws-notice">{result.summary}</p>}{result.trace?.length ? <TraceView analysis={{ trace: result.trace } as Analysis} /> : <p>此记录没有工具输出。</p>}{result.limitation && <p className="ws-muted">{result.limitation}</p>}</div>;

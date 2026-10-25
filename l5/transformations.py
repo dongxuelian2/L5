@@ -174,7 +174,9 @@ class TransformationService:
                 loaded[identity] = dataset, times, values, observed
                 snapshots.append(dict(datasetId=identity, datasetName=dataset['name'], createdAt=dataset['created_at'],
                     sha256=hashlib.sha256(path.read_bytes()).hexdigest(), simulationId=dataset['metadata'].get('model', {}).get('simulationId'),
-                    sourceSimulations=dataset['metadata'].get('transformation', {}).get('sourceSimulations', [])))
+                    sourceSimulations=dataset['metadata'].get('transformation', {}).get('sourceSimulations', []),
+                    model=dataset['metadata'].get('model'),
+                    sourceModels=dataset['metadata'].get('transformation', {}).get('sourceModels', [])))
             dataset, times, values, observed = loaded[identity]
             column = next(i for i, c in enumerate(dataset['metadata']['columns']) if c['name'] == source['column'])
             converted = convert(values[:, column], source['sourceUnit'], source['unit'], rotational=source['rotational'])
@@ -256,7 +258,8 @@ class TransformationService:
                     start=0., end=float(times[-1]), sampleInterval=interval,
                     **{k: quality[k] for k in ('typicalInterval', 'irregularCount', 'duplicateCount', 'invalidTimeCount', 'gapCount')})
         simulations = list(dict.fromkeys(sid for s in snapshots for sid in ([s['simulationId']] if s['simulationId'] else s['sourceSimulations'])))
-        lineage = dict(config=config, sources=snapshots, sourceSimulations=simulations,
+        source_models = {m['simulationId']: m for s in snapshots for m in ([s['model']] if s.get('model') else s.get('sourceModels', []))}
+        lineage = dict(config=config, sources=snapshots, sourceSimulations=simulations, sourceModels=list(source_models.values()),
             clock=dict(axisId=policy['axisId'], offset=float(start)),
             grid=dict(start=float(start), requestedEnd=float(end), end=float(start + times[-1]), intervalSeconds=interval, samples=count),
             quality=summaries, provenanceCodes=PROVENANCE)
