@@ -12,6 +12,8 @@ L5 默认打开 Workspace。你可以创建项目、导入任意列名的数值 
 
 **TEP case study** 导入 Harvard Dataverse 的真实公开 Tennessee Eastman 仿真运行，保留官方来源、校验、52 个过程变量和独立标签。Experiments 可从 Dataset A 拟合、从独立正常运行校准，再在多个 Dataset 上评分。固定案例完成九算法 × 八个独立测试运行，保留弱故障漏检、跨运行分布、Incident 和真实曲线报告。[数据准备与复现](examples/tep/README.md) · [实际结果和限制](docs/tep-case-study.md)。
 
+本轮 [TEP 扩展与稳定性研究](docs/tep-benchmark-expanded.md) 覆盖故障 1–20、各三个 Testing 运行及五个正常运行，再以三组互不重叠的正常 Fit/Calibration 重复同一测试集合；共 2,340 项任务全部成功。Dashboard 分开显示协议和训练配置，增加 30 分钟／1 小时／4 小时／最终检出、报警负担及故障 3 正常背景对照。实验保留了显著训练敏感性：Page CUSUM 的正常报警样本数由 0 变化至 1,833/4,800。[复现与结果](examples/tep/README.md)。
+
 ## 现在可以做什么
 
 - **Workspace**：创建、打开、重命名和删除项目。一个项目保存多个数据集和多次分析。

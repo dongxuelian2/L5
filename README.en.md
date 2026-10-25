@@ -10,6 +10,8 @@ L5 opens a local Workspace where you can import your own CSV, run anomaly detect
 
 ## Capabilities
 
+The [expanded TEP study](docs/tep-benchmark-expanded.md) covers faults 1–20 with three Testing runs each and five normal runs, then repeats the same 65 trajectories under three disjoint normal fit/calibration configurations (2,340 successful tasks). The live dashboard separates protocols and training sources, shows early/eventual detection and alarm burden, and compares fault 3 with normal-background scores and original measurements. Results retain weak faults and strong training sensitivity: Page CUSUM normal alarm samples vary from 0 to 1,833 out of 4,800. [Reproduce](examples/tep/README.md).
+
 - Create, open, rename and delete projects, each containing multiple datasets and analyses.
 - Preview and save CSV/TSV data with arbitrary numeric signal names. Choose a timestamp or numeric time column and its unit, or generate time from a sampling interval. Comma, semicolon, tab and pipe delimiters are supported.
 - Maintain a persistent signal catalog with stable IDs, display names, units, descriptions, categories, devices, tags and explicit logical measurement keys across datasets.

@@ -232,6 +232,18 @@ Experiment 的可选 `testDatasets` 定义各独立运行、评价范围、映�
 | `POST /api/workspaces/:id/external/tep` | 导入所选运行及独立标签版本 |
 | `POST /api/workspaces/:id/external/tep/experiment` | 复用匹配导入，保存固定 Experiment |
 
+## Expanded TEP research
+
+`l5.tep_study` 在已有 Dataset/Experiment 上组织声明过的独立运行研究；没有新增检测引擎或独立研究数据库。`benchmark` 配置保存 studyId、protocolId、protocolHash、A/B/C 配置及批次。保存／执行检查真实正常训练运行、固定参数、特征、测试运行和公开标签；不可变运行快照同时保留完整研究协议。每批最多 28 个测试 Dataset（252 任务），跨批次只在相同研究／配置内汇总。
+
+Experiment 单 worker 维护最多 36 个已拟合模型的 LRU。键包含完整训练／算法配置、训练内容哈希和引擎来源哈希；评分依然在每条序列／abstain 边界重置历史。新的训练内容、算法配置或引擎版本不会复用旧模型。持久化的 fitId、modelKey、阈值和 reused 标志用于审计实际拟合次数；进程重启后缓存为空，但全部结果保持。
+
+`detection_metrics` 是供 CLI、产品汇总和 HTML 共同使用的纯函数，补充 1800/3600/14400 s／最终事件分母、未观测／随访不足标志、正常／注入前／注入后报警负担。旧 eligibleEvents 口径与原结果不改写。历史任务可从保存的事件记录派生早期计数；漏检延迟保持 null。研究汇总保留所有计划任务；失败为 unresolved，重试只沿明确 ancestry 覆盖任务，完整尝试另存审计。
+
+`tep_fault3` 读取已保存模型参数与哈希匹配的原始测量，复用 `contribution_matrix` 重建 Q 贡献并验证与已保存分数一致。共同 elapsed-time 仅用于探索性正常背景对照，不改变 Dataset 时钟。`TEPStudyDashboard` 复用 `FaultMatrix` 和 `Plot`，并链接正式 Dataset、ExperimentComparison、Signal Explorer 与 Incident。`tep_study_reports` 复用既有离线 HTML/SVG 图表。完整运行快照和曲线放外部工作流 artifacts，Git 保存协议、精简汇总、逐运行 CSV 和[研究报告](tep-benchmark-expanded.md)。
+
+新增 API：`GET /api/external/tep/protocols`；`GET/POST /api/workspaces/:id/external/tep/studies`；`GET /api/workspaces/:id/external/tep/studies/:study`；同路径下的 `fault3?run=1` 和 `report.html?download=1`。实时页面使用精简投影，完整审计导出不因页面载荷预算删减。
+
 ## Verification and operation
 
 `npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete numerical regeneration is available separately through `npm run verify:artifacts`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI checks Linux and Windows. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.

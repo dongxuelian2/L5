@@ -1,0 +1,66 @@
+{
+  "expanded": {
+    "studyId": "8e345612d68245be91f5c8efa01a4edc",
+    "workspaceId": "857877d4c9f64658b38d10d5c3e8f386",
+    "tasks": 585,
+    "statusCounts": {
+      "succeeded": 585,
+      "failed": 0,
+      "interrupted": 0,
+      "not-run": 0,
+      "queued": 0,
+      "running": 0
+    },
+    "fittedModels": 9,
+    "newFits": 9
+  },
+  "robustness": {
+    "studyId": "ffe9eb13c91b435cb44d2be91bf4159c",
+    "workspaceId": "857877d4c9f64658b38d10d5c3e8f386",
+    "tasks": 1755,
+    "statusCounts": {
+      "succeeded": 1755,
+      "failed": 0,
+      "interrupted": 0,
+      "not-run": 0,
+      "queued": 0,
+      "running": 0
+    },
+    "fittedModels": 27,
+    "newFits": 27
+  },
+  "restart": {
+    "restored": true,
+    "incidentId": "f791a30b4e494f99b5ee8a2dc010951c",
+    "links": 9,
+    "entries": 4
+  },
+  "baseline": {
+    "comparedTasks": 72,
+    "sampleAndEventMetricsEqual": true,
+    "exactScoreHashes": 72,
+    "maximumThresholdDifference": 0.0
+  },
+  "date": "2026-10-25",
+  "base": "4eb2f616d0ee0c0dbc7ddccfd2ab8c532ba35858",
+  "protocols": {
+    "expanded": "rieth-expanded-nine-v1",
+    "robustness": "rieth-robustness-nine-v1"
+  },
+  "sources": "rieth-expanded-nine-v1",
+  "localTests": {
+    "workspacePython": 80,
+    "simulationPython": 40,
+    "reactDOM": 44,
+    "researchPython": 115,
+    "typescript": "passed",
+    "productionBuild": "passed"
+  },
+  "browser": {
+    "status": "in-progress",
+    "url": "http://127.0.0.1:8790/#/workspaces/857877d4c9f64658b38d10d5c3e8f386/tep"
+  },
+  "github": {
+    "status": "pending"
+  }
+}

@@ -78,8 +78,10 @@ def evaluate(result, labels=None, gap_threshold=None):
                     alarmDuration=sum(s['end'] - s['start'] for s in alarms),
                     firstDetection=float(times[alarm][0]) if alarm.any() else None,
                     durationMs=result['durationMs'], relatedSignals=result['relatedSignals'])
+    from .detection_metrics import detection_metrics
+    detection = detection_metrics(result, labels, gap_threshold)
     if labels is None:
-        return dict(behavior=behavior, labelled=None)
+        return dict(behavior=behavior, labelled=None, detection=detection)
     truth = np.full(len(times), -1, dtype=int)
     label_index = np.full(len(times), -1, dtype=int)
     for index, interval in enumerate(labels['intervals']):
@@ -117,5 +119,5 @@ def evaluate(result, labels=None, gap_threshold=None):
                  unobservedEvents=len(events)-len(eligible), recall=ratio(hits, len(eligible)),
                  falseAlarmEvents=len(false_events), falseAlarmSpans=false_events, events=events,
                  firstDetectionDelay=next((v['delay'] for v in events if v['delay'] is not None), None))
-    return dict(behavior=behavior, labelled=dict(labelSetId=labels['id'], version=labels['version'],
+    return dict(behavior=behavior, detection=detection, labelled=dict(labelSetId=labels['id'], version=labels['version'],
                                                source=labels['source'], sample=sample, event=event))

@@ -53,6 +53,8 @@ class WorkspaceStore:
         self.experiments = ExperimentService(self)
         from .tep_import import TEPImportService
         self.tep = TEPImportService(self)
+        from .tep_study import TEPStudyService
+        self.tep_studies = TEPStudyService(self)
 
     @contextmanager
     def connect(self):

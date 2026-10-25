@@ -32,8 +32,36 @@ def dispatch(handler, method: str) -> bool:
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL
             result = PROTOCOL
+        elif parts == ['api', 'external', 'tep', 'protocols'] and method == 'GET':
+            from .tep_import import PROTOCOL
+            from .tep_study import PROTOCOL_FILES, protocol_for
+            result = dict(protocols=[PROTOCOL, *(protocol_for(key) for key in PROTOCOL_FILES)])
         elif parts == ['api', 'external', 'tep', 'preview'] and method == 'POST':
             result = store.tep.preview(body)
+        elif len(parts) >= 6 and parts[1] == 'workspaces' and parts[3:6] == ['external', 'tep', 'studies']:
+            from .tep_study_views import study_view
+            if len(parts) == 6:
+                if method == 'GET':
+                    result = dict(studies=store.tep_studies.list(parts[2]))
+                elif method == 'POST':
+                    result, status = study_view(store.tep_studies.create(parts[2], body.get('protocolId'))), 201
+            elif len(parts) == 7 and method == 'GET':
+                result = study_view(store.tep_studies.get(parts[2], parts[6]))
+            elif len(parts) == 8 and parts[7] == 'fault3' and method == 'GET':
+                query = parse_qs(url.query)
+                result = store.tep_studies.fault3(parts[2], parts[6], int(query.get('run', ['1'])[0]))
+            elif len(parts) == 8 and parts[7] == 'report.html' and method == 'GET':
+                from .tep_study_reports import render_study_report
+                payload = render_study_report(store, store.tep_studies.get(parts[2], parts[6])).encode('utf-8')
+                handler.send_response(200)
+                handler.send_header('Content-Type', 'text/html; charset=utf-8')
+                handler.send_header('Content-Length', str(len(payload)))
+                handler.send_header('Cache-Control', 'no-store')
+                if parse_qs(url.query).get('download') == ['1']:
+                    handler.send_header('Content-Disposition', f'attachment; filename="l5-tep-study-{parts[6]}.html"')
+                handler.end_headers()
+                handler.wfile.write(payload)
+                return True
         elif parts[1] == 'models' and method == 'GET':
             from .models import catalog, resolve
             if len(parts) == 2:
