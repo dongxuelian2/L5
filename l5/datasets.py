@@ -22,7 +22,7 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
             separator = csv.Sniffer().sniff(source[:65536], delimiters=',;\t|').delimiter
         except csv.Error:
             separator = ','
-        frame = pd.read_csv(StringIO(source), sep=separator, skip_blank_lines=False)
+        frame = pd.read_csv(StringIO(source), sep=separator, skip_blank_lines=False, float_precision='round_trip')
     except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError) as error:
         raise ValueError(f'Unable to read CSV: {error}') from error
     frame.columns = [str(c).strip() for c in frame.columns]

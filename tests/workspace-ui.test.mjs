@@ -47,6 +47,9 @@ const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
 const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
 const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
+const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
+const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
+const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -1148,4 +1151,69 @@ test('model research retains separate model identities, label versions and evalu
   assert.ok(container.textContent.includes('TripLens v1.0'));assert.ok(container.textContent.includes('Coupled tanks v1.0'));
   assert.ok(container.textContent.includes('20 / 100'));assert.ok(container.textContent.includes('20 / 101'));
   assert.equal(container.querySelectorAll('tbody tr').length,2);
+});
+
+test('external import requires a verified preview, retains independent run selections and opens the fixed experiment', async () => {
+  const writes = [], changes = [];
+  const run = { id:'faulty-testing-f01-r001', faultNumber:1, simulationRun:1, split:'testing', samples:960, features:52, sampleIntervalSeconds:180, faultOnsetSample:161, faultOnsetSeconds:28800 };
+  const source = { id:'faulty-testing', source:{sourceFile:'TEP_Faulty_Testing.RData'}, runs:[run] };
+  globalThis.fetch = async (url, options={}) => {
+    if (url.endsWith('/sources')) return response({sources:[source]});
+    const body=JSON.parse(options.body); writes.push({url,body});
+    if (url.endsWith('/preview')) return response({runs:[run],timeConvention:'sample 161 = 28800 seconds'});
+    if (url.endsWith('/external/tep')) return response({datasets:[dataset('external-fixture')]});
+    throw new Error('Unexpected request '+url);
+  };
+  await mount(React.createElement(TEPWorkspace,{workspaceId:'test',onChanged:()=>changes.push(true)}));
+  assert.equal(button('Import independent runs').disabled,true);
+  await click(inputFor('Fault 1 · run 1'));
+  await click(button('Inspect selected runs'));
+  assert.match(container.textContent,/960 \/ 52/);
+  assert.match(container.textContent,/sample 161 · 28800 s/);
+  await click(button('Import independent runs'));
+  assert.deepEqual(writes[1].body,{sourceId:'faulty-testing',runIds:[run.id]});
+  assert.equal(changes.length,1);
+  assert.match(container.textContent,/1 independent runs saved/);
+  await click(inputFor('Fault 1 · run 1'));
+  assert.equal(button('Import independent runs').disabled,true,'changing the selection invalidates its preview');
+});
+
+test('independent experiment editor keeps normal training and per-test windows and label versions separate', async () => {
+  const sources=['fit','calibration','test-one','test-two'].map(id=>dataset(id));
+  const writes=[];
+  globalThis.fetch=async()=>response({labels:[{id:'published-v1',version:1,name:'Published protocol',source:'tep-rieth'}]});
+  function Fixture(){ const [config,setConfig]=useState(newExperimentConfig(sources[2])); return React.createElement(IndependentTraining,{datasets:sources,config,onChange:change=>{setConfig(v=>({...v,...change}));writes.push(change);}}); }
+  await mount(React.createElement(Fixture));
+  await click(inputFor('Fit and calibrate on separate normal datasets'));
+  assert.equal(writes[0].training.fit.datasetId,'fit');
+  assert.equal(writes[0].training.calibration.datasetId,'calibration');
+  assert.deepEqual(writes[0].testDatasets,[{datasetId:'test-one',analysisRange:[0,899]}]);
+  await click(inputFor('test-two'));
+  assert.equal(writes.at(-1).testDatasets.length,2);
+  const details=[...container.querySelectorAll('details')].find(d=>d.querySelector('summary')?.textContent.startsWith('test-two'));
+  details.open=true;
+  await setField(inputFor('Test truth label version',details),'published-v1');
+  assert.equal(writes.at(-1).testDatasets[1].labelSetId,'published-v1');
+  assert.equal(writes.at(-1).testDatasets[0].labelSetId,undefined);
+});
+
+test('external matrix retains missing events, run denominators and separate fixed parameter conditions', async () => {
+  const fixture=researchFixture(), selected=[];
+  const condition=JSON.stringify({algorithm:'robust-maxz',alpha:.01});
+  const cell={runId:fixture.run.id,faultNumber:3,algorithm:'robust-maxz',condition,runCount:2,succeeded:2,failed:0,labelledRuns:2,
+    sample:{TP:0,FP:0,TN:320,FN:1600,precision:null,recall:0,f1:0,falseAlarmRate:0},
+    event:{detectedEvents:0,eligibleEvents:2,missedEvents:2,unobservedEvents:0,falseAlarmEvents:0},coverage:1,abstainFraction:0,
+    delay:{n:0,median:null,minimum:null,maximum:null},recall:{n:2,median:0,minimum:0,maximum:0},falseAlarmRate:{n:2,median:0,minimum:0,maximum:0},
+    alarmDuration:{n:2,median:0,minimum:0,maximum:0},durationMs:{n:2,median:2,minimum:1,maximum:3},taskIds:[fixture.task.id]};
+  const data={...fixture.data,benchmark:{cells:[cell,{...cell,condition:JSON.stringify({algorithm:'robust-maxz',alpha:.02})}],rules:'Each batch and fixed parameter condition is separate.'},
+    tasks:[{...fixture.task,datasetId:fixture.source.id,external:{faultNumber:3,simulationRun:1,faultOnsetSeconds:28800}}]};
+  await mount(React.createElement(TEPBenchmark,{data,onSelect:ids=>selected.push(ids)}));
+  assert.match(container.textContent,/0\/2 events/);
+  assert.match(container.textContent,/2\/2 runs/);
+  assert.equal(container.querySelectorAll('thead th').length,3,'parameter candidates keep separate columns');
+  await setField(inputFor('Matrix metric'),'delay');
+  assert.match(container.textContent,/— s/,'missed event delay is undefined, not zero');
+  await setField(inputFor('Fault / simulationRun'),fixture.source.id);
+  await click(button('Compare algorithms for this trajectory'));
+  assert.deepEqual(selected,[[fixture.task.id]]);
 });

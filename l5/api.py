@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,14 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts[1] == 'models' and method == 'GET':
+        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+            result = store.tep.sources()
+        elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
+            from .tep_import import PROTOCOL
+            result = PROTOCOL
+        elif parts == ['api', 'external', 'tep', 'preview'] and method == 'POST':
+            result = store.tep.preview(body)
+        elif parts[1] == 'models' and method == 'GET':
             from .models import catalog, resolve
             if len(parts) == 2:
                 result = {'models': catalog()}
@@ -202,6 +209,10 @@ def dispatch(handler, method: str) -> bool:
                     result, status = store.analyze(parts[2], body), 201
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['experiments', 'preview'] and method == 'POST':
             result = store.experiments.preview(parts[2], body.get('config'))
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['external', 'tep'] and method == 'POST':
+            result, status = store.tep.import_runs(parts[2], body), 201
+        elif len(parts) == 6 and parts[1] == 'workspaces' and parts[3:] == ['external', 'tep', 'experiment'] and method == 'POST':
+            result, status = store.tep.create_case(parts[2]), 201
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['transformations', 'preview'] and method == 'POST':
             result = store.transformations.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3] == 'views' and method == 'PATCH':

@@ -132,9 +132,16 @@ def investigation(store, identity, selected=None):
     if incident['start_time'] is not None:
         event('incident-range', 'incident', incident['title'], primary, incident['start_time'], incident['end_time'], target='information')
     grouped = {}
+    truth_datasets = set()
     for link in incident['links']:
         clock = add_clock(source_clock(store, link))
         detail = link['details']
+        dataset_id = detail.get('datasetId')
+        external = datasets.get(dataset_id, {}).get('metadata', {}).get('external')
+        if external and dataset_id not in truth_datasets and external.get('faultOnsetSeconds') is not None:
+            truth_datasets.add(dataset_id)
+            event('truth:' + dataset_id, 'truth', f'数据集已知故障 {external["faultNumber"]} · sample {external["faultOnsetSample"]}',
+                  clock, external['faultOnsetSeconds'], linkId=link['id'], content=external['timeConvention'], target='source')
         if detail.get('analysisId'):
             grouped.setdefault(detail['analysisId'], []).append(link)
         if detail.get('simulationId'):

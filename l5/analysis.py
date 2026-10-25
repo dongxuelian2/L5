@@ -173,6 +173,22 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
             raise ValueError('Need at least 30 covered fit and 30 covered calibration rows. Extend the baseline or explicitly include processed values.')
     monitor.fit(fit)
     threshold = calibrate(monitor, calibration, alpha)
+    return score_analysis(monitor, threshold, target, original_mask, times[target_mask], signals,
+        {**config, 'algorithm': algorithm, 'alpha': alpha, 'variance': variance, 'fitFraction': fit_fraction},
+        policy, medians, fit_samples=len(fit), calibration_samples=len(calibration), baseline_samples=len(normal),
+        imputed=imputed, processed_count=processed_count, observation_policy=observation_policy,
+        observed=observed is not None, started=started)
+
+
+def score_analysis(monitor, threshold, target, original_mask, target_times, signals, config, policy, medians, *,
+                   fit_samples, calibration_samples, baseline_samples, imputed, processed_count=0,
+                   observation_policy='measured', observed=False, started=None):
+    """Shared saved AnalysisResult projection for single- and cross-dataset paths."""
+    from benchmarks.coverage import decide, score_with_observation_resets
+    started = perf_counter() if started is None else started
+    algorithm = config['algorithm']
+    alpha, variance, fit_fraction = config.get('alpha', .01), config.get('variance', .9), config.get('fitFraction', .7)
+    required = list(policy.required_channels)
     persistence = config.get('persistence', 1)
     scores = score_with_observation_resets(monitor, target, original_mask, policy)
     states = decide(scores, original_mask, threshold=threshold, consecutive=persistence, policy=policy)
@@ -196,7 +212,6 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
     if not np.isfinite(scores).all():
         raise ValueError('Signal magnitudes produced nonfinite scores; check the selected measurements.')
     flags = np.array([s == 'alarm' for s in states])
-    target_times = times[target_mask]
     starts = np.flatnonzero(flags & ~np.r_[False, flags[:-1]])
     ends = np.flatnonzero(flags & ~np.r_[flags[1:], False])
     intervals = []
@@ -218,12 +233,12 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
             'signalContributions': contributions, 'peakTime': float(target_times[peak_index]),
             'contributionMetric': {'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
                                    'pca-t2': 'model-leverage', 'dpca-q': 'squared-residual', 'dpca-t2': 'model-leverage'}.get(algorithm, 'history-contribution'),
-            'summary': {'analysisSamples': len(target), 'baselineSamples': len(normal),
-                        'fitSamples': len(fit), 'calibrationSamples': len(calibration),
+            'summary': {'analysisSamples': len(target), 'baselineSamples': baseline_samples,
+                        'fitSamples': fit_samples, 'calibrationSamples': calibration_samples,
                         'flaggedSamples': int(flags.sum()), 'peakScore': float(scores[peak_index]),
                         'firstDetection': float(target_times[starts[0]]) if len(starts) else None,
                         'imputedValues': imputed, 'abstainedSamples': int(sum(s == 'abstain' for s in states)), 'coverageFraction': float(valid.mean()),
-                        **({'processedInputValues': processed_count, 'observationPolicy': observation_policy} if observed is not None else {})},
+                        **({'processedInputValues': processed_count, 'observationPolicy': observation_policy} if observed else {})},
             'model': {**monitor.metadata(), 'center': monitor.center.tolist(), 'scale': monitor.scale.tolist(),
                       'imputationMedians': medians.tolist(),
                       **({'loadings': monitor.components.tolist(), 'eigenvalues': monitor.eigenvalues.tolist()}

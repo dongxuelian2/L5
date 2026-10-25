@@ -29,5 +29,10 @@
 .experiment-lanes { width:100%; min-width:500px; margin:16px 0; }
 .experiment-lanes text { fill:#a4af9d; font-size:11px; }
 .experiment-json { max-height:420px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.tep-benchmark table { table-layout:fixed; min-width:1040px; }
+.tep-benchmark th,.tep-benchmark td { white-space:normal; vertical-align:top; overflow-wrap:anywhere; }
+.tep-benchmark th:first-child { width:70px; }
+.tep-benchmark small { display:block; color:#a4af9d; margin-top:8px; font-size:9px; }
+.tep-benchmark td details { font-size:10px; }
 .experiment-report iframe { width:100%; min-height:760px; border:1px solid #3d4936; margin-top:18px; background:white; }
 @media(max-width:800px) { .experiment-label-row { grid-template-columns:1fr 1fr; } .experiment-actions { position:static; } .experiment-lanes { min-width:0; } }
