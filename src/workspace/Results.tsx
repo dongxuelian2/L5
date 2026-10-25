@@ -63,6 +63,7 @@ export function ResultView({ result, dataset, signalPicker, initialIntervalIndex
   }
 
   return <section className="ws-results" aria-label="Analysis result">
+    {result.experiment && <p className="ws-notice"><a className="ws-link" href={`#/workspaces/${result.workspaceId}/experiments/${result.experiment.experimentId}`}>Return to source experiment ↗</a> · run {result.experiment.runId} · task {result.experiment.taskId}</p>}
     {dataset.metadata.transformation && <><p className="ws-notice">Transformation data · observation policy: {result.config.observationPolicy === "processed" ? "processed values included in coverage" : "original observations only"}. Interpolation and fill provenance is retained.</p><TransformationLineage dataset={dataset} /></>}
     <div className="ws-section-heading"><div><span className="ws-kicker">RESULT / {result.algorithmLabel}</span><h2>{result.name}</h2></div><button className="ws-outlined" onClick={exportResult}>Export result JSON ↓</button></div>
     <p className="ws-saved" role="status">● Saved to workspace · {dateLabel(result.completedAt)} · {number(result.durationMs)} ms</p>

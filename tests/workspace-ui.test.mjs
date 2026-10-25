@@ -38,6 +38,10 @@ const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
 const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/SignalWorkspace.tsx');
 const { TransformationWorkspace, TransformationLineage } = require('../src/workspace/TransformationWorkspace.tsx');
+const { ExperimentWorkspace, newExperimentConfig } = require('../src/workspace/ExperimentWorkspace.tsx');
+const { ExperimentLabels } = require('../src/workspace/ExperimentLabels.tsx');
+const { ExperimentReport } = require('../src/workspace/ExperimentReport.tsx');
+const { ExperimentComparison } = require('../src/workspace/ExperimentComparison.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -875,4 +879,158 @@ test('saved transformation reopens its source keys and execution lineage links t
   assert.ok(container.querySelector('a[href="#/workspaces/test/explorer/pressure-id"]'));
   assert.ok(container.querySelector('a[href="#/workspaces/test/simulations/model-source"]'));
   assert.match(container.textContent, /frozen-execution/);
+});
+
+function researchFixture(id = 'experiment-one') {
+  const source = dataset('research-data');
+  source.metadata.clock = { axisId: 'research-clock', offset: 0 };
+  const experiment = { id, workspace_id: 'test', name: 'Cooling campaign', description: 'Compare saved methods', revision: 1,
+    config: newExperimentConfig(source), notes: '', conclusion: '', conclusion_run_ids: [], created_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-24T00:00:00Z', runs: [] };
+  const run = { id: 'run-original', experiment_id: id, status: 'partial', created_at: experiment.created_at, task_count: 2, completed: 2, succeeded: 1, failed: 1, duration_ms: 4 };
+  experiment.runs = [run];
+  const task = { id: 'task-succeeded', run_id: run.id, algorithm: 'robust-maxz', config: { ...experiment.config, algorithm: 'robust-maxz', variance: .9 }, status: 'succeeded',
+    result_id: 'saved-analysis', duration_ms: 3, datasetId: source.id, datasetName: source.name, experimentRevision: 1,
+    metrics: { behavior: { totalSamples: 3, validSamples: 3, abstainedSamples: 0, coverageFraction: 1, alarmSamples: 2, alarmFraction: 2/3, alarmIntervalCount: 1, alarmDuration: 1, firstDetection: 201, durationMs: 2, relatedSignals: names.slice(0,2) }, labelled: null } };
+  const failed = { ...task, id: 'task-failed', algorithm: 'ewma', status: 'failed', result_id: null, metrics: null, error: 'Temporal samples require regular times' };
+  const result = { id: task.result_id, workspaceId: 'test', datasetId: source.id, name: 'Saved Max-Z', algorithmLabel: 'Robust Max-Z', config: { ...task.config, analysisRange: [200,202] },
+    times: [200,201,202], scores: [1,4,5], states: ['normal','alarm','alarm'], threshold: 3, intervals: [{ start: 201, end: 202, peakTime: 202 }], relatedSignals: names.slice(0,2), signalContributions: [{ signal: names[0], value: 5 }], contributionMetric: 'absolute-robust-z' };
+  const analysis = { id: task.id, task, result, dataset: source, axisId: 'research-clock', offset: 0, intervals: result.intervals };
+  return { source, experiment, run, task, failed, result, analysis, data: { experiment, tasks: [task, failed], analyses: [], groups: [], rules: {} } };
+}
+
+test('experiment editor previews a real multi-algorithm parameter plan and enforces the visible task budget', async () => {
+  const source = dataset('new-research'), writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.endsWith('/experiments') && !options.body) return response({ experiments: [] });
+    if (url.endsWith('/incidents')) return response({ incidents: [] });
+    if (url.endsWith('/labels')) return response({ labels: [] });
+    if (url.endsWith('/preview')) { const body = JSON.parse(options.body); writes.push(body); return response({ taskCount: 10, tasks: [] }); }
+    throw new Error('Unexpected request ' + url);
+  };
+  await mount(React.createElement(ExperimentWorkspace, { workspaceId: 'test', datasets: [source], onChanged() {} }));
+  await click(button('Select all nine algorithms'));
+  await setField(container.querySelector('[aria-label="PCA-Q variance candidates"]'), '.7, .95');
+  assert.match(container.textContent, /9 methods · 10 tasks/);
+  await click(button('Preview 10 tasks'));
+  assert.equal(writes[0].config.algorithms.length, 9);
+  assert.deepEqual(writes[0].config.algorithms.find(p => p.algorithm === 'pca-q').study.variance, [.7,.95]);
+  assert.match(container.textContent, /Validated task preview · 10/);
+  await setField(container.querySelector('[aria-label="Dynamic PCA-Q lags candidates"]'), '1,2,3,4,5,6,7,8');
+  await setField(container.querySelector('[aria-label="Dynamic PCA-Q variance candidates"]'), '.5,.6,.7,.8,.9,.95,.97,.99');
+  assert.equal(button('Save & run').disabled, true, 'oversized candidate product cannot be submitted');
+});
+
+test('experiment history keeps successful results usable when another task fails, saves notes, filters and links real IDs', async () => {
+  const fixture = researchFixture(), writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const body = options.body && JSON.parse(options.body);
+    if (url === '/api/workspaces/test/experiments' && !body) return response({ experiments: [fixture.experiment] });
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [] });
+    if (url.endsWith('/labels')) return response({ labels: [] });
+    if (url === '/api/experiments/experiment-one' && !body) return response(fixture.experiment);
+    if (url.endsWith('/comparison')) return response({ ...fixture.data, experiment: fixture.experiment, analyses: body.taskIds.includes(fixture.task.id) ? [fixture.analysis] : [] });
+    if (url === '/api/experiments/experiment-one' && body) { writes.push({ url, body }); Object.assign(fixture.experiment, body, { revision: fixture.experiment.revision+1 }); return response(fixture.experiment); }
+    if (url === '/api/experiment-runs/run-original/incidents') { writes.push({ url, body }); return response({ id: 'linked-incident', title: 'Research incident' }); }
+    throw new Error('Unexpected request ' + url);
+  };
+  await mount(React.createElement(ExperimentWorkspace, { workspaceId: 'test', experimentId: fixture.experiment.id, datasets: [fixture.source], onChanged() {} }));
+  assert.match(container.textContent, /1 succeeded · 1 failed/);
+  assert.match(container.textContent, /Temporal samples require regular times/);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/analysis/saved-analysis"]'));
+  await setField(inputFor('Experiment notes'), 'Reviewed original measurements');
+  await setField(inputFor('Experiment conclusion'), 'Retain the fixed detector for comparison');
+  const reference = [...container.querySelectorAll('fieldset')].find(n => n.textContent.startsWith('Runs supporting'));
+  await click(reference.querySelector('input'));
+  await click(button('Save experiment'));
+  assert.equal(writes[0].body.notes, 'Reviewed original measurements');
+  assert.deepEqual(writes[0].body.conclusion_run_ids, ['run-original']);
+  await setField(inputFor('Filter task / detection status'), 'failed');
+  assert.equal(container.querySelectorAll('.experiment-results tbody tr').length, 1);
+  await setField(inputFor('Filter task / detection status'), '');
+  await click(container.querySelector('[aria-label="Compare task task-suc"]'));
+  await click(button('Create incident from selected results'));
+  assert.deepEqual(writes.at(-1).body.taskIds, ['task-succeeded']);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/incidents/linked-incident"]'));
+});
+
+test('late experiment loads cannot replace the newly opened experiment', async () => {
+  const first = researchFixture('first-experiment'), second = researchFixture('second-experiment'), pending = [];
+  second.experiment.name = 'Second research';
+  globalThis.fetch = async (url, options = {}) => {
+    if (url === '/api/workspaces/test/experiments') return response({ experiments: [] });
+    if (url.endsWith('/incidents')) return response({ incidents: [] });
+    if (url.endsWith('/labels')) return response({ labels: [] });
+    if (url.endsWith('/comparison')) return response(second.data);
+    return new Promise(resolve => pending.push({ url, resolve }));
+  };
+  await mount(React.createElement(ExperimentWorkspace, { workspaceId: 'test', experimentId: first.experiment.id, datasets: [first.source], onChanged() {} }));
+  await act(async () => root.render(React.createElement(ExperimentWorkspace, { workspaceId: 'test', experimentId: second.experiment.id, datasets: [second.source], onChanged() {} })));
+  await act(async () => pending[1].resolve(response(second.experiment)));
+  await act(async () => pending[0].resolve(response(first.experiment)));
+  assert.equal(inputFor('Experiment name').value, 'Second research');
+});
+
+test('label editor imports explicit native-clock annotations and saves an independent version', async () => {
+  const writes = [], selected = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (!options.body) return response({ labels: [] });
+    writes.push(JSON.parse(options.body)); return response({ id: 'label-v2', version: 2 });
+  };
+  await mount(React.createElement(ExperimentLabels, { dataset: dataset('label-source'), onChange: id => selected.push(id) }));
+  await setField(inputFor('Label JSON'), JSON.stringify({ timeBasis: 'dataset-seconds', timeSource: 'Reviewed event log', intervals: [{ kind: 'anomaly', start: 400, end: 459 }] }));
+  await click(button('Load JSON into editor'));
+  await click(button('Save new label version'));
+  assert.equal(writes[0].timeBasis, 'dataset-seconds');
+  assert.equal(writes[0].timeSource, 'Reviewed event log');
+  assert.deepEqual(writes[0].intervals, [{ kind: 'anomaly', start: 400, end: 459 }]);
+  assert.deepEqual(selected, ['label-v2']);
+});
+
+test('a pending experiment save cannot replace another experiment opened during the request', async () => {
+  const first = researchFixture('pending-save'), second = researchFixture('new-selection');
+  second.experiment.name = 'New selected experiment';
+  let resolveSave, changed = 0;
+  globalThis.fetch = (url, options = {}) => {
+    if (url === '/api/workspaces/test/experiments') return Promise.resolve(response({ experiments: [first.experiment, second.experiment] }));
+    if (url.endsWith('/incidents')) return Promise.resolve(response({ incidents: [] }));
+    if (url.endsWith('/labels')) return Promise.resolve(response({ labels: [] }));
+    if (url.endsWith('/comparison')) return Promise.resolve(response(url.includes(first.experiment.id) ? first.data : second.data));
+    if (url.endsWith('/' + first.experiment.id) && options.body) return new Promise(resolve => { resolveSave = resolve; });
+    return Promise.resolve(response(url.endsWith('/' + first.experiment.id) ? first.experiment : second.experiment));
+  };
+  await mount(React.createElement(ExperimentWorkspace, { workspaceId: 'test', experimentId: first.experiment.id, datasets: [first.source], onChanged() { changed++; } }));
+  await setField(inputFor('Experiment name'), 'Pending old edit');
+  await click(button('Save experiment'));
+  assert.equal(container.querySelector('form').hasAttribute('inert'), true);
+  await act(async () => root.render(React.createElement(ExperimentWorkspace, { workspaceId: 'test', experimentId: second.experiment.id, datasets: [second.source], onChanged() { changed++; } })));
+  await act(async () => resolveSave(response({ ...first.experiment, revision: 2, name: 'Pending old edit' })));
+  assert.equal(inputFor('Experiment name').value, 'New selected experiment');
+  assert.equal(changed, 0, 'a stale save does not refresh the new experiment context');
+});
+
+test('experiment comparison warns on mismatched coverage and synchronizes independent score plots with original data', async () => {
+  const fixture = researchFixture(), other = { ...fixture.analysis, id: 'second-task', result: { ...fixture.result, algorithmLabel: 'EWMA' } };
+  globalThis.fetch = async url => response(seriesFor(url));
+  const data = { ...fixture.data, analyses: [fixture.analysis, other], groups: [{ axisId: 'research-clock', taskIds: [fixture.task.id, other.id], matchingWindows: false, matchingCoverage: false, segments: [], agreement: [] }] };
+  await mount(React.createElement(ExperimentComparison, { data }));
+  assert.match(container.textContent, /different analysis windows/);
+  assert.match(container.textContent, /different observation coverage/);
+  await setField(inputFor('Shared observation time'), 201);
+  assert.ok(container.querySelectorAll('line[data-selected-time="201"]').length >= 2, 'both score plots and source measurements share the cursor');
+});
+
+test('experiment report discards late generation and requires saved notes before export', async () => {
+  const fixture = researchFixture(), pending = [];
+  globalThis.fetch = () => new Promise(resolve => pending.push(resolve));
+  await mount(React.createElement(ExperimentReport, { experiment: fixture.experiment, dirty: true }));
+  assert.equal(button('Preview experiment report').disabled, true);
+  await act(async () => root.render(React.createElement(ExperimentReport, { experiment: fixture.experiment, dirty: false })));
+  await click(button('Preview experiment report'));
+  await act(async () => root.render(React.createElement(ExperimentReport, { experiment: { ...fixture.experiment, revision: 2 }, dirty: false })));
+  await click(button('Preview experiment report'));
+  await act(async () => pending[1](new Response('<h1>Current saved conclusion</h1>', { headers: { 'content-type': 'text/html' } })));
+  await act(async () => pending[0](new Response('<h1>Stale conclusion</h1>', { headers: { 'content-type': 'text/html' } })));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /Current saved conclusion/);
+  assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Stale/);
+  assert.ok(container.querySelector('a[download]'));
 });

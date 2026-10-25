@@ -8,13 +8,18 @@ const parameters: Record<string, [keyof Config, string, number, number, number, 
   "dpca-q":[["lags","Historical lags (samples)",2,1,8,1]], "dpca-t2":[["lags","Historical lags (samples)",2,1,8,1]],
   "adaptive-maxz":[["rate","Adaptation rate",.02,.00001,.99999,.01],["guard","Update guard (z)",2.5,.00001,100,.1],["maxShift","Maximum center shift (z)",1.5,.00001,100,.1]],
 };
+export function algorithmParameters(algorithm: string) {
+  return [...(algorithm.includes("pca") ? [["variance", "PCA retained variance", .9, .5, .999999, .01] as [keyof Config, string, number, number, number, number]] : []), ...(parameters[algorithm] || [])];
+}
+export function AlgorithmParameters({ config, onChange }: { config: Config; onChange: (config: Config) => void }) {
+  return <>{algorithmParameters(config.algorithm).map(([key, label, initial, min, max]) => <label key={key}>{label}<input type="number" min={min} max={max} step={key === "lags" || key === "window" ? 1 : "any"} required value={(config[key] as number | undefined) ?? initial} onChange={e => onChange({ ...config, [key]: Number(e.target.value) })} /></label>)}</>;
+}
 export function AlgorithmControls({config,onChange}:{config:Config;onChange:(c:Config)=>void}) {
   function set(key:keyof Config,value:unknown) { onChange({...config,[key]:value}); }
   return <>
     <div className="ws-form-grid ws-three"><label>Detection algorithm<select value={config.algorithm} onChange={e=>set("algorithm",e.target.value)}>{Object.entries(algorithms).map(([id,name])=><option key={id} value={id} disabled={id.startsWith("pca-") && config.signals.length<2}>{name}</option>)}</select></label>
       <label>Calibration alpha<input type="number" min="0.000001" max="0.499999" step="any" value={config.alpha} onChange={e=>set("alpha",Number(e.target.value))} required /></label>
-      {config.algorithm.includes("pca") && <label>PCA retained variance<input type="number" min="0.5" max="0.999999" step="any" value={config.variance} onChange={e=>set("variance",Number(e.target.value))} required /></label>}
-      {(parameters[config.algorithm] || []).map(([key,label,initial,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} step={key === "lags" || key === "window" ? 1 : "any"} required value={(config[key] as number | undefined) ?? initial} onChange={e=>set(key,Number(e.target.value))} /></label>)}
+      <AlgorithmParameters config={config} onChange={onChange} />
     </div>
     {config.algorithm==="adaptive-maxz" && <p className="ws-notice">Experimental: guarded adaptation can absorb a slow fault. Compare with a fixed reference detector.</p>}
     <label>Transformation observation policy<select value={config.observationPolicy || "measured"} onChange={e => set("observationPolicy", e.target.value)}><option value="measured">Original observations · processed points do not count toward coverage</option><option value="processed">Include processed values · interpolation and fills count toward coverage</option></select></label>

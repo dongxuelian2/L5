@@ -1,0 +1,19 @@
+import type { AnalysisResult, Config, Dataset, ComparisonSegment } from "./types";
+
+export type AlgorithmPlan = { algorithm: string; parameters: Record<string, number>; study: Record<string, number[]> };
+export type ExperimentConfig = Omit<Config, "algorithm" | "variance" | "stress"> & { algorithms: AlgorithmPlan[]; labelSetId?: string };
+export type LabelInterval = { start: number; end: number; kind: "normal" | "anomaly"; onset?: number };
+export type LabelSet = { id: string; dataset_id: string; version: number; name: string; source: string; timeBasis: string; timeSource: string; intervals: LabelInterval[] };
+export type RunSummary = { id: string; experiment_id: string; status: string; created_at: string; started_at: string | null; completed_at: string | null; duration_ms: number | null; task_count: number; completed: number; succeeded: number; failed: number; retry_of: string | null };
+export type Experiment = { id: string; workspace_id: string; name: string; description: string; config: ExperimentConfig; revision: number; notes: string; conclusion: string; conclusion_run_ids: string[]; created_at: string; updated_at: string; records?: { id: string; revision: number; notes: string; conclusion: string; run_ids: string[]; created_at: string }[]; runs: RunSummary[]; run_count?: number; last_run_at?: string; historical_task_count?: number };
+export type SampleEvaluation = { TP: number; FP: number; TN: number; FN: number; precision: number | null; recall: number | null; f1: number | null; falseAlarmRate: number | null; evaluatedSamples: number; unlabelledSamples: number; labelledAbstainedSamples: number };
+export type EventEvaluation = { eligibleEvents: number; detectedEvents: number; missedEvents: number; unobservedEvents: number; recall: number | null; falseAlarmEvents: number; firstDetectionDelay: number | null };
+export type TaskMetrics = { behavior: { totalSamples: number; validSamples: number; abstainedSamples: number; coverageFraction: number; alarmSamples: number; alarmFraction: number | null; alarmIntervalCount: number; alarmDuration: number; alarmSpans: { start: number; end: number }[]; firstDetection: number | null; durationMs: number; relatedSignals: string[] }; labelled: null | { labelSetId: string; version: number; source: string; sample: SampleEvaluation; event: EventEvaluation } };
+export type ExperimentTask = { id: string; run_id: string; ordinal: number; algorithm: string; config: Config; status: string; result_id: string | null; duration_ms: number | null; error: string | null; metrics: TaskMetrics | null; runCreatedAt: string; datasetId: string; datasetName: string; experimentRevision: number };
+export type ExperimentRun = RunSummary & { snapshot: { dataset: Dataset & { sha256: string }; config: ExperimentConfig; labels: LabelSet | null; experiment: Pick<Experiment, "id" | "revision" | "name"> }; tasks: ExperimentTask[] };
+export type ComparedAnalysis = { id: string; task: ExperimentTask; result: AnalysisResult; dataset: Dataset; axisId: string; offset: number; intervals: { start: number; end: number }[] };
+export type ExperimentComparisonData = { experiment: Experiment; tasks: ExperimentTask[]; analyses: ComparedAnalysis[]; rules: Record<string, string>; groups: { axisId: string; taskIds: string[]; matchingWindows: boolean; matchingCoverage: boolean; matchingInputs: boolean; matchingLabelSets: boolean; segments: ComparisonSegment[]; agreement: { left: string; right: string; jointSamples: number; agreement: number | null; alarmJaccard: number | null }[] }[] };
+export function taskParameters(task: ExperimentTask) {
+  const { datasetId: _dataset, signals: _signals, baselineRange: _baseline, analysisRange: _analysis, requiredSignals: _required, observationPolicy: _policy, fitFraction: _fit, minCoverage: _coverage, ...parameters } = task.config;
+  return Object.entries(parameters).filter(([key]) => key !== "algorithm").map(([key, value]) => `${key}=${value}`).join(" · ");
+}
