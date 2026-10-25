@@ -71,4 +71,4 @@ npm run check
 npm run test:research
 ```
 
-带代理的环境应像仓库 CI 一样设置 `NO_PROXY=127.0.0.1,localhost`，让本机 HTTP 回归直连。普通 CI 无需外部数据；手动工作流 **TEP real-data case study** 下载／校验官方三份文件并生成完整实验和事件报告。
+带代理的环境应像仓库 CI 一样设置 `NO_PROXY=127.0.0.1,localhost`，让本机 HTTP 回归直连。普通 CI 无需外部数据；独立工作流 **TEP real-data case study** 下载／校验官方三份文件并生成完整实验和事件报告。在 PR 上添加 `run-external-tep` 标签可于合并前明确启用；工作流进入默认分支后也可手动触发。

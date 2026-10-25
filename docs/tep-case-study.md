@@ -109,7 +109,7 @@ Rieth, C. A.; Amsel, B. D.; Tran, R.; Cook, M. B. (2017). *Additional Tennessee 
 
 ## 复现、验收与边界
 
-获取、准备、启动和导出命令见 [examples/tep/README.md](../examples/tep/README.md)。`examples.tep.verify` 校验实际原始来源、72 项任务、九个固定模型、阈值一致性及指标分母。普通 CI 使用生成的离线格式夹具；大型官方数据通过单独手动工作流验证。
+获取、准备、启动和导出命令见 [examples/tep/README.md](../examples/tep/README.md)。`examples.tep.verify` 校验实际原始来源、72 项任务、九个固定模型、阈值一致性及指标分母。普通 CI 使用生成的离线格式夹具；大型官方数据由独立工作流通过手动触发或明确的 PR 标签 `run-external-tep` 启用。
 
 本地最终验证通过 72 项 Workspace Python、40 项模拟 Python、43 项 React DOM、TypeScript 和 Vite 生产构建，另有 115 项研究回归。新增检查覆盖源文件与缓存损坏、52 通道顺序、元数据分离、真实结果协议审计、训练不读测试值、拟合复用、九算法运行边界重置、缺测／采样周期、未知标签分母、快照变化拒绝和历史恢复。
 
