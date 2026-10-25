@@ -276,6 +276,10 @@ class ExperimentService:
         return self.labels(identity)
 
     def triplens_labels(self, dataset_id, body):
+        """Legacy entry point, accepting the same persisted simulation truth."""
+        return self.simulation_labels(dataset_id, body)
+
+    def simulation_labels(self, dataset_id, body):
         dataset = self.store.dataset(dataset_id)
         metadata = dataset['metadata']
         simulations = metadata.get('transformation', {}).get('sourceSimulations', [])
@@ -285,26 +289,46 @@ class ExperimentService:
         if not simulation_id and len(simulations) == 1:
             simulation_id = simulations[0]
         if simulation_id not in simulations:
-            raise ValueError('Choose one known TripLens source simulation for this dataset.')
+            raise ValueError('Choose one known source simulation for this dataset.')
         session = self.store.runtime.get(simulation_id)
         source_clock = self.store.signals.clock(session['datasetId'])
         clock = self.store.signals.clock(dataset_id)
         if source_clock['axisId'] != clock['axisId']:
-            raise ValueError('TripLens truth needs an explicit compatible dataset clock.')
-        onset = session['config']['start'] + source_clock['offset'] - clock['offset']
+            raise ValueError('Simulation truth needs an explicit compatible dataset clock.')
+        source_models = [metadata['model']] if metadata.get('model') else metadata.get('transformation', {}).get('sourceModels', [])
+        source_model = next((m for m in source_models if m['simulationId'] == simulation_id), {})
+        truth = source_model.get('groundTruth')
+        truth = truth or session['groundTruth']
+        if truth is None:
+            raise ValueError('This model does not provide saved ground-truth labels.')
+        offset = source_clock['offset'] - clock['offset']
+        onset = session['config']['start'] + offset
         times, _ = self.store.load_data(dataset)
         first, last = float(times[0]), float(times[-1])
         intervals = []
-        if session['config']['fault'] == 'healthy' or onset > last:
-            intervals.append(dict(kind='normal', start=first, end=last))
-        else:
-            before = times[times < onset]
-            if len(before):
-                intervals.append(dict(kind='normal', start=first, end=float(before[-1])))
-            intervals.append(dict(kind='anomaly', start=max(first, onset), end=last, onset=onset))
-        return self.save_labels(dataset_id, dict(name=body.get('name') or 'TripLens known simulation truth',
-            timeBasis='dataset-seconds', timeSource=f'Saved TripLens simulation {simulation_id}; known fault onset, not detector predictions.', intervals=intervals),
-            source='triplens-simulation', provenance=dict(simulationId=simulation_id, config=session['config'], nativeOnset=onset, sourceClock=source_clock))
+        coverage = truth['coverage']
+        covered = (times >= coverage[0]+offset) & (times <= coverage[1]+offset)
+        faults = truth['intervals']
+        normal_end = min(i['start'] for i in faults)+offset if faults else float('inf')
+        normal = times[covered & (times < normal_end)]
+        if len(normal):
+            intervals.append(dict(kind='normal', start=float(normal[0]), end=float(normal[-1])))
+        for fault in faults:
+            start, end = fault['start']+offset, fault['end']+offset
+            selected = times[covered & (times >= start) & ((times < end) if fault.get('endExclusive') else (times <= end))]
+            if len(selected):
+                # Keep a non-grid onset for event-delay calculation. Closed
+                # evaluation intervals stop on the last actually labelled sample.
+                intervals.append(dict(kind='anomaly', start=max(first,start), end=float(selected[-1]), onset=start))
+        if not intervals:
+            raise ValueError('No known simulation labels overlap this dataset. Post-fault recovery remains unknown.')
+        name = session['modelDescriptor']['name']
+        legacy = session['modelId'] == 'triplens-synthetic-18-v2'
+        return self.save_labels(dataset_id, dict(name=body.get('name') or f'{name} known simulation truth',
+            timeBasis='dataset-seconds', timeSource=f'Saved {name} simulation {simulation_id}; configured fault intervals, not detector predictions. Finite-fault recovery is unknown.', intervals=intervals),
+            source='triplens-simulation' if legacy else 'model-simulation', provenance=dict(simulationId=simulation_id,
+                modelId=session['modelId'], modelVersion=session['modelVersion'], scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'],
+                config=session['config'], groundTruth=truth, nativeOnset=onset, sourceClock=source_clock))
 
     def runs(self, identity):
         with self.store.connect() as db:

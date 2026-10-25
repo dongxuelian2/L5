@@ -1,10 +1,10 @@
-# L5 / Analysis & Experiment Workspace
+# L5 / Model & Scenario Workspace
 
 **Turn your industrial time series into a lasting analysis project.**
 
 [中文](README.md) · [Architecture](docs/architecture.md) · [TripLens video](video/README.md)
 
-L5 opens a local Workspace where you can import your own CSV, run anomaly detection, and organize intervals, analyses and model experiments into a persistent **Incident**. The incident workstation saves editable notes, evidence, hypotheses and conclusions so investigation can continue after restarting. **Process simulator** provides runtime process creation, investigation and intervention. **TripLens examples** uses the same runtime interface.
+L5 opens a local Workspace where you can import your own CSV, run anomaly detection, and organize intervals, analyses and model experiments into a persistent **Incident**. The incident workstation saves editable notes, evidence, hypotheses and conclusions so investigation can continue after restarting. **Models** selects TripLens or a coupled-tank process from the backend catalog, saves versioned scenarios and opens each model’s supported investigation and intervention tools. **TripLens examples** retains the original professional interface.
 
 ## Capabilities
 
@@ -17,9 +17,26 @@ L5 opens a local Workspace where you can import your own CSV, run anomaly detect
 - Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
 - Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
 - Save, edit and duplicate formal experiments; batch the nine existing detectors and finite parameter studies with task progress, individual errors and independently saved AnalysisResults.
-- Evaluate reviewed normal/anomaly intervals or known TripLens simulation truth, compare alarm timing and independent score scales, retain research records with run references, and export offline experiment reports.
+- Evaluate reviewed normal/anomaly intervals or saved model simulation truth, compare alarm timing and independent score scales, retain research records with run references, and export offline experiment reports.
 - Create, edit, find and archive incidents. Associate multiple datasets, analyses and detection intervals; inspect source-window curves, peaks and contributions; maintain hypotheses with supporting or opposing evidence.
 - Store metadata in SQLite and keep original CSV, numeric arrays and result files on disk.
+
+## Models and scenarios
+
+Open **Models** in a Workspace. The backend registry supplies model versions, signal definitions and units, parameter ranges, faults, tools, actions and capability declarations. Scenario forms use those descriptors. Save, copy, inspect historical versions and rerun a scenario; every session fixes its model descriptor, scenario version, configuration, seed, measurements and fault truth.
+
+| Model | Signals and faults | Investigation and intervention |
+|---|---|---|
+| TripLens `triplens-synthetic-18-v2` v2.0.0 | The original 18 channels and 12 faults | Existing diagnosis, alarms, 11 tools, seven actions, observed-data fitting, known-model forecasts and recovery-window search |
+| Coupled-Tank Process `coupled-tanks` v1.0.0 | Seven level, flow and control signals; pump degradation, restricted connection, leakage and sensor bias | Level trends, measured flow balance and sensor checks; computed pump/valve changes, backup pump and controlled supply stop |
+
+The tank model uses volume balances and square-root head-dependent flow. Conservative SSPRK2 stages preserve nonnegative physical levels, with separate sampling and integration settings. Default levels of 1.5625 m and 1 m balance a 0.03 m³/s flow. Parameters are illustrative rather than plant-calibrated. Measured levels include noise and possible sensor bias; forecasts show physical levels. An observed balance residual is evidence, not a fault classification.
+
+Inspect an observation window, overlay another run of the same model/version, save tool results and compare real simulated interventions. Save either model's output as a normal Dataset for the Signal Catalog, quality tools, transformations, all nine detectors, Experiments and Incidents. Derived provenance retains model/scenario/session snapshots. Evaluation uses saved model fault intervals; recovery after a finite fault remains unlabelled.
+
+**Research across models** indexes persisted experiment tasks and evaluations with their own datasets, model/scenario identities and label versions. It does not normalize physical variables or rank incompatible score scales. Real CSV data without a supported process model retain generic analysis and incident workflows without physical intervention forecasts. Existing TripLens URLs, APIs, sessions and saved results remain supported.
+
+[Model interface, equations and storage](docs/model-workspace.md) · [Validation, migration and limitations](docs/model-workspace-validation.md)
 
 ## Run locally
 

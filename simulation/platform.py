@@ -77,8 +77,11 @@ class Config:
     seed: int = 1
     duration: float = DURATION
     step: float = 1
+    fault_duration: float | None = None
 
     def __post_init__(self):
+        if self.fault_duration is not None and (not finite(self.fault_duration) or self.fault_duration <= 0):
+            raise ValueError('Fault duration must be positive or null for a persistent fault.')
         if self.fault not in (*FAULTS, 'healthy'):
             raise ValueError('Unknown simulator hypothesis.')
         for name in ('seed',):
@@ -124,7 +127,7 @@ def simulate(config: Config, action: str | None = None, at: float = 90, *, compa
     for index in range(count + 1):
         t = round(min(index * c.step, c.duration), 9)
         dt = c.step if index == 0 else t - min((index - 1) * c.step, c.duration)
-        active = t >= c.start
+        active = t >= c.start and (c.fault_duration is None or t < c.start + c.fault_duration)
         s = c.severity if active else 0
         enabled = action is not None and t >= at
         utility = 25 + (9 * s if c.fault == 'utility_loss' else 0)

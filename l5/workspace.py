@@ -41,6 +41,8 @@ class WorkspaceStore:
             ''')
         from .runtime import SimulationService
         self.runtime = SimulationService(self)
+        from .scenarios import ScenarioService
+        self.scenarios = ScenarioService(self)
         from .incidents import IncidentService
         self.incidents = IncidentService(self)
         from .signals import SignalWorkspace

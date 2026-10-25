@@ -1,0 +1,137 @@
+{
+  "date": "2026-10-25",
+  "baseline": "bd179182f9dbc0c845b6525650fb08ab6156096a",
+  "models": [
+    {
+      "id": "triplens-synthetic-18-v2",
+      "version": "2.0.0",
+      "signals": 18,
+      "faults": 12
+    },
+    {
+      "id": "coupled-tanks",
+      "version": "1.0.0",
+      "signals": 7,
+      "faults": 4
+    }
+  ],
+  "localChecks": {
+    "command": "npm run check",
+    "workspacePython": 63,
+    "simulationPython": 40,
+    "reactDOM": 40,
+    "typeScript": true,
+    "productionBuild": true
+  },
+  "browser": {
+    "datasets": 2,
+    "analyses": 18,
+    "experiments": 2,
+    "detectorTasks": 18,
+    "incidents": 2,
+    "entries": 2,
+    "healthyScenarioVersion": 1,
+    "faultScenarioVersion": 2,
+    "actualServiceRestarts": 2,
+    "historicalFileCount": 30,
+    "allFileHashesPreserved": true,
+    "allTableCountsPreserved": true,
+    "historicalHashManifestSha256": "b311c07e97ed79d484fb8ada3f2e18ebe9933ae504455b7120eb89a79cfe42d8",
+    "tankIntervention": {
+      "observedThrough": 80,
+      "at": 83.17,
+      "horizon": 180,
+      "seed": 1,
+      "levelDeviation": [
+        30.581,
+        25.0,
+        14.712
+      ],
+      "delivered": [
+        2.398,
+        2.5,
+        2.675
+      ]
+    },
+    "downloadedExperimentReports": [
+      {
+        "experimentId": "fb7a373212ec49efa5440cbcecc5f827",
+        "bytes": 188333,
+        "svgCount": 14,
+        "sha256": "8a3aef44626200e96e94754c97a39b9e27cfce1a54555800ff19526653d18006",
+        "externalResourceReferences": false
+      }
+    ],
+    "additionalHttpReportExports": [
+      {
+        "kind": "experiments",
+        "id": "b7838ffe927f42948906e478ac75d59b",
+        "bytes": 247679,
+        "svgCount": 14,
+        "sha256": "09c91244549b920aebe74a1007eb1f6a1883cca1e766f72a0da47b6e794fca62",
+        "source": "HTTP report download",
+        "contentDisposition": "attachment; filename=\"l5-experiment-b7838ffe927f42948906e478ac75d59b.html\""
+      },
+      {
+        "kind": "incidents",
+        "id": "764703f664db4a1bacdda31fb89fd415",
+        "bytes": 125657,
+        "svgCount": 8,
+        "sha256": "65a457773f5291340edd421ba7a8b7a51b7426b80725b73776487b7095851fa9",
+        "source": "HTTP report download",
+        "contentDisposition": "attachment; filename=\"l5-incident-764703f664db4a1bacdda31fb89fd415.html\""
+      },
+      {
+        "kind": "incidents",
+        "id": "f9f2f67082854abea75cbd2f27f679ab",
+        "bytes": 79931,
+        "svgCount": 5,
+        "sha256": "b77a9b915ee7e0fb16e1b1d545e148e839421129966f2107674816789e52a20e",
+        "source": "HTTP report download",
+        "contentDisposition": "attachment; filename=\"l5-incident-f9f2f67082854abea75cbd2f27f679ab.html\""
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "originalTableCounts": {
+        "workspaces": 1,
+        "datasets": 3,
+        "jobs": 50,
+        "incidents": 2,
+        "incident_links": 4,
+        "incident_entries": 0,
+        "incident_history": 2,
+        "signals": 25,
+        "dataset_time_references": 0,
+        "explorer_views": 0,
+        "transformations": 1,
+        "experiment_labels": 2,
+        "experiments": 4,
+        "experiment_runs": 8,
+        "experiment_tasks": 51,
+        "experiment_records": 2
+      },
+      "preservedFiles": 57,
+      "incidentReports": 2,
+      "experimentReports": 4
+    },
+    {
+      "originalTableCounts": {
+        "workspaces": 1,
+        "datasets": 2,
+        "jobs": 2,
+        "incidents": 2,
+        "incident_links": 5,
+        "incident_entries": 5
+      },
+      "preservedFiles": 9
+    }
+  ],
+  "limitations": [
+    "Illustrative uncalibrated physical parameters",
+    "Tank forecasts use known model parameters; no observed-data fitting or uncertainty intervals",
+    "Finite-fault recovery is unlabelled",
+    "PDF uses existing A4 browser printing; no PDF binary saved"
+  ]
+}

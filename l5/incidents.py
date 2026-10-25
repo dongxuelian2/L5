@@ -236,15 +236,16 @@ class IncidentService:
             raise ValueError('未知的事件关联类型。')
         hypothesis = body.get('hypothesis')
         if hypothesis:
-            from simulation.platform import FAULTS
-            if kind not in ('simulation', 'run') or hypothesis not in FAULTS:
+            faults = self.store.runtime.get(identity)['modelDescriptor']['faults'] if kind in ('simulation', 'run') else {}
+            if hypothesis not in faults or hypothesis == 'healthy':
                 raise ValueError('请选择此过程模型支持的候选解释。')
             if kind == 'run' and self.store.runtime.run(identity, selector)['request'].get('hypothesis') != hypothesis:
                 raise ValueError('候选解释与实验记录不匹配。')
         if kind == 'simulation' and ('asOf' in body or 'windowStart' in body):
             _, rows = self.store.runtime.window(identity, body)
             selector = json.dumps(dict(windowStart=rows[0]['t'], asOf=rows[-1]['t'], hypothesis=hypothesis), sort_keys=True)
-        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis)
+        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis,
+                    hypothesisTitle=faults[hypothesis] if hypothesis else None)
 
     @staticmethod
     def insert_link(db, identity, prepared):
@@ -255,8 +256,7 @@ class IncidentService:
         if not existing:
             db.execute('INSERT INTO incident_links VALUES (?,?,?,?,?,?)', (link_id, identity, kind, reference, selector, stamp))
         if prepared.get('hypothesis'):
-            from simulation.platform import FAULTS
-            title = FAULTS[prepared['hypothesis']]
+            title = prepared['hypothesisTitle']
             if not db.execute("SELECT id FROM incident_entries WHERE incident_id=? AND kind='hypothesis' AND model_hypothesis=?",
                               (identity, prepared['hypothesis'])).fetchone():
                 db.execute('''INSERT INTO incident_entries
@@ -377,7 +377,11 @@ class IncidentService:
                 if datasets is None:
                     datasets = self.store.datasets(incident['workspace_id'])
                 dataset = next((d for d in datasets if d['metadata'].get('model', {}).get('simulationId') == reference), None)
-                link['details'] = dict(simulationId=reference, title=session['title'], datasetId=dataset['id'] if dataset else None)
+                link['details'] = dict(simulationId=reference, title=session['title'], datasetId=dataset['id'] if dataset else None,
+                    modelId=session['modelId'], modelVersion=session['modelVersion'], modelName=session['modelDescriptor']['name'],
+                    scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'], config=session['config'],
+                    signals=[s['key'] for s in session['modelDescriptor']['signals']],
+                    signalDefinitions=session['modelDescriptor']['signals'])
                 if kind == 'run':
                     link['details']['run'] = self.store.runtime.run(reference, link['selector'])
                 elif link['selector']:

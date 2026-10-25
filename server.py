@@ -80,6 +80,7 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError('Enter a question or select a tool.')
             if body.get('simulationId'):
                 session, rows = self.server.workspace_store.runtime.window(body['simulationId'], body)
+                self.server.workspace_store.runtime.model(session, 'diagnosis')
                 context = dict(id=session['id'], rows=rows, calls=body.get('calls'))
             else:
                 if not isinstance(body.get('incidentId'), str) or not body['incidentId']:
