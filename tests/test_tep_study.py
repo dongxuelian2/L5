@@ -93,7 +93,9 @@ class StudyMetricTests(unittest.TestCase):
         metrics = evaluate(result,labels,gap_threshold=270)['detection']
         self.assertEqual(metrics['normal']['alarmSamples'],4)
         self.assertEqual(metrics['normal']['alarmEvents'],3)
+        self.assertEqual(metrics['preInjection']['alarmEvents'],3)
         self.assertEqual(metrics['normal']['alarmDuration'],180)
+        self.assertEqual(metrics['preInjection']['alarmDuration'],180)
         self.assertEqual(metrics['postInjection']['alarmFraction'],.5)
         self.assertIsNone(evaluate(result)['detection']['windows'])
 
