@@ -50,6 +50,7 @@ const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
 const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
+const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -1159,6 +1160,8 @@ test('external import requires a verified preview, retains independent run selec
   const source = { id:'faulty-testing', source:{sourceFile:'TEP_Faulty_Testing.RData'}, runs:[run] };
   globalThis.fetch = async (url, options={}) => {
     if (url.endsWith('/sources')) return response({sources:[source]});
+    if (url.endsWith('/studies')) return response({studies:[]});
+    if (url.endsWith('/experiments')) return response({experiments:[]});
     const body=JSON.parse(options.body); writes.push({url,body});
     if (url.endsWith('/preview')) return response({runs:[run],timeConvention:'sample 161 = 28800 seconds'});
     if (url.endsWith('/external/tep')) return response({datasets:[dataset('external-fixture')]});
@@ -1216,4 +1219,34 @@ test('external matrix retains missing events, run denominators and separate fixe
   await setField(inputFor('Fault / simulationRun'),fixture.source.id);
   await click(button('Compare algorithms for this trajectory'));
   assert.deepEqual(selected,[[fixture.task.id]]);
+});
+
+test('TEP study dashboard isolates protocols/configurations and exposes failed runs without losing event denominators', async () => {
+  const fixture=researchFixture(),condition=JSON.stringify({algorithm:'robust-maxz'});
+  const burden={samples:3,observedSamples:3,alarmSamples:0,alarmEvents:0,alarmDuration:0,alarmFraction:0};
+  const window={detectedEvents:0,totalEvents:3,rate:0,unobservedEvents:1,truncatedEvents:0,unresolvedEvents:1};
+  const base={runId:'A',faultNumber:3,algorithm:'robust-maxz',condition,runCount:3,succeeded:2,failed:1,labelledRuns:2,configuration:'A',
+    sample:{TP:0,FP:0,TN:1,FN:3,recall:0},event:{eligibleEvents:1,detectedEvents:0,missedEvents:1,unobservedEvents:1},
+    delay:{n:0,median:null,minimum:null,maximum:null},recall:{n:2,median:0,minimum:0,maximum:0},falseAlarmRate:{n:2,median:0,minimum:0,maximum:0},alarmDuration:{n:2,median:0,minimum:0,maximum:0},durationMs:{n:2,median:1,minimum:1,maximum:1},
+    windows:Object.fromEntries(['1800','3600','14400','eventual'].map(k=>[k,window])),burden:{normal:burden,preInjection:burden,postInjection:burden},taskIds:['failed-task']};
+  const saved={id:'study-one',workspaceId:'test',protocolHash:'fixed-hash',protocol:{id:'rieth-expanded-nine-v1',name:'Declared study',configurations:{A:{},B:{}}},
+    statusCounts:{succeeded:2,failed:1},batches:[],cells:[base,{...base,configuration:'B',runId:'B',windows:Object.fromEntries(['1800','3600','14400','eventual'].map(k=>[k,{...window,detectedEvents:2}]))}],
+    tasks:[{id:'failed-task',algorithm:'robust-maxz',status:'failed',error:'preserved numeric failure',datasetId:'actual-data',experimentId:'actual-experiment',external:{faultNumber:3,simulationRun:3},benchmark:{configuration:'A'},metrics:null}]};
+  globalThis.fetch=async(url)=>{
+    if(url.endsWith('/studies'))return response({studies:[{id:saved.id,protocolId:saved.protocol.id}]});
+    if(url.endsWith('/experiments'))return response({experiments:[{...fixture.experiment,description:'rieth-mode1-independent-nine-v1'}]});
+    if(url.endsWith('/study-one'))return response(saved);
+    throw new Error('Unexpected dashboard request '+url);
+  };
+  await mount(React.createElement(TEPStudyDashboard,{workspaceId:'test',onChanged(){}}));
+  assert.match(container.textContent,/0\/3 events/);
+  await click(button('0/3 events'));
+  assert.match(container.querySelector('[aria-label="Selected matrix cell"]').textContent,/preserved numeric failure/);
+  assert.equal(container.querySelector('[aria-label="Selected matrix cell"] a').getAttribute('href'),'#/workspaces/test/datasets/actual-data');
+  await setField(inputFor('Normal training configuration'),'B');
+  assert.match(container.textContent,/2\/3 events/);
+  assert.equal(container.querySelector('[aria-label="Selected matrix cell"]'),null,'changing configuration clears prior cell evidence');
+  await setField(inputFor('Experiment protocol'),'original');
+  assert.equal(container.querySelector('.tep-fault-matrix'),null,'original protocol never inherits expanded results');
+  assert.match(container.textContent,/72 tasks/);
 });

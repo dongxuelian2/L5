@@ -224,7 +224,7 @@
   .ws-sidebar h2 { margin:0 0 14px; font-size:16px; }
   .ws-sidebar>.ws-kicker, .ws-sidebar-note { display:none; }
   .ws-back { margin-bottom:12px; }
-  .ws-sidebar nav { flex-direction:row; }
+  .ws-sidebar nav { flex-direction:row; overflow-x:auto; }
   .ws-sidebar nav a { flex:1; padding:8px 9px; border-left:0; border-bottom:2px solid transparent; gap:7px; }
   .ws-sidebar nav a.ws-active { border-bottom-color:#b5ed9a; }
   .ws-sidebar nav a>small { margin-left:0; }

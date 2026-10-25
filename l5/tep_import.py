@@ -82,12 +82,15 @@ def prepare_runs(source_dir, cache_dir, profile, selections):
     """One bounded extraction, then immutable per-run files for the local UI."""
     if profile not in PROFILES:
         raise ValueError('Choose an official Rieth source profile.')
+    selections = tuple(tuple(s) for s in selections)
+    if (not 1 <= len(selections) <= 64 or len(set(selections)) != len(selections)
+            or any(len(s) != 2 or any(type(v) is not int for v in s) or not 0 <= s[0] <= 20 or not 1 <= s[1] <= 500 for s in selections)):
+        raise ValueError('Select 1–64 distinct integer fault (0–20) / run (1–500) pairs.')
     filename, object_name, split, samples, faulty = PROFILES[profile]
     if any((fault != 0) != faulty for fault, _ in selections):
         raise ValueError('Fault identity does not match the selected source file.')
     path = Path(source_dir) / filename
     provenance = verify_source(path, profile)
-    runs = read_selected(path, selections, object_name=object_name, samples_per_run=samples)
     cache = Path(cache_dir)
     cache.mkdir(parents=True, exist_ok=True)
     manifest_path = cache / f'{profile}.json'
@@ -95,6 +98,15 @@ def prepare_runs(source_dir, cache_dir, profile, selections):
     if previous and previous['source']['sha256'] != provenance['sha256']:
         raise ValueError('Prepared cache belongs to a different original source version.')
     entries = {entry['id']: entry for entry in previous.get('runs', [])}
+    # Reuse checksum-verified extractions. A changed/corrupt entry is read again
+    # from the verified original; repeated study runs do not decompress 0.8 GB.
+    pending = []
+    for fault, run in selections:
+        identity = f'{profile}-f{fault:02d}-r{run:03d}'
+        target = cache / f'{identity}.npz'
+        if identity not in entries or not target.is_file() or digest(target) != entries[identity]['extractedSha256']:
+            pending.append((fault, run))
+    runs = read_selected(path, pending, object_name=object_name, samples_per_run=samples) if pending else {}
     for (fault, run), values in runs.items():
         identity = f'{profile}-f{fault:02d}-r{run:03d}'
         target = cache / f'{identity}.npz'

@@ -6,6 +6,7 @@ import itertools
 import json
 import math
 import platform
+from collections import OrderedDict
 from pathlib import Path
 from threading import Lock, Thread
 from time import perf_counter
@@ -61,6 +62,9 @@ def file_hash(path):
 class ExperimentService:
     def __init__(self, store):
         self.store, self.lock, self.working = store, Lock(), False
+        # The single batch worker owns this bounded cache. Test scoring resets
+        # temporal state; keys include frozen training content and engine hashes.
+        self.fitted_models = OrderedDict()
         with store.connect() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS experiment_labels (
@@ -160,6 +164,9 @@ class ExperimentService:
         if not isinstance(required, list) or any(s not in signals for s in required):
             raise ValueError('Required observed signals must be selected input signals.')
         config['requiredSignals'] = list(dict.fromkeys(required))
+        if raw.get('benchmark') is not None:
+            from .tep_study import validate_benchmark
+            config['benchmark'] = validate_benchmark(raw['benchmark'])
         if raw.get('labelSetId'):
             labels = self.labels(raw['labelSetId'])
             if labels['dataset_id'] != dataset['id']:
@@ -208,6 +215,9 @@ class ExperimentService:
                     raise ValueError('Each study parameter needs 1–8 candidate values.')
                 clean_study[key] = list(dict.fromkeys(numeric(key, value) for value in candidates))
             config['algorithms'].append(dict(algorithm=algorithm, parameters=params, study=clean_study))
+        if config.get('benchmark'):
+            from .tep_study import validate_study_config
+            validate_study_config(self.store, config)
         tasks = self.expand(config)
         return config, tasks
 
@@ -417,7 +427,13 @@ class ExperimentService:
                 snapshot['engine']['analysis'] = 'l5.independent.fit_detector / score_detector -> l5.analysis.score_analysis'
                 snapshot['engine']['sourceHashes'].update({name: file_hash(Path(__file__).resolve().parents[1] / name) for name in (
                     'l5/independent.py', 'l5/tep_import.py', 'l5/datasets.py', 'benchmarks/rieth_stream.py',
-                    'benchmarks/rieth_sources.json', 'examples/tep/protocol.json')})
+                    'benchmarks/rieth_sources.json', 'examples/tep/protocol.json', 'l5/experiment_evaluation.py',
+                    'l5/detection_metrics.py', 'l5/tep_study.py', 'l5/experiments.py', 'l5/external_benchmark.py',
+                    'l5/tep_fault3.py', 'l5/tep_study_reports.py', 'examples/tep/expanded_protocol.json',
+                    'examples/tep/robustness_protocol.json')})
+                if config.get('benchmark'):
+                    from .tep_study import protocol_for
+                    snapshot['benchmarkProtocol'] = protocol_for(config['benchmark']['protocolId'])
         run_id, stamp = uuid4().hex, now()
         with self.lock:
             with self.store.connect() as db:
@@ -464,19 +480,25 @@ class ExperimentService:
         started = perf_counter()
         with self.store.connect() as db:
             db.execute("UPDATE experiment_runs SET status='running',started_at=? WHERE id=?", (now(), run_id))
-        fitted_models = {}
         for task in run['tasks']:
             task_start, result_id = perf_counter(), None
             with self.store.connect() as db:
                 db.execute("UPDATE experiment_tasks SET status='running',started_at=? WHERE id=?", (now(), task['id']))
             try:
                 fitted = None
+                reused = False
                 if task['config'].get('training'):
                     from .independent import fit_detector, training_key
                     key = training_key(task['config'])
-                    if key not in fitted_models:
-                        fitted_models[key] = fit_detector(self.store, dataset['workspace_id'], task['config'])
-                    fitted = fitted_models[key]
+                    training_hashes = {role: snapshot['datasets'][ref['datasetId']]['sha256'] for role, ref in task['config']['training'].items()}
+                    cache_key = encode(dict(config=key, training=training_hashes, engine=snapshot['engine']['sourceHashes']))
+                    reused = cache_key in self.fitted_models
+                    if not reused:
+                        self.fitted_models[cache_key] = fit_detector(self.store, dataset['workspace_id'], task['config'])
+                    self.fitted_models.move_to_end(cache_key)
+                    fitted = self.fitted_models[cache_key]
+                    while len(self.fitted_models) > 36:
+                        self.fitted_models.popitem(last=False)
                 result = self.store.analyze(dataset['workspace_id'], {**task['config'], 'name': f"{snapshot['experiment']['name'][:110]} · {ALGORITHMS[task['algorithm']]}"},
                     experiment=dict(experimentId=run['experiment_id'], runId=run_id, taskId=task['id']), fitted=fitted)
                 result_id = result['id']
@@ -484,7 +506,9 @@ class ExperimentService:
                 labels = snapshot.get('testLabels', {}).get(target['id'], snapshot['labels'])
                 metrics = evaluate(result, labels, target['metadata'].get('quality', {}).get('gapThreshold'))
                 if fitted:
-                    metrics['training'] = dict(modelKey=fitted.key, fitDurationMs=fitted.duration_ms)
+                    metrics['training'] = dict(modelKey=fitted.key, fitId=fitted.fit_id, reused=reused,
+                        threshold=fitted.threshold, fitSamples=fitted.fit_samples, calibrationSamples=fitted.calibration_samples,
+                        fitDurationMs=fitted.duration_ms)
                 status, error = 'succeeded', None
             except Exception as failure:
                 status, error, metrics = 'failed', str(failure)[:4000], None

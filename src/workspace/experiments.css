@@ -34,5 +34,15 @@
 .tep-benchmark th:first-child { width:70px; }
 .tep-benchmark small { display:block; color:#a4af9d; margin-top:8px; font-size:9px; }
 .tep-benchmark td details { font-size:10px; }
+.tep-study { min-width:0; }
+.tep-study .tep-fault-matrix { table-layout:fixed; min-width:1300px; }
+.tep-study table:not(.tep-fault-matrix) { min-width:1000px; }
+.tep-study th,.tep-study td { white-space:normal; vertical-align:top; overflow-wrap:anywhere; }
+.tep-study .tep-fault-matrix th:first-child { width:70px; }
+.tep-study .tep-fault-matrix small { display:block; color:#a4af9d; margin:8px 0; }
+.tep-study .tep-fault-matrix td details { font-size:10px; }
+.tep-study .tep-fault-matrix button { padding:6px 8px; text-align:left; white-space:normal; max-width:100%; }
+.tep-study>section { margin-top:28px; }
+.tep-study code { overflow-wrap:anywhere; }
 .experiment-report iframe { width:100%; min-height:760px; border:1px solid #3d4936; margin-top:18px; background:white; }
 @media(max-width:800px) { .experiment-label-row { grid-template-columns:1fr 1fr; } .experiment-actions { position:static; } .experiment-lanes { min-width:0; } }

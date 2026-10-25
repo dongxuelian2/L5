@@ -1,0 +1,62 @@
+name: TEP expanded benchmark and robustness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    paths:
+      - "l5/**"
+      - "examples/tep/**"
+      - "benchmarks/rieth_stream.py"
+      - "benchmarks/rieth_sources.json"
+      - ".github/workflows/tep-expanded.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tep-expanded-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expanded-official:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-external-tep')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/rieth-originals
+          key: tep-rieth-v1-12d1055b-4f45afaf-c2f1aabc
+      - name: Verify official files and extract 71 declared independent runs
+        run: |
+          python -m examples.tep.prepare --source-dir "$RUNNER_TEMP/rieth-originals" --cache-dir "$RUNNER_TEMP/tep-cache" --source fault-free-training --faults 0 --runs 1 2 3 4 5 6 --download
+          python -m examples.tep.prepare --source-dir "$RUNNER_TEMP/rieth-originals" --cache-dir "$RUNNER_TEMP/tep-cache" --source fault-free-testing --faults 0 --runs 1 2 3 4 5 --download
+          python -m examples.tep.prepare --source-dir "$RUNNER_TEMP/rieth-originals" --cache-dir "$RUNNER_TEMP/tep-cache" --source faulty-testing --faults 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 --runs 1 2 3 --download --metrics "$RUNNER_TEMP/tep-expanded/extraction.json"
+      - name: Expanded fixed coverage through saved Experiment batches
+        run: python -m examples.tep.expanded_run --data-dir "$RUNNER_TEMP/tep-workspace" --cache-dir "$RUNNER_TEMP/tep-cache" --output-dir "$RUNNER_TEMP/tep-expanded/expanded"
+      - name: A/B/C normal training on the identical 65 test trajectories
+        shell: bash
+        run: |
+          workspace_id=$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/tep-expanded/expanded/study.json"))["workspaceId"])')
+          python -m examples.tep.robustness --data-dir "$RUNNER_TEMP/tep-workspace" --cache-dir "$RUNNER_TEMP/tep-cache" --output-dir "$RUNNER_TEMP/tep-expanded/robustness" --workspace-id "$workspace_id"
+      - name: Audit all 2340 tasks, thresholds, timing and event denominators
+        run: python -m examples.tep.expanded_verify "$RUNNER_TEMP/tep-expanded/expanded/results.json" "$RUNNER_TEMP/tep-expanded/robustness/results.json"
+      - name: Fault 3 controls, Incident, offline HTML and restart recovery
+        run: python -m examples.tep.finish_study --data-dir "$RUNNER_TEMP/tep-workspace" --cache-dir "$RUNNER_TEMP/tep-cache" --output-dir "$RUNNER_TEMP/tep-expanded"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l5-tep-expanded-robustness
+          path: ${{ runner.temp }}/tep-expanded/
+          retention-days: 30

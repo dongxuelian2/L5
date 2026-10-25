@@ -45,4 +45,23 @@ def summarize(tasks):
             alarmDuration=distribution([t['metrics']['behavior']['alarmDuration'] for t in successful]),
             durationMs=distribution([t['metrics']['behavior']['durationMs'] for t in successful]),
             taskIds=[t['id'] for t in members]))
+        # Derive early counts from immutable historical event records as well as
+        # newly saved metrics; PR22 records need no mutation or detector rerun.
+        windows = {}
+        records = [event for m in labelled for event in m['event'].get('events', [])]
+        unresolved = len(members)-len(successful)
+        for key, horizon in (('1800',1800),('3600',3600),('14400',14400),('eventual',None)):
+            total = len(records)+(unresolved if fault else 0)
+            hits = sum(v['delay'] is not None and (horizon is None or v['delay'] <= horizon) for v in records)
+            windows[key] = dict(detectedEvents=hits, totalEvents=total, rate=ratio(hits,total),
+                unobservedEvents=sum(not v['observedSamples'] for v in records), unresolvedEvents=unresolved if fault else 0,
+                truncatedEvents=sum(v.get('followUpSeconds',v['end']-v.get('onset',v['start'])) < horizon for v in records) if horizon is not None else 0)
+        cells[-1]['windows'] = windows
+        phase_records = [t['metrics'].get('detection') for t in successful if t['metrics'].get('detection')]
+        if phase_records:
+            cells[-1]['burden'] = {}
+            for phase in ('normal','preInjection','postInjection'):
+                selected = [r[phase] for r in phase_records if r[phase] is not None]
+                counts = {k:sum(r[k] for r in selected) for k in ('samples','observedSamples','alarmSamples','alarmEvents','alarmDuration')}
+                cells[-1]['burden'][phase] = {**counts,'alarmFraction':ratio(counts['alarmSamples'],counts['observedSamples'])}
     return dict(cells=cells, rules='Per batch and fixed detector/training configuration. Pooled counts and per-run median/min/max retain separate denominators; missed events have no delay.')

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import uuid4
 import hashlib
 import json
 from time import perf_counter
@@ -143,6 +144,7 @@ class FittedDetector:
     provenance: dict
     duration_ms: float
     key: str
+    fit_id: str
 
 
 def training_key(config):
@@ -193,7 +195,7 @@ def fit_detector(store, workspace_id, config):
     provenance = dict(version=1, sources=sources, stateReset='Each test run and abstention boundary starts fresh; calibration state is never carried into test.',
                       featureOrder=names, protocol='Normal fit statistics, independent normal calibration quantile, frozen before test scoring.')
     return FittedDetector(monitor, threshold, medians, policy, len(fit), len(cal), missing, period, provenance,
-                          round((perf_counter()-started)*1000, 2), training_key(config))
+                          round((perf_counter()-started)*1000, 2), training_key(config), uuid4().hex)
 
 
 def score_detector(store, workspace_id, config, fitted):
@@ -217,7 +219,7 @@ def score_detector(store, workspace_id, config, fitted):
         fitted.policy, fitted.medians, fit_samples=fitted.fit_samples, calibration_samples=fitted.calibration_samples,
         baseline_samples=fitted.fit_samples+fitted.calibration_samples,
         imputed=dict(baseline=fitted.missing, analysis=missing), started=started)
-    result['training'] = {**fitted.provenance, 'modelKey': fitted.key, 'fitDurationMs': fitted.duration_ms,
+    result['training'] = {**fitted.provenance, 'modelKey': fitted.key, 'fitId': fitted.fit_id, 'fitDurationMs': fitted.duration_ms,
                           'test': dict(dataset=snapshot(store, dataset), range=config['analysisRange'], signalMapping=mapping)}
     result['external'] = dataset['metadata'].get('external')
     return result

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, go, message } from "./api";
 import { number, type Dataset, type ExternalRun } from "./types";
+import { TEPStudyDashboard } from "./TEPStudyDashboard";
 
 type CachedRun = Pick<ExternalRun, "id" | "faultNumber" | "simulationRun" | "split" | "samples" | "features" | "sampleIntervalSeconds" | "faultOnsetSample" | "faultOnsetSeconds">;
 type CachedSource = { id: string; source: Pick<ExternalRun, "sourceFile" | "sha256" | "sourceUrl">; timeConvention: string; runs: CachedRun[] };
@@ -51,6 +52,7 @@ export function TEPWorkspace({ workspaceId, onChanged }: { workspaceId: string; 
         {preview && <><p>{preview.timeConvention}</p><div className="ws-table-scroll"><table><thead><tr><th>Fault / run</th><th>Split</th><th>Samples / inputs</th><th>Cadence</th><th>Published onset</th></tr></thead><tbody>{preview.runs.map(r => <tr key={r.id}><td>{r.faultNumber} / {r.simulationRun}</td><td>{r.split}</td><td>{r.samples} / {r.features}</td><td>{r.sampleIntervalSeconds} s</td><td>{r.faultOnsetSeconds == null ? "Fault-free" : `sample ${r.faultOnsetSample} · ${r.faultOnsetSeconds} s`}</td></tr>)}</tbody></table></div></>}
       </>}
     </section><section className="ws-panel"><h2>02 / Reproduce the fixed case study</h2><p>Fit: FaultFree Training run 1. Calibration: FaultFree Training run 2. Test: FaultFree Testing runs 1–2 and Faulty Testing faults 1, 3, 5, runs 1–2. Nine algorithms, α=0.01, persistence=3; 72 tasks.</p><p>Each independent run starts fresh. Fault labels only evaluate saved predictions. This is mode 1 process simulation; two runs per fault give descriptive results.</p><button className="ws-primary" disabled={busy || sources.length < 3} onClick={() => void caseStudy()}>Create fixed nine-algorithm experiment ↗</button><p className="ws-muted">Imports required cached runs, reuses matching imports and opens the saved experiment for review and execution.</p></section>
+    <TEPStudyDashboard workspaceId={workspaceId} onChanged={onChanged} />
     {busy && <p role="status">Verifying and saving selected data…</p>}{error && <p role="alert" className="ws-error">{error}</p>}{notice && <p role="status" className="ws-notice">{notice} <a href={`#/workspaces/${workspaceId}/datasets`}>Open datasets ↗</a></p>}
   </div>;
 }

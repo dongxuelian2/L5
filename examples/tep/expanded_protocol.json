@@ -1,0 +1,445 @@
+{
+  "sourceDoi": "doi:10.7910/DVN/6C3JR1",
+  "analysisRange": [
+    0,
+    172620
+  ],
+  "alpha": 0.01,
+  "minCoverage": 0.9,
+  "persistence": 3,
+  "observationPolicy": "measured",
+  "algorithms": [
+    {
+      "algorithm": "robust-maxz",
+      "parameters": {},
+      "study": {}
+    },
+    {
+      "algorithm": "pca-q",
+      "parameters": {
+        "variance": 0.9
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "pca-t2",
+      "parameters": {
+        "variance": 0.9
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "ewma",
+      "parameters": {
+        "smoothing": 0.25
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "cusum",
+      "parameters": {
+        "reference": 0.5
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "window-cusum",
+      "parameters": {
+        "reference": 0.5,
+        "window": 12
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "dpca-q",
+      "parameters": {
+        "lags": 2,
+        "variance": 0.9
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "dpca-t2",
+      "parameters": {
+        "lags": 2,
+        "variance": 0.9
+      },
+      "study": {}
+    },
+    {
+      "algorithm": "adaptive-maxz",
+      "parameters": {
+        "rate": 0.02,
+        "guard": 2.5,
+        "maxShift": 1.5
+      },
+      "study": {}
+    }
+  ],
+  "id": "rieth-expanded-nine-v1",
+  "name": "TEP expanded coverage",
+  "configurations": {
+    "A": {
+      "fit": {
+        "sourceId": "fault-free-training",
+        "faultNumber": 0,
+        "simulationRun": 1,
+        "range": [
+          0,
+          89820
+        ]
+      },
+      "calibration": {
+        "sourceId": "fault-free-training",
+        "faultNumber": 0,
+        "simulationRun": 2,
+        "range": [
+          0,
+          89820
+        ]
+      }
+    }
+  },
+  "tests": [
+    {
+      "sourceId": "fault-free-testing",
+      "faultNumber": 0,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "fault-free-testing",
+      "faultNumber": 0,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "fault-free-testing",
+      "faultNumber": 0,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "fault-free-testing",
+      "faultNumber": 0,
+      "simulationRun": 4
+    },
+    {
+      "sourceId": "fault-free-testing",
+      "faultNumber": 0,
+      "simulationRun": 5
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 1,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 1,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 1,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 2,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 2,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 2,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 3,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 3,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 3,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 4,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 4,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 4,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 5,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 5,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 5,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 6,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 6,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 6,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 7,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 7,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 7,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 8,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 8,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 8,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 9,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 9,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 9,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 10,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 10,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 10,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 11,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 11,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 11,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 12,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 12,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 12,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 13,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 13,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 13,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 14,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 14,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 14,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 15,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 15,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 15,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 16,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 16,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 16,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 17,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 17,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 17,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 18,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 18,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 18,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 19,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 19,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 19,
+      "simulationRun": 3
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 20,
+      "simulationRun": 1
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 20,
+      "simulationRun": 2
+    },
+    {
+      "sourceId": "faulty-testing",
+      "faultNumber": 20,
+      "simulationRun": 3
+    }
+  ],
+  "earlyDetectionSeconds": [
+    1800,
+    3600,
+    14400
+  ],
+  "batchTestLimit": 28,
+  "declaration": "Declared before expanded scoring: all official faults 1–20, Testing runs 1–3; normal Testing runs 1–5. Existing nine algorithm parameters, alpha=0.01, persistence=3. No test-based tuning or representative-fault selection. Same complete test set in every normal-training configuration.",
+  "limitations": [
+    "Public process simulation, mode 1 only; not plant measurements.",
+    "Three runs per fault and five normal test runs provide descriptive results, not population confidence claims.",
+    "All truth events enter early/eventual denominators, including missed/unobserved events. Failures remain unresolved outcomes with explicit status.",
+    "Same simulationRun is an exploratory alignment by elapsed time. Published metadata does not establish identical physical/noise trajectories across fault identities.",
+    "Normal-only quantile calibration on 500 samples does not guarantee the independent normal false alarm budget.",
+    "No parameter exploration or fault-test tuning. Contributions are statistical weights, not physical root causes."
+  ]
+}

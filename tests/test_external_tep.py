@@ -104,6 +104,9 @@ class StreamTests(unittest.TestCase):
                        checksum=dict(type='MD5', value=hashlib.md5(path.read_bytes()).hexdigest()), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
             with patch.dict(SOURCES['files'], {filename: pin}):
                 manifest = prepare_runs(root, root/'cache', profile, [(1, 1)])
+                with patch('l5.tep_import.read_selected', side_effect=AssertionError('verified extraction must be reused')):
+                    reused = prepare_runs(root, root/'cache', profile, [(1, 1)])
+                    self.assertEqual(reused['runs'], manifest['runs'])
                 store = WorkspaceStore(root/'workspace')
                 store.tep.cache = root/'cache'
                 wid = store.create_workspace('Generated offline format test')['id']
