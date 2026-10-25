@@ -51,6 +51,8 @@ class WorkspaceStore:
         self.transformations = TransformationService(self)
         from .experiments import ExperimentService
         self.experiments = ExperimentService(self)
+        from .tep_import import TEPImportService
+        self.tep = TEPImportService(self)
 
     @contextmanager
     def connect(self):
@@ -221,14 +223,21 @@ class WorkspaceStore:
                     previous={s: value(index-1, s) if index else None for s in signals},
                     **self.provenance_sample(dataset, index, signals))
 
-    def analyze(self, workspace_id: str, body: dict, *, experiment=None) -> dict:
+    def analyze(self, workspace_id: str, body: dict, *, experiment=None, fitted=None) -> dict:
         self.workspace(workspace_id)
         dataset = self.dataset(body.get('datasetId', ''))
         if dataset['workspace_id'] != workspace_id:
             raise ValueError('Dataset belongs to a different workspace.')
-        times, values = self.load_data(dataset)
-        result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
-                              observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
+        if body.get('training') is not None:
+            from .independent import fit_detector, score_detector, validate_training, validate_test
+            training, sources = validate_training(self, workspace_id, body)
+            validate_test(self, workspace_id, body, training, sources)
+            model = fitted or fit_detector(self, workspace_id, body)
+            result = score_detector(self, workspace_id, body, model)
+        else:
+            times, values = self.load_data(dataset)
+            result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
+                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
         if dataset['metadata'].get('transformation'):
             lineage = dataset['metadata']['transformation']
             result['transformation'] = {k: lineage[k] for k in ('definitionId', 'revision', 'executionId', 'createdAt')}

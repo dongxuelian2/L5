@@ -1,0 +1,45 @@
+{
+  "doi": "doi:10.7910/DVN/6C3JR1",
+  "version": "1.0",
+  "files": {
+    "TEP_FaultFree_Testing.RData": {
+      "id": 3031240,
+      "filesize": 47327663,
+      "checksum": {
+        "type": "MD5",
+        "value": "38ad9810fc871026157086ae2c2f0ee9"
+      },
+      "persistentId": "doi:10.7910/DVN/6C3JR1/Q4NOFD",
+      "sha256": "4f45afafa469793eeb7203fb9ed10ed0b1724c73c9c95537f15a0889ade0ebd4"
+    },
+    "TEP_FaultFree_Training.RData": {
+      "id": 3031241,
+      "filesize": 24678017,
+      "checksum": {
+        "type": "MD5",
+        "value": "ec126484534331f85001d8c4ebce6d17"
+      },
+      "persistentId": "doi:10.7910/DVN/6C3JR1/TMBUVJ",
+      "sha256": "12d1055b852763fac09ef36bd7c9612a800c8bf7b6f75f344d12119206f9e940"
+    },
+    "TEP_Faulty_Testing.RData": {
+      "id": 3031243,
+      "filesize": 836882037,
+      "checksum": {
+        "type": "MD5",
+        "value": "556bdb64c83021bc0c5f92e427753565"
+      },
+      "persistentId": "doi:10.7910/DVN/6C3JR1/IL0XP0",
+      "sha256": "c2f1aabc77498efda4d5f9ad81ecc829e2fcd98752b84cf5b2a06558cabacc36"
+    },
+    "TEP_Faulty_Training.RData": {
+      "id": 3031242,
+      "filesize": 494063194,
+      "checksum": {
+        "type": "MD5",
+        "value": "c5f594d54c47e620ff877feb58407fda"
+      },
+      "persistentId": "doi:10.7910/DVN/6C3JR1/6QOWUU"
+    }
+  }
+}

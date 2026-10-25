@@ -20,6 +20,7 @@ from .incidents import text
 from .workspace import now
 
 MAX_TASKS = 64
+MAX_EXTERNAL_TASKS = 256
 MAX_ACTIVE_RUNS = 4
 PARAMETERS = {
     'robust-maxz': (), 'pca-q': ('variance',), 'pca-t2': ('variance',),
@@ -127,20 +128,28 @@ class ExperimentService:
         dataset = self.store.dataset(raw.get('datasetId', ''))
         if dataset['workspace_id'] != workspace_id:
             raise ValueError('Experiment dataset belongs to a different workspace.')
-        columns = [s['name'] for s in dataset['metadata']['columns']]
+        independent = raw.get('training') is not None
+        training, training_datasets = (None, None)
+        if independent:
+            from .independent import validate_training, validate_test
+            training, training_datasets = validate_training(self.store, workspace_id, raw)
+        columns = [s['name'] for s in (training_datasets['fit'] if independent else dataset)['metadata']['columns']]
         signals = raw.get('signals')
         if not isinstance(signals, list) or not signals or any(not isinstance(s, str) or s not in columns for s in signals) or len(signals) != len(set(signals)):
             raise ValueError('Choose unique numeric signals from the experiment dataset.')
         config = dict(datasetId=dataset['id'], signals=signals)
         axis = dataset['metadata']['time']
         for key in ('baselineRange', 'analysisRange'):
+            if independent and key == 'baselineRange':
+                config[key] = training['fit']['range']
+                continue
             interval = raw.get(key)
             if not isinstance(interval, list) or len(interval) != 2 or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in interval):
                 raise ValueError(f'{key} needs two finite times in dataset seconds.')
             if not axis['start'] <= interval[0] <= interval[1] <= axis['end']:
                 raise ValueError(f'{key} must be inside the dataset time range.')
             config[key] = interval
-        if config['baselineRange'][1] >= config['analysisRange'][0]:
+        if not independent and config['baselineRange'][1] >= config['analysisRange'][0]:
             raise ValueError('Baseline must finish before the analysis window starts.')
         for key in ('alpha', 'fitFraction', 'minCoverage', 'persistence'):
             config[key] = numeric(key, raw.get(key, DEFAULTS[key]))
@@ -156,6 +165,27 @@ class ExperimentService:
             if labels['dataset_id'] != dataset['id']:
                 raise ValueError('Labels belong to a different dataset.')
             config['labelSetId'] = labels['id']
+        if independent:
+            config['training'], config['testDatasets'] = training, []
+            tests = raw.get('testDatasets', [dict(datasetId=dataset['id'], analysisRange=config['analysisRange'], labelSetId=config.get('labelSetId'))])
+            if not isinstance(tests, list) or not 1 <= len(tests) <= 32 or any(not isinstance(t, dict) for t in tests):
+                raise ValueError('Choose 1–32 independent test datasets.')
+            seen_tests = set()
+            for item in tests:
+                test, mapping = validate_test(self.store, workspace_id, {**raw, **item}, training, training_datasets)
+                sequence = test['metadata'].get('external', {}).get('sequenceId', test['id'])
+                if sequence in seen_tests:
+                    raise ValueError('Each independent test run may occur only once, including re-imported copies.')
+                seen_tests.add(sequence)
+                plan = dict(datasetId=test['id'], analysisRange=item['analysisRange'], signalMapping=mapping)
+                if item.get('labelSetId'):
+                    labels = self.labels(item['labelSetId'])
+                    if labels['dataset_id'] != test['id']:
+                        raise ValueError('Each test label version must belong to that test dataset.')
+                    plan['labelSetId'] = labels['id']
+                config['testDatasets'].append(plan)
+            if config['testDatasets'][0]['datasetId'] != dataset['id']:
+                raise ValueError('The experiment dataset must be the first declared test dataset.')
         algorithms = raw.get('algorithms')
         if not isinstance(algorithms, list) or not 1 <= len(algorithms) <= len(ALGORITHMS):
             raise ValueError('Choose one or more of the nine available algorithms.')
@@ -183,22 +213,25 @@ class ExperimentService:
 
     @staticmethod
     def expand(config):
-        common = {key: value for key, value in config.items() if key not in ('algorithms', 'labelSetId')}
+        common = {key: value for key, value in config.items() if key not in ('algorithms', 'labelSetId', 'testDatasets')}
+        tests = config.get('testDatasets', [{}])
+        limit = MAX_EXTERNAL_TASKS if config.get('training') else MAX_TASKS
         tasks = []
         for item in config['algorithms']:
             keys = list(item['study'])
             count = math.prod(len(item['study'][key]) for key in keys)
-            if len(tasks) + count > MAX_TASKS:
-                raise ValueError(f'An experiment is limited to {MAX_TASKS} tasks. Reduce study candidates.')
+            if len(tasks) + count*len(tests) > limit:
+                raise ValueError(f'An experiment is limited to {limit} tasks. Reduce study candidates or test runs.')
             for values in itertools.product(*(item['study'][key] for key in keys)):
                 algorithm = item['algorithm']
                 defaults = {key: DEFAULTS[key] for key in PARAMETERS[algorithm]}
-                tasks.append({**common, 'algorithm': algorithm, **defaults, **item['parameters'], **dict(zip(keys, values))})
+                for test in tests:
+                    tasks.append({**common, **test, 'algorithm': algorithm, **defaults, **item['parameters'], **dict(zip(keys, values))})
         return tasks
 
     def preview(self, workspace_id, raw):
         config, tasks = self.validate(workspace_id, raw)
-        return dict(config=config, taskCount=len(tasks), maxTasks=MAX_TASKS, tasks=tasks)
+        return dict(config=config, taskCount=len(tasks), maxTasks=MAX_EXTERNAL_TASKS if config.get('training') else MAX_TASKS, tasks=tasks)
 
     def save(self, workspace_id, body, identity=None):
         self.store.workspace(workspace_id)
@@ -375,6 +408,16 @@ class ExperimentService:
                         'l5/analysis.py', 'l5/monitoring.py', 'benchmarks/coverage.py', 'benchmarks/temporal.py',
                         'benchmarks/window_cusum.py', 'benchmarks/dynamic_pca.py', 'benchmarks/adaptive.py')}), rules=RULES)
             snapshot['researchRecordId'] = experiment['records'][0]['id'] if experiment['records'] else None
+            if config.get('training'):
+                from .independent import snapshot as dataset_snapshot
+                ids = dict.fromkeys([ref['datasetId'] for ref in config['training'].values()] + [test['datasetId'] for test in config['testDatasets']])
+                snapshot['datasets'] = {identity: dataset_snapshot(self.store, self.store.dataset(identity)) for identity in ids}
+                snapshot['testLabels'] = {test['datasetId']: self.labels(test['labelSetId']) if test.get('labelSetId') else None for test in config['testDatasets']}
+                snapshot['schemaVersion'] = 2
+                snapshot['engine']['analysis'] = 'l5.independent.fit_detector / score_detector -> l5.analysis.score_analysis'
+                snapshot['engine']['sourceHashes'].update({name: file_hash(Path(__file__).resolve().parents[1] / name) for name in (
+                    'l5/independent.py', 'l5/tep_import.py', 'l5/datasets.py', 'benchmarks/rieth_stream.py',
+                    'benchmarks/rieth_sources.json', 'examples/tep/protocol.json')})
         run_id, stamp = uuid4().hex, now()
         with self.lock:
             with self.store.connect() as db:
@@ -414,21 +457,34 @@ class ExperimentService:
         run = self.run(run_id)
         snapshot = run['snapshot']
         dataset = snapshot['dataset']
-        path = self.store.root / dataset['workspace_id'] / 'datasets' / dataset['id'] / 'series.npz'
-        if file_hash(path) != dataset['sha256']:
-            raise ValueError('Dataset content changed since this run was snapshotted; no tasks were executed.')
+        for source in snapshot.get('datasets', {dataset['id']: dataset}).values():
+            path = self.store.root / source['workspace_id'] / 'datasets' / source['id'] / 'series.npz'
+            if file_hash(path) != source['sha256']:
+                raise ValueError('Dataset content changed since this run was snapshotted; no tasks were executed.')
         started = perf_counter()
         with self.store.connect() as db:
             db.execute("UPDATE experiment_runs SET status='running',started_at=? WHERE id=?", (now(), run_id))
+        fitted_models = {}
         for task in run['tasks']:
             task_start, result_id = perf_counter(), None
             with self.store.connect() as db:
                 db.execute("UPDATE experiment_tasks SET status='running',started_at=? WHERE id=?", (now(), task['id']))
             try:
+                fitted = None
+                if task['config'].get('training'):
+                    from .independent import fit_detector, training_key
+                    key = training_key(task['config'])
+                    if key not in fitted_models:
+                        fitted_models[key] = fit_detector(self.store, dataset['workspace_id'], task['config'])
+                    fitted = fitted_models[key]
                 result = self.store.analyze(dataset['workspace_id'], {**task['config'], 'name': f"{snapshot['experiment']['name'][:110]} · {ALGORITHMS[task['algorithm']]}"},
-                    experiment=dict(experimentId=run['experiment_id'], runId=run_id, taskId=task['id']))
+                    experiment=dict(experimentId=run['experiment_id'], runId=run_id, taskId=task['id']), fitted=fitted)
                 result_id = result['id']
-                metrics = evaluate(result, snapshot['labels'], dataset['metadata'].get('quality', {}).get('gapThreshold'))
+                target = snapshot.get('datasets', {}).get(task['config']['datasetId'], dataset)
+                labels = snapshot.get('testLabels', {}).get(target['id'], snapshot['labels'])
+                metrics = evaluate(result, labels, target['metadata'].get('quality', {}).get('gapThreshold'))
+                if fitted:
+                    metrics['training'] = dict(modelKey=fitted.key, fitDurationMs=fitted.duration_ms)
                 status, error = 'succeeded', None
             except Exception as failure:
                 status, error, metrics = 'failed', str(failure)[:4000], None
@@ -448,8 +504,11 @@ class ExperimentService:
         for item in experiment['runs']:
             run = self.run(item['id'])
             runs[run['id']] = run
-            tasks.extend({**task, 'runCreatedAt': run['created_at'], 'datasetId': run['snapshot']['dataset']['id'],
-                          'datasetName': run['snapshot']['dataset']['name'], 'experimentRevision': run['snapshot']['experiment']['revision']} for task in run['tasks'])
+            for task in run['tasks']:
+                target = run['snapshot'].get('datasets', {}).get(task['config']['datasetId'], run['snapshot']['dataset'])
+                tasks.append({**task, 'runCreatedAt': run['created_at'], 'datasetId': target['id'],
+                    'datasetName': target['name'], 'external': target['metadata'].get('external'),
+                    'experimentRevision': run['snapshot']['experiment']['revision']})
         selected = body.get('taskIds', [])
         if not isinstance(selected, list) or len(selected) > 12 or any(not isinstance(t, str) for t in selected):
             raise ValueError('Select at most 12 saved tasks for detailed comparison.')
@@ -460,7 +519,7 @@ class ExperimentService:
             if task['id'] not in selected or task['status'] != 'succeeded':
                 continue
             run = runs[task['run_id']]
-            dataset = run['snapshot']['dataset']
+            dataset = run['snapshot'].get('datasets', {}).get(task['config']['datasetId'], run['snapshot']['dataset'])
             result = self.store.result(task['result_id'])
             clock = dataset['metadata']['clock']
             offset = clock['offset']
@@ -477,9 +536,10 @@ class ExperimentService:
             def inputs(member):
                 config, dataset = member['result']['config'], member['dataset']
                 return (dataset['sha256'], config['signals'], [t+member['offset'] for t in config['baselineRange']],
-                        config.get('observationPolicy', 'measured'), config['minCoverage'], config['requiredSignals'], config['fitFraction'])
+                        config.get('observationPolicy', 'measured'), config['minCoverage'], config['requiredSignals'], config['fitFraction'],
+                        member['result'].get('training', {}).get('sources'))
             matching_inputs = all(inputs(member) == inputs(reference) for member in members)
-            label_ids = [runs[member['task']['run_id']]['snapshot']['labels'] for member in members]
+            label_ids = [runs[member['task']['run_id']]['snapshot'].get('testLabels', {}).get(member['dataset']['id'], runs[member['task']['run_id']]['snapshot']['labels']) for member in members]
             matching_labels = len({label['id'] if label else None for label in label_ids}) == 1
             agreement = []
             for left, right in itertools.combinations(members, 2):
@@ -501,7 +561,8 @@ class ExperimentService:
             groups.append(dict(axisId=axis_id, taskIds=[m['id'] for m in members], matchingWindows=matching_windows,
                 matchingCoverage=matching_coverage, matchingInputs=matching_inputs, matchingLabelSets=matching_labels,
                 agreement=agreement, **compare_intervals(members)))
-        return dict(experiment=experiment, tasks=tasks, analyses=analyses, groups=groups, rules=RULES)
+        from .external_benchmark import summarize
+        return dict(experiment=experiment, tasks=tasks, analyses=analyses, groups=groups, rules=RULES, benchmark=summarize(tasks))
 
     def link_incident(self, identity, body):
         run = self.run(identity)

@@ -1,10 +1,12 @@
-# L5 / Model & Scenario Workspace
+# L5 / Industrial Analysis Workspace
 
 **Turn your industrial time series into a lasting analysis project.**
 
 [中文](README.md) · [Architecture](docs/architecture.md) · [TripLens video](video/README.md)
 
 L5 opens a local Workspace where you can import your own CSV, run anomaly detection, and organize intervals, analyses and model experiments into a persistent **Incident**. The incident workstation saves editable notes, evidence, hypotheses and conclusions so investigation can continue after restarting. **Models** selects TripLens or a coupled-tank process from the backend catalog, saves versioned scenarios and opens each model’s supported investigation and intervention tools. **TripLens examples** retains the original professional interface.
+
+**TEP case study** imports verified original Harvard Dataverse process simulation runs with 52 feature identities and separate published labels. Experiments fit on one normal dataset, calibrate on another and score independent test datasets with fresh sequence state. The fixed case runs all nine existing detectors on eight held-out trajectories, retaining missed faults, per-run distributions, Incident evidence and offline measurement reports. [Prepare and reproduce](examples/tep/README.md) · [Actual results and limitations](docs/tep-case-study.md).
 
 ## Capabilities
 
@@ -17,6 +19,7 @@ L5 opens a local Workspace where you can import your own CSV, run anomaly detect
 - Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
 - Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
 - Save, edit and duplicate formal experiments; batch the nine existing detectors and finite parameter studies with task progress, individual errors and independently saved AnalysisResults.
+- Configure independent fit/calibration/test datasets, native time ranges, verified original-name signal mappings and observation policies. Reuse each fitted detector across test runs; preserve all dataset hashes, source identities and label versions. Inspect the TEP fault-by-method matrix, delays in seconds, coverage, missed events and per-run median/ranges.
 - Evaluate reviewed normal/anomaly intervals or saved model simulation truth, compare alarm timing and independent score scales, retain research records with run references, and export offline experiment reports.
 - Create, edit, find and archive incidents. Associate multiple datasets, analyses and detection intervals; inspect source-window curves, peaks and contributions; maintain hypotheses with supporting or opposing evidence.
 - Store metadata in SQLite and keep original CSV, numeric arrays and result files on disk.

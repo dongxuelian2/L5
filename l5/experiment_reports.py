@@ -33,6 +33,10 @@ def render_experiment_report(store, identity, run_id=None):
                           prose(record['notes']), prose(record['conclusion']), '<p>Run references: ' + e(', '.join(record['run_ids'])) + '</p></details>'])
     for run in reversed(runs):
         snapshot, tasks = run['snapshot'], run['tasks']
+        if snapshot.get('datasets'):
+            from .external_reports import independent_run
+            parts.append(independent_run(store, run))
+            continue
         dataset = snapshot['dataset']
         parts.extend([f'<h2>Run {e(run["id"])}</h2>',
             f'<p>Status: {e(run["status"])} · revision {snapshot["experiment"]["revision"]} · started {e(run["started_at"])} · completed {e(run["completed_at"])} · elapsed {e(n(run["duration_ms"]))} ms</p>',

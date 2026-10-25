@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-25",
+  "baseCommit": "9d84ab980930f3ca63d0f93b96ec6bccc17502f3",
+  "originalFilesPreserved": 92,
+  "oldTableRowsPreserved": {
+    "jobs": 72,
+    "experiments": 1,
+    "experiment_runs": 1,
+    "experiment_tasks": 72,
+    "incidents": 1,
+    "incident_entries": 2,
+    "incident_links": 9
+  },
+  "countsAfterReimportAndRestart": {
+    "datasets": 11,
+    "jobs": 72,
+    "experiments": 1,
+    "experiment_runs": 1,
+    "experiment_tasks": 72,
+    "experiment_labels": 11,
+    "incidents": 1,
+    "incident_entries": 2,
+    "incident_links": 9
+  },
+  "originalReaderParity": "pyreadr: two official fault-free training runs, 1000 x 52 values, exact equality",
+  "extraction": {
+    "source": "faulty-testing",
+    "elapsedSeconds": 8.221,
+    "processPeakResidentBytes": 80478208,
+    "selectedRuns": 6,
+    "parser": "rieth-stream-rdx2-v1",
+    "extraParserDependencies": []
+  },
+  "browser": {
+    "workspaceId": "77583fbb324f4dcda45cbfb77f263086",
+    "experimentId": "306ea56d26f844c5804a08d286243f62",
+    "runId": "27fb19d21001482f9b57a44a0dafe722",
+    "incidentId": "58c02400ba3f4e808c36dd07b2b40ebd",
+    "actions": [
+      "Create workspace",
+      "Preview/import normal and faulty official runs",
+      "Render all 52 channels through xmv_11",
+      "Run fixed 72-task experiment",
+      "Compare nine algorithms for fault 1/run 1",
+      "Create Incident from nine actual alarm intervals",
+      "Save hypothesis, source-linked support evidence and conclusion",
+      "Generate and download offline HTML",
+      "Re-import fault 1/run 1 as a new Dataset",
+      "Restart service and reopen saved evidence"
+    ],
+    "downloadedIncidentHtml": {
+      "bytes": 3159299,
+      "sha256": "6beae8b5bf215ba44a74c0bd7f89a055d7084cc92ceb881f7df4bd31c89c4e72",
+      "embeddedSvg": 37
+    },
+    "restoredInBrowser": {
+      "linkedAnalyses": 9,
+      "evidenceTitle": "独立测试检测时序与关键变量",
+      "conclusionRestored": true,
+      "status": "resolved"
+    }
+  },
+  "officialResult": "examples/tep/results.json",
+  "tests": {
+    "workspacePython": 72,
+    "simulationPython": 40,
+    "reactDom": 43,
+    "researchPython": 115,
+    "typecheck": true,
+    "productionBuild": true,
+    "externalTasksPerExecution": 72,
+    "officialAndBrowserExecutions": 2
+  },
+  "official": {
+    "experiment.html": {
+      "bytes": 2840243,
+      "sha256": "0ad1de2942b874298117dac5ca006138e29f6520ec16f6525c10f44a632a2b8d",
+      "svg": 142
+    },
+    "incident.html": {
+      "bytes": 3242960,
+      "sha256": "878a6c94ce603d7db8f97ebe335150813f2516ca390048392f21c894d5146f94",
+      "svg": 37
+    },
+    "results.json": {
+      "bytes": 421032,
+      "sha256": "7e4f39f3e7cdfd6de9d95a74bbc75ad9f22a8710ede17f2e476916929ed25062",
+      "svg": null
+    },
+    "scoreboard.md": {
+      "bytes": 1666,
+      "sha256": "523ea230c84cd8c7fd5101d3d7068a0c9f915cc4093726d280fefdec93223d12",
+      "svg": null
+    }
+  },
+  "browserExport": {
+    "experiment.html": {
+      "bytes": 2839430,
+      "sha256": "3d29a7e7fc61132bbb4e3b63b85717b6987b30d90291dd3a4119c65fa6146119",
+      "svg": 142
+    },
+    "incident.html": {
+      "bytes": 3226210,
+      "sha256": "64401620e0a534e020600d7282b58654978cd44b3a5c0478a15e97fc46e4f3dc",
+      "svg": 37
+    },
+    "results.json": {
+      "bytes": 420338,
+      "sha256": "56a5becd67fa14c7a49c0bf9cac42ffd06449fa688ac75ae93798c1a6048c608",
+      "svg": null
+    },
+    "scoreboard.md": {
+      "bytes": 1666,
+      "sha256": "523ea230c84cd8c7fd5101d3d7068a0c9f915cc4093726d280fefdec93223d12",
+      "svg": null
+    }
+  }
+}

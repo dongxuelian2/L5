@@ -69,7 +69,7 @@ def parameters(value):
     return table(['参数', '保存值'], [[e(labels.get(k, k)), e(json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else '未记录' if v is None else v)] for k, v in value.items()], 'parameters')
 
 
-def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit='原始值（源数据未提供单位）', domain=None):
+def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit='原始值（源数据未提供单位）', domain=None, markers=()):
     valid = [v for line in lines for v in line['values'] if v is not None and math.isfinite(v)]
     if not times or not valid:
         return f'<p>{e(title)}：此窗口没有可显示的观测值。</p>'
@@ -93,6 +93,9 @@ def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit=
             svg.append(f'<rect x="{x(a):.2f}" y="{top}" width="{max(2, x(b)-x(a)):.2f}" height="{height-top-bottom}" fill="#c8563c" opacity=".13"/>')
     if threshold is not None:
         svg.append(f'<line x1="{left}" x2="{width-right}" y1="{y(threshold):.2f}" y2="{y(threshold):.2f}" stroke="#ac6b11" stroke-dasharray="6 4"/><text x="{width-right}" y="{y(threshold)-5:.2f}" text-anchor="end">阈值 {n(threshold)}</text>')
+    for marker in markers:
+        if first <= marker['time'] <= last:
+            svg.append(f'<line x1="{x(marker["time"]):.2f}" x2="{x(marker["time"]):.2f}" y1="{top}" y2="{height-bottom}" stroke="#3b78a1" stroke-dasharray="3 3"/><text x="{x(marker["time"])+4:.2f}" y="{top+12}" fill="#3b78a1">{e(marker["label"])}</text>')
     for line in lines:
         values = line['values']
         # Preserve extrema and explicit missing samples when reducing score paths.
@@ -242,11 +245,23 @@ def render_report(store, identity):
     for a in view['analyses']:
         result, axis = a['result'], axes[a['axisId']]
         parts.append(f'<h3 id="analysis-{a["id"]}">{e(result["name"])} · {e(result["algorithmLabel"])}</h3>')
+        external = result.get('external') or datasets[a['datasetId']]['metadata'].get('external')
+        onset = external.get('faultOnsetSeconds') if external else None
+        markers = [dict(time=onset+a['offset'], label='数据集已知故障注入')] if onset is not None else []
+        if external:
+            parts.append('<h4>外部原始来源与已知故障标签</h4>'+technical(external))
+        if result.get('training'):
+            parts.append('<h4>正常拟合、校准与独立测试来源</h4>'+technical(result['training']))
+            if result.get('experiment'):
+                run = store.experiments.run(result['experiment']['runId'])
+                task = next((t for t in run['tasks'] if t['id'] == result['experiment']['taskId']), None)
+                if task:
+                    parts.append('<h4>保存的实验评价（标签与候选解释分离）</h4>'+technical(task['metrics']))
         times = [t + a['offset'] for t in result['times']]
         scores = [None if result.get('states', [])[i:i+1] == ['abstain'] else v for i, v in enumerate(result['scores'])]
         segments = segment_ids(np.asarray(times), np.asarray([np.nan if v is None else v for v in scores]), datasets[a['datasetId']]['metadata']['quality']['gapThreshold']).tolist()
         parts.append(chart('异常分数与固定阈值 · ' + a['datasetName'], times, [dict(label=result['algorithmLabel'], values=scores, segmentIds=segments, color='#b45742')],
-                           axis=axis, threshold=result['threshold'], intervals=a['intervals'], unit='算法原始分数（各方法尺度独立）'))
+                           axis=axis, threshold=result['threshold'], intervals=a['intervals'], markers=markers, unit='算法原始分数（各方法尺度独立）'))
         summary = result['summary']
         parts.append(f'<p class="muted">拟合 {summary["fitSamples"]} 样本；校准 {summary["calibrationSamples"]} 样本；分析 {summary["analysisSamples"]} 样本；报警 {summary["flaggedSamples"]} 样本；abstain {summary.get("abstainedSamples", 0)} 样本。以上为完整分析指标。</p>')
         parts.append(table(['关联区间开始', '结束', '峰值时间', '峰值分数 / 样本数'], [
@@ -268,7 +283,7 @@ def render_report(store, identity):
                 unit = next((c.get('unit') for c in datasets[a['datasetId']]['metadata']['columns'] if c['name'] == signal), None)
                 label = signal_label(a['datasetId'], signal)
                 parts.append(chart('原始变量趋势 · ' + label, [t+a['offset'] for t in series['times']],
-                    [dict(label=label, values=series['values'][signal], segmentIds=series['segmentIds'][signal])], axis=axis, intervals=a['intervals'], unit=unit or '原始值（源数据未提供单位）'))
+                    [dict(label=label, values=series['values'][signal], segmentIds=series['segmentIds'][signal])], axis=axis, intervals=a['intervals'], markers=markers, unit=unit or '原始值（源数据未提供单位）'))
             parts.append(f'<p class="muted">{e(a["datasetName"])}；显示 {series["displayRows"]} / {series["sourceRows"]} 个样本，长序列使用保留极值的显示采样；检测结果使用完整数据。</p>')
     # Standalone dataset links still contribute genuine observed charts to a report without analyses.
     analyzed = {a['datasetId'] for a in view['analyses']}

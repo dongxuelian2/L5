@@ -3,7 +3,7 @@ import { api, message } from "./api";
 import { incidentAxis, dateLabel, number, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
 import { IncidentComparison } from "./IncidentComparison";
 
-const kinds: Record<string, string> = { incident: "事件范围", alarm: "算法报警", note: "调查笔记", evidence: "调查证据", hypothesis: "候选解释", investigation: "工具调查", experiment: "干预实验", status: "状态变更", conclusion: "结论更新" };
+const kinds: Record<string, string> = { truth: "数据集已知故障", incident: "事件范围", alarm: "算法报警", note: "调查笔记", evidence: "调查证据", hypothesis: "候选解释", investigation: "工具调查", experiment: "干预实验", status: "状态变更", conclusion: "结论更新" };
 export function selectTimelineEvent(event: TimelineEvent, axis: IncidentAxis): IncidentSelection | null {
   if (event.start == null) return null;
   const duration = (event.end ?? event.start) - event.start;

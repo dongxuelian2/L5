@@ -208,6 +208,30 @@ Pressure-intervention rankings are withheld when the fitted physical baseline re
 
 前端 Models 从实际目录生成配置表单、保存与复制场景、恢复版本及会话。TripLens 使用原专业调查组件，双水箱使用公共曲线、窗口和通用指标展示。Incident、实验研究索引及报告保留各自模型、场景、单位和评价分母。[接口、方程、数值方法与存储细节](model-workspace.md) 和 [实际验收](model-workspace-validation.md) 单独记录。
 
+## External TEP and independent datasets
+
+`benchmarks/rieth_stream.py` 为已固定的官方 numeric RDX2 data.frame 提供有界提取；不执行 R 代码。原始文件按 `benchmarks/rieth_sources.json` 的大小、MD5 和 SHA-256 校验。每次最多选择 64 个 fault/run 对，逐列以 65536 行块读取，完整消费压缩流并校验列名、对象、运行和 sample 连续性。`examples.tep.prepare` 把所选运行保存为独立 NPZ 和来源清单，服务不下载或常驻加载原始大型文件。
+
+`l5.tep_import` 从 `L5_TEP_CACHE`（默认 `data/external/tep`）读取已准备的缓存。HTTP 预检和导入重新验证提取哈希、52 通道及故障时间约定。每个运行通过既有 `WorkspaceStore.save_dataset` 保存，`metadata.external` 保留原始来源、文件和提取哈希、运行／故障编号、Schema、sample 解释和处理记录；原始 sample 另存 NPZ。标签通过既有 `experiment_labels` 保存独立版本。
+
+通用分析配置可增加 `training: {fit: {datasetId,range,signalMapping}, calibration: {...}}`，`datasetId/analysisRange/signalMapping` 描述独立测试。`l5.independent` 按原始列名和单位验证映射；TEP 还必须具有相同完整 Schema。重导入同一原始运行仍按 `sequenceId` 识别，不能冒充独立测试。Fit 只读取正常拟合数组，Calibration 决定阈值；测试数据不参与任一步。时序算法还验证三个分区的一致采样周期。
+
+`fit_detector` 复用 `l5.analysis.build_monitor` 和现有九算法；`score_detector` 复用共同的 `score_analysis` 生成原有 AnalysisResult。缺测使用正常 Fit 中位数并服从既有覆盖／abstain 门控；EWMA、CUSUM、DPCA 和 Adaptive Max-Z 的每次独立评分均重启内部历史。原单 Dataset `run_analysis` 保留。CSV 读取采用 round-trip 浮点解析，保证数值导出的双精度往返。
+
+Experiment 的可选 `testDatasets` 定义各独立运行、评价范围、映射和标签版本。版本 2 执行快照增加全部训练／测试 Dataset 哈希、标签和新增引擎文件哈希；版本 1 历史继续读取。worker 在批内按完整训练／算法配置复用拟合，每个测试保留独立任务和结果。普通研究上限仍为 64，独立研究为 256，测试运行最多 32。`external_benchmark` 按批次、故障、算法及固定参数条件汇总，保留计数分母、中位数、范围和失败；不合并参数候选或不同历史批次。
+
+前端 `TEPWorkspace` 提供缓存预检、导入、来源详情及固定案例入口。`IndependentTraining` 复用 Experiment 参数配置；映射控件按需挂载。`TEPBenchmark` 在同一 Experiment 中显示矩阵并选择单运行，之后使用既有 ExperimentComparison、Signal Explorer、AnalysisResult 和 Incident。注入时间以独立真值标记呈现，通用调查不应用 TripLens 18 通道规则。
+
+独立实验报告按实际测试 Dataset 组织原始曲线、标签、模型来源和结果；Incident 报告增加保存的来源与评价。报告读取历史结果，不重算分数。原始数据、缓存和生成 HTML 保留本地，仓库提交固定协议、逐运行结果、摘要和浏览器截图。[完整案例](tep-case-study.md) 与 [复现命令](../examples/tep/README.md) 单独记录。
+
+| API | 用途 |
+|---|---|
+| `GET /api/external/tep/sources` | 已准备的来源及可用独立运行 |
+| `GET /api/external/tep/protocol` | 固定九算法案例配置 |
+| `POST /api/external/tep/preview` | 重新验证所选运行及采样／注入身份 |
+| `POST /api/workspaces/:id/external/tep` | 导入所选运行及独立标签版本 |
+| `POST /api/workspaces/:id/external/tep/experiment` | 复用匹配导入，保存固定 Experiment |
+
 ## Verification and operation
 
 `npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete numerical regeneration is available separately through `npm run verify:artifacts`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI checks Linux and Windows. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.
