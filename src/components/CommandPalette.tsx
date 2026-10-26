@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { useEffect, useId, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Modal } from "./Overlays";
@@ -19,6 +20,7 @@ export function CommandPalette({
   commands: WorkstationCommand[];
   onClose: () => void;
 }) {
+  useLocale();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -47,7 +49,7 @@ export function CommandPalette({
   };
   return (
     <Modal
-      title="Where do you want to go?"
+      title={tr("Where do you want to go?")}
       eyebrow="COMMAND LINE / QUICK NAVIGATION"
       onClose={onClose}
     >
@@ -56,12 +58,12 @@ export function CommandPalette({
         <input
           ref={input}
           role="combobox"
-          aria-label="Search commands"
+          aria-label={tr("Search commands")}
           aria-autocomplete="list"
           aria-expanded="true"
           aria-controls={listId}
           aria-activedescendant={active ? `${listId}-${active.id}` : undefined}
-          placeholder="Search signals, actions, or chapters…"
+          placeholder={tr("Search signals, actions, or chapters…")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -91,7 +93,7 @@ export function CommandPalette({
         id={listId}
         className="command-results"
         role="listbox"
-        aria-label="Available commands"
+        aria-label={tr("Available commands")}
       >
         {matches.map((command, index) => (
           <div
@@ -108,7 +110,7 @@ export function CommandPalette({
             <span className="command-group">{command.group}</span>
             <span className="command-title">{command.title}</span>
             <span className="command-hint">
-              {command.disabled ? "awaiting signals" : command.hint}
+              {command.disabled ? tr("awaiting signals") : command.hint}
             </span>
             {active?.id === command.id && (
               <motion.span
@@ -124,23 +126,20 @@ export function CommandPalette({
         {!matches.length && (
           <div className="command-empty">
             <span aria-hidden="true">∅</span>
-            <strong>No matching commands.</strong>
-            <p>Try “pressure”, “replay”, “bypass”, or a signal tag.</p>
+            <strong>{tr("No matching commands.")}</strong>
+            <p>{tr("Try “pressure”, “replay”, “bypass”, or a signal tag.")}</p>
           </div>
         )}
       </div>
       <div className="command-footer">
         <span>
           <kbd>↑</kbd>
-          <kbd>↓</kbd> navigate
-        </span>
+          <kbd>↓</kbd>{" "}{tr("navigate")}{" "}</span>
         <span>
-          <kbd>↵</kbd> select
-        </span>
+          <kbd>↵</kbd>{" "}{tr("select")}{" "}</span>
         <span>
-          <kbd>ESC</kbd> close
-        </span>
-        <span>{matches.length} commands</span>
+          <kbd>ESC</kbd>{" "}{tr("close")}{" "}</span>
+        <span>{matches.length}{" "}{tr("commands")}</span>
       </div>
     </Modal>
   );

@@ -34,7 +34,7 @@ def route(store, method, parts, body):
 def report(handler, store, identity, query):
     from .experiment_reports import render_experiment_report
     params = parse_qs(query)
-    payload = render_experiment_report(store, identity, params.get('run', [None])[0]).encode('utf-8')
+    payload = render_experiment_report(store, identity, params.get('run', [None])[0], locale=params.get('lang', [None])[0]).encode('utf-8')
     handler.send_response(200)
     handler.send_header('Content-Type', 'text/html; charset=utf-8')
     handler.send_header('Content-Length', str(len(payload)))

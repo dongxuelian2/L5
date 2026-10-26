@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import {
@@ -26,6 +27,7 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  useLocale();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -94,7 +96,7 @@ export function Modal({
           </div>
           <button
             className="close-button"
-            aria-label="Close dialog"
+            aria-label={tr("Close dialog")}
             onClick={onClose}
           >
             × <kbd>ESC</kbd>
@@ -115,14 +117,15 @@ export function SignalInspector({
   time: number;
   onClose: () => void;
 }) {
+  useLocale();
   const tag = scenario.tags.find((t) => t.key === signal)!;
   const point = pointAt(time),
     detection = scenario.detections[signal];
   const available = time >= detection.time;
   return (
     <Modal
-      title={tag.name}
-      eyebrow={`SIGNAL INSPECTOR / ${tag.tag}`}
+      title={tr(tag.name)}
+      eyebrow={tr("SIGNAL INSPECTOR / {0}", {0: tag.tag})}
       onClose={onClose}
     >
       <div className="signal-value">
@@ -132,36 +135,33 @@ export function SignalInspector({
         </span>
         <span className="signal-state">
           <StatusDot tone={available ? "amber" : "mint"} />
-          {available ? "DEVIATION DETECTED" : "WITHIN BASELINE"}
+          {available ? tr("DEVIATION DETECTED") : tr("WITHIN BASELINE")}
         </span>
       </div>
       <TrendChart keys={[signal]} time={time} large />
       <div className="inspect-stats">
         <div>
-          <span>Baseline</span>
+          <span>{tr("Baseline")}</span>
           <strong>
             {tag.baseline} {tag.unit}
           </strong>
         </div>
         <div>
-          <span>First detection</span>
-          <strong>{available ? `+${clock(detection.time)}` : "Pending"}</strong>
+          <span>{tr("First detection")}</span>
+          <strong>{available ? `+${clock(detection.time)}` : tr("Pending")}</strong>
         </div>
         <div>
-          <span>Robust deviation</span>
+          <span>{tr("Robust deviation")}</span>
           <strong>{available ? `${detection.z} σ` : "—"}</strong>
         </div>
       </div>
       <div className="evidence-note">
         <span className="text-mint">└─</span>
         <p>
-          Detection requires four consecutive readings beyond 6× the robust
-          baseline scale (median / MAD). Values above show deviation at the
-          first confirmed detection.
-        </p>
+          {" "}{tr("Detection requires four consecutive readings beyond 6× the robust baseline scale (median / MAD). Values above show deviation at the first confirmed detection.")}{" "}</p>
       </div>
       <div className="modal-footer">
-        <span>{wallClock(time)} · 1 s sampling</span>
+        <span>{wallClock(time)}{" "}{tr("· 1 s sampling")}</span>
         <button
           className="subtle-button"
           onClick={() =>
@@ -181,8 +181,7 @@ export function SignalInspector({
             )
           }
         >
-          Export signal ↓
-        </button>
+          {" "}{tr("Export signal ↓")}{" "}</button>
       </div>
     </Modal>
   );
@@ -195,11 +194,12 @@ export function EvidenceInspector({
   candidateId: string;
   onClose: () => void;
 }) {
+  useLocale();
   const candidate = scenario.candidates.find((c) => c.id === candidateId)!;
   return (
     <Modal
-      title={candidate.name}
-      eyebrow={`EVIDENCE / ${candidate.tag}`}
+      title={tr(candidate.name)}
+      eyebrow={tr("EVIDENCE / {0}", {0: candidate.tag})}
       onClose={onClose}
     >
       <div className="evidence-score">
@@ -208,17 +208,17 @@ export function EvidenceInspector({
           <small>/100</small>
         </span>
         <div>
-          <span className="eyebrow">EVIDENCE SUPPORT</span>
+          <span className="eyebrow">{tr("EVIDENCE SUPPORT")}</span>
           <BlockBar value={candidate.score / 100} count={28} />
         </div>
       </div>
       <div className="evidence-section">
-        <h3 className="text-mint">[+] Supporting observations</h3>
-        <p>{candidate.support}</p>
+        <h3 className="text-mint">{tr("[+] Supporting observations")}</h3>
+        <p>{tr(candidate.support)}</p>
       </div>
       <div className="evidence-section">
-        <h3 className="text-amber">[−] Counter-evidence & uncertainty</h3>
-        <p>{candidate.against}</p>
+        <h3 className="text-amber">{tr("[−] Counter-evidence & uncertainty")}</h3>
+        <p>{tr(candidate.against)}</p>
       </div>
       <div className="evidence-path">
         {scenario.tags.slice(0, 4).map((tag, i) => (
@@ -227,14 +227,14 @@ export function EvidenceInspector({
               {i === 0 ? "┌" : i === 3 ? "└" : "├"}─
             </span>
             <span>{tag.tag}</span>
-            <span>{tag.name}</span>
+            <span>{tr(tag.name)}</span>
             <span className="muted">+{scenario.detections[tag.key].time}s</span>
           </div>
         ))}
       </div>
       <div className="modal-footer">
-        <span>Evidence score ≠ calibrated probability</span>
-        <span className="text-mint">TRACEABLE / 01</span>
+        <span>{tr("Evidence score ≠ calibrated probability")}</span>
+        <span className="text-mint">{tr("TRACEABLE / 01")}</span>
       </div>
     </Modal>
   );
@@ -249,6 +249,7 @@ export function AlarmInspector({
   chainId: string | null;
   onClose: () => void;
 }) {
+  useLocale();
   const [filter, setFilter] = useState(chainId ?? "all");
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState("all");
@@ -262,27 +263,27 @@ export function AlarmInspector({
   );
   return (
     <Modal
-      title="Behind every alarm."
-      eyebrow={`ALARM JOURNAL / ${scenario.id}`}
+      title={tr("Behind every alarm.")}
+      eyebrow={tr("ALARM JOURNAL / {0}", {0: scenario.id})}
       onClose={onClose}
       wide
     >
       <div className="alarm-filters">
         <div className="filter-tabs">
-          {[{ id: "all", name: "All events" }, ...scenario.chains].map((c) => (
+          {[{ id: "all", name: tr("All events") }, ...scenario.chains].map((c) => (
             <button
               key={c.id}
               className={filter === c.id ? "selected" : ""}
               onClick={() => setFilter(c.id)}
             >
-              {c.name}
+              {tr(c.name)}
             </button>
           ))}
         </div>
         <div className="alarm-search">
           <input
-            aria-label="Search alarms"
-            placeholder="/ search tag or message"
+            aria-label={tr("Search alarms")}
+            placeholder={tr("/ search tag or message")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -300,11 +301,11 @@ export function AlarmInspector({
         <table className="alarm-table">
           <thead>
             <tr>
-              <th>TIME</th>
-              <th>TAG</th>
-              <th>LEVEL</th>
-              <th>MESSAGE</th>
-              <th>VALUE</th>
+              <th>{tr("TIME")}</th>
+              <th>{tr("TAG")}</th>
+              <th>{tr("LEVEL")}</th>
+              <th>{tr("MESSAGE")}</th>
+              <th>{tr("VALUE")}</th>
             </tr>
           </thead>
           <tbody>
@@ -322,9 +323,9 @@ export function AlarmInspector({
                   </span>
                 </td>
                 <td>
-                  {event.message}
+                  {tr(event.message)}
                   {event.repeat && (
-                    <span className="repeat-mark" title="Repeated annunciation">
+                    <span className="repeat-mark" title={tr("Repeated annunciation")}>
                       {" "}
                       ↻
                     </span>
@@ -336,12 +337,12 @@ export function AlarmInspector({
           </tbody>
         </table>
         {!events.length && (
-          <div className="empty-state">No events match this view.</div>
+          <div className="empty-state">{tr("No events match this view.")}</div>
         )}
       </div>
       <div className="modal-footer">
         <span>
-          {events.length} events · observed through +{clock(time)}
+          {events.length}{" "}{tr("events · observed through +")}{clock(time)}
         </span>
         <button
           className="subtle-button"
@@ -352,14 +353,14 @@ export function AlarmInspector({
             )
           }
         >
-          Export journal ↓
-        </button>
+          {" "}{tr("Export journal ↓")}{" "}</button>
       </div>
     </Modal>
   );
 }
 
 export function Counterfactual({ onClose }: { onClose: () => void }) {
+  useLocale();
   const [selected, setSelected] = useState(90);
   const [run, setRun] = useState(90);
   const [running, setRunning] = useState(false);
@@ -382,18 +383,16 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
   }
   return (
     <Modal
-      title="Change one moment. Rewrite the outcome."
+      title={tr("Change one moment. Rewrite the outcome.")}
       eyebrow="COUNTERFACTUAL / SAME INITIAL STATE"
       onClose={onClose}
       wide
     >
       <p className="modal-intro">
-        Open an independent cooling bypass and reduce feed. Compare the
-        resulting pressure trajectory with the observed incident.
-      </p>
+        {" "}{tr("Open an independent cooling bypass and reduce feed. Compare the resulting pressure trajectory with the observed incident.")}{" "}</p>
       <div className="intervention-controls">
         <div>
-          <span className="eyebrow">INTERVENE AT</span>
+          <span className="eyebrow">{tr("INTERVENE AT")}</span>
           <div className="segmented">
             {scenario.branches.map((b) => (
               <button
@@ -414,7 +413,7 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
           onClick={simulate}
         >
           <Glyph>{running ? "◌" : "⑂"}</Glyph>
-          {running ? "Comparing trajectories" : "Compare intervention"}
+          {running ? tr("Comparing trajectories") : tr("Compare intervention")}
           <span>↗</span>
         </button>
       </div>
@@ -427,35 +426,33 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
         </span>
         <div>
           <span className="eyebrow">
-            {!running && `AT +${clock(run)} / `}
+            {!running && tr("AT +{0} / ", {0: clock(run)})}
             {running
-              ? "COMPARING BRANCHES"
+              ? tr("COMPARING BRANCHES")
               : branch.trip
-                ? "TIMING IS THE DIFFERENCE"
-                : "A DIFFERENT OUTCOME"}
+                ? tr("TIMING IS THE DIFFERENCE")
+                : tr("A DIFFERENT OUTCOME")}
           </span>
           <strong>
             {running
-              ? "Tracing the alternate trajectory…"
+              ? tr("Tracing the alternate trajectory…")
               : branch.trip
-                ? "Cooling recovers. The threshold is still crossed."
-                : "The cascade can be interrupted."}
+                ? tr("Cooling recovers. The threshold is still crossed.")
+                : tr("The cascade can be interrupted.")}
           </strong>
         </div>
         <span className="verdict-margin">
           {branch.trip ? "+" : "−"}
           {Math.abs(3050 - branch.peakPressure)}
-          <small>kPa {branch.trip ? "above" : "below"} limit</small>
+          <small>kPa {branch.trip ? tr("above") : tr("below")}{" "}{tr("limit")}</small>
         </span>
       </div>
       <div className="compare-legend">
         <span>
-          <i className="bg-coral" /> Observed
-        </span>
+          <i className="bg-coral" />{" "}{tr("Observed")}{" "}</span>
         <span>
-          <i className="bg-mint" /> With intervention
-        </span>
-        <span className="muted">REACTOR PRESSURE / kPa</span>
+          <i className="bg-mint" />{" "}{tr("With intervention")}{" "}</span>
+        <span className="muted">{tr("REACTOR PRESSURE / kPa")}</span>
       </div>
       <motion.div
         key={run}
@@ -472,18 +469,17 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
       </motion.div>
       <div className="compare-outcomes">
         <div>
-          <span className="eyebrow text-coral">OBSERVED TRAJECTORY</span>
+          <span className="eyebrow text-coral">{tr("OBSERVED TRAJECTORY")}</span>
           <strong>
             {peak.toLocaleString()} <small>kPa</small>
           </strong>
           <span>
-            <StatusDot tone="coral" /> Trip threshold exceeded at +
-            {clock(scenario.tripTime)}
+            <StatusDot tone="coral" />{" "}{tr("Trip threshold exceeded at +")}{" "}{clock(scenario.tripTime)}
           </span>
         </div>
         <div>
           <span className="eyebrow text-mint">
-            INTERVENTION AT +{clock(run)}
+            {" "}{tr("INTERVENTION AT +")}{clock(run)}
           </span>
           <strong className="text-mint">
             {branch.peakPressure.toLocaleString()} <small>kPa</small>
@@ -491,32 +487,30 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
           <span>
             <StatusDot tone={branch.trip ? "amber" : "mint"} />
             {branch.trip
-              ? "Too late to avoid the trip threshold"
-              : "Pressure stays below the trip threshold"}
+              ? tr("Too late to avoid the trip threshold")
+              : tr("Pressure stays below the trip threshold")}
           </span>
         </div>
         <div>
-          <span className="eyebrow">PEAK REDUCTION</span>
+          <span className="eyebrow">{tr("PEAK REDUCTION")}</span>
           <strong>
             −{delta} <small>kPa</small>
           </strong>
           <span>
-            {scenario.alarms.length - branch.alarms} fewer alarm events
-          </span>
+            {scenario.alarms.length - branch.alarms}{" "}{tr("fewer alarm events")}{" "}</span>
         </div>
       </div>
       <div className="evidence-note">
         <span className="text-mint">└─</span>
         <p>
           {branch.trip
-            ? "Timing matters. This intervention lowers the final pressure, but the process still crosses 3,050 kPa before cooling recovers."
-            : "Earlier cooling recovery interrupts the thermal cascade. The failed valve remains stuck; the independent bypass restores flow."}
+            ? tr("Timing matters. This intervention lowers the final pressure, but the process still crosses 3,050 kPa before cooling recovers.")
+            : tr("Earlier cooling recovery interrupts the thermal cascade. The failed valve remains stuck; the independent bypass restores flow.")}
         </p>
       </div>
       <div className="modal-footer">
         <span>
-          Reduced-order process model · identical prefix · 1 s integration
-        </span>
+          {" "}{tr("Reduced-order process model · identical prefix · 1 s integration")}{" "}</span>
         <button
           className="subtle-button"
           onClick={() =>
@@ -535,34 +529,31 @@ export function Counterfactual({ onClose }: { onClose: () => void }) {
             )
           }
         >
-          Export comparison ↓
-        </button>
+          {" "}{tr("Export comparison ↓")}{" "}</button>
       </div>
     </Modal>
   );
 }
 
 export function Help({ onClose }: { onClose: () => void }) {
+  useLocale();
   return (
     <Modal
-      title="Your incident workstation."
+      title={tr("Your incident workstation.")}
       eyebrow="TRIPLENS / QUICK REFERENCE"
       onClose={onClose}
     >
       <div className="help-body">
         <p>
-          Start a sequence to watch one cooling-loop fault propagate. Inspect
-          any signal, follow the alarm chains, then compare a different
-          intervention time.
-        </p>
+          {" "}{tr("Start a sequence to watch one cooling-loop fault propagate. Inspect any signal, follow the alarm chains, then compare a different intervention time.")}{" "}</p>
         <div className="help-keys">
           {[
-            ["Space", "Play or pause"],
-            ["Ctrl / ⌘ K", "Search commands, signals and chapters"],
-            ["1 / 2 / 3 / 4 / 5", "Live / Investigate / Learn / Replay / Lab"],
-            ["R", "Restart the sequence"],
-            ["?", "Open this reference"],
-            ["Esc", "Close a dialog"],
+            ["Space", tr("Play or pause")],
+            ["Ctrl / ⌘ K", tr("Search commands, signals and chapters")],
+            ["1 / 2 / 3 / 4 / 5", tr("Live / Investigate / Learn / Replay / Lab")],
+            ["R", tr("Restart the sequence")],
+            ["?", tr("Open this reference")],
+            ["Esc", tr("Close a dialog")],
           ].map(([key, action]) => (
             <div key={key}>
               <kbd>{key}</kbd>
@@ -571,10 +562,7 @@ export function Help({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <p className="muted">
-          The timeline is keyboard accessible. Use the arrow keys when the
-          scrubber is focused. Animations respect your system’s reduced-motion
-          preference.
-        </p>
+          {" "}{tr("The timeline is keyboard accessible. Use the arrow keys when the scrubber is focused. Animations respect your system’s reduced-motion preference.")}{" "}</p>
       </div>
     </Modal>
   );

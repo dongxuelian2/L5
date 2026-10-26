@@ -110,6 +110,17 @@ class ExperimentTests(unittest.TestCase):
         self.assertNotIn('<script>test', report)
         self.assertIn(run['snapshot']['dataset']['sha256'], report)
         self.assertIn('Sample evaluation', report)
+        chinese = render_experiment_report(self.store, experiment['id'], locale='zh-CN')
+        english = render_experiment_report(self.store, experiment['id'], locale='en')
+        self.assertIn('<html lang="zh-CN">', chinese)
+        self.assertIn('样本评价', chinese)
+        self.assertIn('研究笔记与结论', chinese)
+        self.assertIn('PCA comparison', chinese)  # Authored conclusion stays verbatim.
+        self.assertIn('&lt;script&gt;test&lt;/script&gt;', chinese)
+        self.assertIn('<html lang="en">', english)
+        self.assertIn('Sample evaluation', english)
+        self.assertEqual(chinese.count('<svg'), english.count('<svg'))
+        self.assertEqual(self.service.run(run['id']), run)
         reopened = WorkspaceStore(Path(self.temp.name)).experiments
         self.assertEqual(reopened.run(run['id']), run)
         self.assertEqual(reopened.get(experiment['id'])['conclusion_run_ids'], [run['id']])

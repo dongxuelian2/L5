@@ -1,3 +1,5 @@
+import { errorMessage } from "../i18n/errors";
+import { t as tr, useLocale } from "../i18n";
 import { memo, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cachedSeries } from "./seriesCache";
 import { namedSignal, number, timeLabel, type Dataset, type Interval, type TimeAxis } from "./types";
@@ -19,14 +21,15 @@ function plotIndexes(values: (number | null)[]) {
 }
 
 type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = "threshold", selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
   times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
 }) {
+  useLocale();
   const [hover, setHover] = useState<number | null>(null);
   if (!times.length) return null;
   let low = Infinity, high = -Infinity;
   for (const line of [{ values }, ...overlays]) for (const value of line.values) if (value != null) { low = Math.min(low, value); high = Math.max(high, value); }
-  if (!Number.isFinite(low)) return <div className="ws-notice">{title}: no measured values in this window.</div>;
+  if (!Number.isFinite(low)) return <div className="ws-notice">{title}{tr(": no measured values in this window.")}</div>;
   if (domain) [low, high] = domain;
   if (threshold !== undefined) { low = Math.min(domain ? low : 0, low, threshold); high = Math.max(high, threshold); }
   const margin = Math.max((high - low) * .08, Math.abs(high) * .002, .001);
@@ -48,8 +51,8 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
   }
   const active = hover != null && hover < times.length ? hover : null;
   return <figure className="ws-plot">
-    <figcaption><span><i style={{ background: color }} />{title}</span><span className="ws-muted">{active == null ? `${times.length.toLocaleString()} displayed points` : `${timeLabel(axis, times[active])} · ${values[active] == null ? "missing" : number(values[active]!)}`}</span></figcaption>
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} time series${threshold === undefined ? "" : `, threshold ${number(threshold)}`}`} onClick={() => { if (hover != null && onSelectTime) onSelectTime(times[hover]); }}
+    <figcaption><span><i style={{ background: color }} />{title}</span><span className="ws-muted">{active == null ? tr("{0} displayed points", {0: times.length.toLocaleString()}) : `${timeLabel(axis, times[active])} · ${values[active] == null ? tr("missing") : number(values[active]!)}`}</span></figcaption>
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr("{0} time series{1}", {0: title, 1: threshold === undefined ? "" : tr(", threshold {0}", {0: number(threshold)})})} onClick={() => { if (hover != null && onSelectTime) onSelectTime(times[hover]); }}
       onPointerLeave={() => setHover(null)} onPointerMove={e => {
         const rect = e.currentTarget.getBoundingClientRect();
         const t = first + Math.max(0, Math.min(1, ((e.clientX - rect.left) / rect.width * W - L) / (W - L - R))) * span;
@@ -60,7 +63,7 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       <title>{title}{threshold !== undefined ? ` — ${thresholdLabel} ${number(threshold)}` : ""}</title>
       {[0, .5, 1].map(f => <g key={f}><line x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} stroke="#30392d" strokeDasharray="3 5" /><text x={L - 10} y={T + f * (H - T - B) + 4} textAnchor="end">{number(high - f * (high - low))}</text></g>)}
       {intervals.filter(i => i.end >= first && i.start <= last).map((interval, i) => <rect key={i} x={x(Math.max(first, interval.start))} width={Math.max(2, x(Math.min(last, interval.end)) - x(Math.max(first, interval.start)))} y={T} height={H - T - B} fill="#e9927d" opacity=".14" />)}
-      {gaps.filter(g => g.end >= first && g.start <= last).map((gap, i) => <rect key={`gap-${i}`} data-quality-gap="true" x={x(Math.max(first, gap.start))} width={Math.max(2, x(Math.min(last, gap.end)) - x(Math.max(first, gap.start)))} y={T} height={H - T - B} fill="#e2bc75" opacity=".13"><title>Sampling gap</title></rect>)}
+      {gaps.filter(g => g.end >= first && g.start <= last).map((gap, i) => <rect key={`gap-${i}`} data-quality-gap="true" x={x(Math.max(first, gap.start))} width={Math.max(2, x(Math.min(last, gap.end)) - x(Math.max(first, gap.start)))} y={T} height={H - T - B} fill="#e2bc75" opacity=".13"><title>{tr("Sampling gap")}</title></rect>)}
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       {markers.filter(m => m.time >= first && m.time <= last).map(m => <g key={m.time} data-truth-onset={m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
       <path d={pathFor(times, values, segmentIds)} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
@@ -73,6 +76,7 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
 });
 
 export function SignalPlots({ dataset, signals, range, intervals, selectedTime, onSelectTime }: { dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[]; selectedTime?: number; onSelectTime?: (time: number) => void }) {
+  useLocale();
   const start = range?.[0], end = range?.[1];
   const cache = useMemo(() => cachedSeries(dataset.id, start === undefined || end === undefined ? undefined : [start, end]), [dataset.id, start, end]);
   useSyncExternalStore(cache.subscribe, cache.snapshot, cache.snapshot);
@@ -83,15 +87,15 @@ export function SignalPlots({ dataset, signals, range, intervals, selectedTime, 
     // Finish requests even if a signal is hidden meanwhile: the result warms its cache.
     void cache.load(JSON.parse(wanted));
   }, [cache, wanted]);
-  if (!signals.length) return <p className="ws-muted">Select signals to plot.</p>;
+  if (!signals.length) return <p className="ws-muted">{tr("Select signals to plot.")}</p>;
   const preview = signals.map(name => cache.signals.get(name)).find(data => data && data.displayRows < data.sourceRows);
   return <div className="ws-signal-plots">{signals.map(name => {
     const data = cache.signals.get(name), error = cache.errors.get(name);
-    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={namedSignal(dataset, name)} axis={dataset.metadata.time} markers={dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: "Published fault onset" }]} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
+    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={namedSignal(dataset, name)} axis={dataset.metadata.time} markers={dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: tr("Published fault onset") }]} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
       <figure className="ws-plot ws-plot-pending" key={name}><figcaption>{name}</figcaption><div className="ws-plot-placeholder">
-        {error ? <div role="alert"><p>{error}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>Retry signal</button></div> : <span role="status">Loading {name}…</span>}
+        {error ? <div role="alert"><p>{errorMessage(error)}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>{tr("Retry signal")}</button></div> : <span role="status">{tr("Loading")}{" "}{name}…</span>}
       </div></figure>;
   })}
-    {preview && <p className="ws-muted">Overview preserves extrema · {preview.sourceRows.toLocaleString()} source rows. Analysis uses every selected row.</p>}
+    {preview && <p className="ws-muted">{tr("Overview preserves extrema ·")}{" "}{preview.sourceRows.toLocaleString()}{" "}{tr("source rows. Analysis uses every selected row.")}</p>}
   </div>;
 }

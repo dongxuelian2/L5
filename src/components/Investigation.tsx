@@ -1,3 +1,5 @@
+import { errorMessage } from "../i18n/errors";
+import { t as tr, useLocale } from "../i18n";
 import { AnimatePresence, motion } from "motion/react";
 import { scenario } from "../lib/engine";
 import type { IncidentBrief } from "../types";
@@ -14,13 +16,14 @@ export function RootCauses({
   onSelect: (id: string) => void;
   onInspect: () => void;
 }) {
+  useLocale();
   const candidate = scenario.candidates.find((c) => c.id === selected)!;
   return (
     <Panel
       code="02"
-      title="Root-cause ranking"
+      title={tr("Root-cause ranking")}
       className="root-panel"
-      action={<span className="panel-meta">evidence score / 100</span>}
+      action={<span className="panel-meta">{tr("evidence score / 100")}</span>}
     >
       <div className="ranking-list">
         {scenario.candidates.map((c, index) => (
@@ -31,9 +34,9 @@ export function RootCauses({
           >
             <span className="candidate-index">0{index + 1}</span>
             <div className="candidate-body">
-              <span className="candidate-name">{c.name}</span>
+              <span className="candidate-name">{tr(c.name)}</span>
               <span className="candidate-meta">
-                {c.tag} <span>·</span> {ready ? c.status : "Awaiting evidence"}
+                {c.tag} <span>·</span> {ready ? tr(c.status) : tr("Awaiting evidence")}
               </span>
               <BlockBar
                 value={ready ? c.score / 100 : 0}
@@ -61,15 +64,15 @@ export function RootCauses({
         >
           <div className="eyebrow">
             <span className="text-mint">└─</span>{" "}
-            {ready ? "WHY THIS RANKS HERE" : "LISTENING TO THE PROCESS"}
+            {ready ? tr("WHY THIS RANKS HERE") : tr("LISTENING TO THE PROCESS")}
           </div>
           <p>
             {ready
-              ? candidate.support
-              : "Baseline signals are stable. Ranking begins after the propagation path becomes observable."}
+              ? tr(candidate.support)
+              : tr("Baseline signals are stable. Ranking begins after the propagation path becomes observable.")}
           </p>
           <button className="text-button" onClick={onInspect} disabled={!ready}>
-            Inspect evidence <Glyph>↗</Glyph>
+            {" "}{tr("Inspect evidence")}{" "}<Glyph>↗</Glyph>
           </button>
         </motion.div>
       </AnimatePresence>
@@ -96,23 +99,24 @@ export function AnalystPanel({
   onCompare: () => void;
   ready: boolean;
 }) {
+  useLocale();
   const complete = !!brief && !running;
   return (
     <Panel
       code="04"
-      title="Incident analyst"
+      title={tr("Incident analyst")}
       className="analyst-panel"
       action={
         <span className="panel-meta">
           <StatusDot tone={running ? "amber" : "mint"} pulse={running} />{" "}
-          {running ? "investigating" : complete ? "brief ready" : "ready"}
+          {running ? tr("investigating") : complete ? tr("brief ready") : tr("ready")}
         </span>
       }
     >
       <div className="analyst-content">
         <div className="analyst-prompt">
           <span className="text-mint">❯</span>
-          <span>{scenario.analyst.prompt}</span>
+          <span>{tr(scenario.analyst.prompt)}</span>
           <span className="prompt-return">↵</span>
         </div>
         {!brief && !running && (
@@ -126,17 +130,15 @@ export function AnalystPanel({
             </div>
             <div>
               <p>
-                Follow the evidence.
-                <br />
+                {" "}{tr("Follow the evidence.")}{" "}<br />
                 <span className="muted">
-                  Connect the signals to the source.
-                </span>
+                  {" "}{tr("Connect the signals to the source.")}{" "}</span>
               </p>
               <button className="text-button" onClick={onRun} disabled={!ready}>
-                Investigate incident <Glyph>↗</Glyph>
+                {" "}{tr("Investigate incident")}{" "}<Glyph>↗</Glyph>
               </button>
               {!ready && (
-                <span className="hint">Waiting for downstream signals</span>
+                <span className="hint">{tr("Waiting for downstream signals")}</span>
               )}
             </div>
           </div>
@@ -151,13 +153,13 @@ export function AnalystPanel({
                 <span>{i < step ? "✓" : i === step ? "◈" : "·"}</span>
                 <span>
                   {i === step ? (
-                    <ScrambleText text={item.action} />
+                    <ScrambleText text={!brief || brief.provider === "local" ? tr(item.action) : item.action} />
                   ) : (
-                    item.action
+                    !brief || brief.provider === "local" ? tr(item.action) : item.action
                   )}
                 </span>
                 <span className="step-tool">
-                  {i < step ? "done" : i === step ? "running" : "queued"}
+                  {i < step ? tr("done") : i === step ? tr("running") : tr("queued")}
                 </span>
               </div>
             ))}
@@ -169,13 +171,13 @@ export function AnalystPanel({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="eyebrow text-mint">✓ EVIDENCE CONNECTED</div>
-            <p>{brief.summary}</p>
+            <div className="eyebrow text-mint">{tr("✓ EVIDENCE CONNECTED")}</div>
+            <p>{brief.provider === "local" ? tr(brief.summary) : brief.summary}</p>
             <details className="analyst-evidence-trail">
               <summary>
-                <span>Read the evidence trail</span>
+                <span>{tr("Read the evidence trail")}</span>
                 <span>
-                  {brief.steps.length} checks <span aria-hidden="true">+</span>
+                  {brief.steps.length}{" "}{tr("checks")}{" "}<span aria-hidden="true">+</span>
                 </span>
               </summary>
               <div>
@@ -183,33 +185,30 @@ export function AnalystPanel({
                   <div className="trail-step" key={item.tool}>
                     <span className="trail-step-index">0{i + 1}</span>
                     <div>
-                      <strong>{item.action}</strong>
-                      <p>{item.result}</p>
+                      <strong>{brief.provider === "local" ? tr(item.action) : item.action}</strong>
+                      <p>{brief.provider === "local" ? tr(item.result) : item.result}</p>
                     </div>
                   </div>
                 ))}
                 <div className="trail-limit">
                   <span className="text-amber">◇</span>
-                  <p>{brief.limitation}</p>
+                  <p>{brief.provider === "local" ? tr(brief.limitation) : brief.limitation}</p>
                 </div>
               </div>
             </details>
             <div className="analyst-actions">
               <button className="text-button" onClick={onCompare}>
-                Test an intervention ↗
-              </button>
+                {" "}{tr("Test an intervention ↗")}{" "}</button>
               <button className="subtle-button" onClick={onExport}>
-                Export brief ↓
-              </button>
+                {" "}{tr("Export brief ↓")}{" "}</button>
             </div>
           </motion.div>
         )}
         {error && (
           <div className="error-message" role="alert">
-            {error}
+            {errorMessage(error)}
             <button onClick={onRun} className="text-button">
-              Retry ↻
-            </button>
+              {" "}{tr("Retry ↻")}{" "}</button>
           </div>
         )}
       </div>
@@ -217,8 +216,8 @@ export function AnalystPanel({
         <span>
           <span className="text-violet">◇</span>{" "}
           {complete
-            ? `${brief.steps.length} evidence steps · structured brief`
-            : "Signals → topology → evidence → conclusion"}
+            ? tr("{0} evidence steps · structured brief", {0: brief.steps.length})
+            : tr("Signals → topology → evidence → conclusion")}
         </span>
         <span className="cursor-block" aria-hidden="true">
           ▊

@@ -100,6 +100,8 @@ npm run serve
 
 Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). The default engine runs locally; prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
 
+Use **中文 / EN** at the top right to switch languages immediately. The browser remembers your choice, while routes, form edits and running analyses stay intact. Interface copy, system messages, example explanations and newly generated offline reports follow the selected language; user input, signal identifiers and original technical records remain verbatim. See the [development conventions](docs/development.md) for source and research artifact maintenance.
+
 For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
 
 Projects live in `data/` by default: SQLite stores metadata and investigation records; CSV, NumPy arrays and result files retain numerical evidence. Restart with the same directory to continue. Set `L5_DATA_DIR` or choose a directory explicitly:
