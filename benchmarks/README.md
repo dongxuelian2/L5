@@ -5,7 +5,7 @@ The sections below preserve the chronological research record, including unsucce
 This is a growing **external validation track** for L5, independent of the
 TripLens synthetic incident engine. Stage 1 imported the data; stage 2 adds
 three baseline detectors, chronological training, explicit evaluation
-protocols, auditable metrics and reproducible manual runs on the original reference
+protocols, auditable metrics and reproducible local research execution on the original reference
 files.
 
 ## Reproduce a full 21-fault reference evaluation
@@ -35,7 +35,7 @@ workflow artifacts for 30 days.
 
 The reference mirror is pinned to commit
 `9a6c8e5fcef4a2850778704e7793c87b0a187005` to prevent unnoticed data drift.
-Downloads are opt-in through the command above or the dedicated external manual runs
+Downloads are opt-in through the command above or the dedicated external local research execution
 workflow. **No third-party DAT files are checked in**, and the L5 web app
 requires neither NumPy nor an external model/API key.
 
@@ -280,7 +280,7 @@ the original Max-Z / PCA-Q / PCA-T2 baselines use those identical rules.
     python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --output-dir /tmp/tep-temporal
     python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --faults 1 --alpha .01
 
-The full 21-fault reference manual runs generates tep_temporal_comparison.json and
+The full 21-fault reference local research execution generates tep_temporal_comparison.json and
 tep_temporal_comparison.md in the same artifact as all previous reports.
 These show early (60-minute) fault detections, eventual detections,
 **healthy alarm episodes**, alarm-active samples and delay conditional
@@ -421,7 +421,7 @@ and any early-hit loss is reported plainly. The evaluation does not learn
 a production safety rule or propose unattended plant actuation.
 
 Output artifacts: tep_drift_recovery_report.json and
-tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault manual runs.
+tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault local research execution.
 
 ## Causal dynamic PCA: multivariate time-lag structure (stage 9)
 
@@ -542,7 +542,7 @@ algorithm based on these reused held-out fault outcomes.
 
 Artifacts: tep_normal_budget_validation.json and
 tep_normal_budget_scoreboard.md, attached to the pinned public
-21-fault GitHub manual runs run.
+21-fault GitHub local research execution run.
 
 ## Separately seeded TEP normal trajectories: Rieth external replication (stage 11)
 
@@ -560,7 +560,7 @@ TEP_FaultFree_Training.RData (~24MB) and
 TEP_FaultFree_Testing.RData (~45MB). The near-gigabyte fault datasets
 are never downloaded or consulted. The Dataverse page uses **custom
 dataset terms**, so this repository redistributes **no** underlying
-sensor data. The external manual runs reports persistent file IDs, actual
+sensor data. The external local research execution reports persistent file IDs, actual
 SHA-256 and file sizes, and rejects incomplete or mixed simulation runs,
 nonfinite features, feature reordering and fault-labeled records.
 
