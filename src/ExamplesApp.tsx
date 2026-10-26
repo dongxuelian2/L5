@@ -174,7 +174,7 @@ export default function ExamplesApp() {
       setAnalysisError(
         error instanceof Error
           ? error.message
-          : tr("Unable to complete the investigation."),
+          : "Unable to complete the investigation.",
       );
     }
   }, []);
@@ -324,7 +324,7 @@ export default function ExamplesApp() {
     },
     ...scenario.tags.map((tag) => ({
       id: tag.key,
-      title: tag.name,
+      title: tr(tag.name),
       group: "SIGNAL",
       hint: tag.tag,
       keywords: tag.tag,
@@ -758,7 +758,7 @@ export default function ExamplesApp() {
                           >
                             <span className="chain-number">0{i + 1}</span>
                             <div>
-                              <strong>{chain.name}</strong>
+                              <strong>{tr(chain.name)}</strong>
                               <span>
                                 {chain.path
                                   .map(
@@ -813,7 +813,7 @@ export default function ExamplesApp() {
                                 }
                               >
                                 <i className={`bg-${tag.color}`} />
-                                {tag.name}
+                                {tr(tag.name)}
                                 <span>{point[key].toFixed(tag.precision)}</span>
                               </button>
                             );
@@ -917,7 +917,7 @@ export default function ExamplesApp() {
                     </span>
                     <span>
                       {alarms.length
-                        ? alarms[alarms.length - 1].message
+                        ? tr(alarms[alarms.length - 1].message)
                         : tr("All process signals within baseline. Awaiting disturbance.")}
                     </span>
                     <button

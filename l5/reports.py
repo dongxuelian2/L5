@@ -1,7 +1,7 @@
-"""Standalone Chinese incident reports. All figures are inline SVG from saved data."""
+"""Standalone localized incident reports. Figures are inline SVG from saved data."""
 from __future__ import annotations
 
-from .report_locale import fragment as r, localized_report, text as report_text
+from .report_locale import fragment as r, localized_report, text as report_text, local_brief_summary
 
 from datetime import datetime, timezone
 from html import escape
@@ -71,7 +71,8 @@ def parameters(value):
     return table([r('参数'), r('保存值')], [[e(labels.get(k, k)), e(json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else r('未记录') if v is None else v)] for k, v in value.items()], 'parameters')
 
 
-def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit=r('原始值（源数据未提供单位）'), domain=None, markers=()):
+def chart(title, times, lines, *, axis=None, threshold=None, intervals=(), unit=None, domain=None, markers=()):
+    unit = unit if unit is not None else r('原始值（源数据未提供单位）')
     valid = [v for line in lines for v in line['values'] if v is not None and math.isfinite(v)]
     if not times or not valid:
         return f"<p>{e(title)}{r('：此窗口没有可显示的观测值。</p>')}"
@@ -141,7 +142,7 @@ def lanes(analyses, axis):
     svg = [f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 {height}{r('" role="img" aria-label="检测区间对比"><title>各关联分析的异常区间</title>')}"""]
     for index, a in enumerate(analyses):
         yy = 10 + index*36
-        label = a['result']['algorithmLabel']
+        label = report_text(a['result']['algorithmLabel'])
         svg.append(f'<text x="0" y="{yy + 14}">{e(label[:22])} [{index + 1}]</text><line x1="180" x2="730" y1="{yy + 10}" y2="{yy + 10}" stroke="#dce3e6"/>')
         for i in a['intervals']:
             svg.append(f'''<rect x="{x(i['start']):.2f}" y="{yy}" width="{max(3, x(i['end']) - x(i['start'])):.2f}" height="20" rx="2" fill="#327e74"/><circle cx="{x(i['peakTime']):.2f}" cy="{yy + 10}" r="3" fill="#e3ad46"/>''')
@@ -178,9 +179,19 @@ pre { font:10px/1.5 Consolas,"Microsoft YaHei",monospace; white-space:pre-wrap; 
 def render_report(store, identity):
     view = investigation(store, identity)
     incident, workspace = view['incident'], view['workspace']
-    axes = {a['id']: a for a in view['axes']}
+    axes = {a['id']: {**a, 'label': r('UTC absolute time') if a['origin'] else
+                     r('事件独立时间轴') if a['id'].startswith('incident:') else a['label']}
+            for a in view['axes']}
     datasets = {d['id']: d for d in view['datasets']}
     analysis_datasets = {a['id']: a['datasetId'] for a in view['analyses']}
+    def event_title(item):
+        if item['kind'] == 'alarm':
+            analysis = next(a for a in view['analyses'] if a['id'] == item['analysisId'])
+            return report_text(analysis['result']['algorithmLabel']) + r(' · Anomaly interval')
+        if item['id'].startswith('truth:'):
+            external = datasets[item['id'][6:]]['metadata']['external']
+            return r('Published dataset fault ') + str(external['faultNumber']) + r(' · sample ') + str(external['faultOnsetSample'])
+        return report_text(item['title']) if item['kind'] in ('status', 'conclusion', 'experiment', 'investigation') else item['title']
     def signal_label(dataset_id, name):
         column = next((c for c in datasets[dataset_id]['metadata']['columns'] if c['name'] == name), {})
         return (column.get('displayName') or name) + (f" ({column['unit']})" if column.get('unit') else '')
@@ -195,33 +206,33 @@ def render_report(store, identity):
         r('<div class="summary"><h3>事件概述</h3>') + prose(incident['description']) + r('<h3>已记录结论</h3>') + prose(incident['conclusion']) + '</div>',
         r('<p class="muted">本报告读取已持久化的事件、分析结果、原始测量和调查记录。未填写的判断保持未记录。不同算法分数使用各自原始尺度；贡献度表示统计关联。带时区的数据按 UTC 对齐；相对时间源使用已保存的显式参考与偏移，否则保留独立时钟。</p>'),
         r('<h2>1. 事件时间线</h2>')]
-    for axis in view['axes']:
+    for axis in axes.values():
         events = [v for v in view['events'] if v['axisId'] == axis['id'] and v['start'] is not None]
         if not events:
             continue
         parts.append('<h3>' + e(axis['label']) + '</h3>')
         rows = []
         for item in events:
-            detail = item.get('content', '')
+            detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
             if item['kind'] == 'alarm':
                 detail = f"{r('峰值 ')}{timestamp(item['peakTime'], axis)}{r('；原始分数 ')}{n(item['peakScore'])}{r('；变量：')}" + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
             if item.get('observationWindow'):
-                detail = r('观察窗口 ') + ' - '.join(n(v) for v in item['observationWindow']) + ' s；' + str(item.get('hypothesis') or '')
+                detail = r('观察窗口 ') + ' - '.join(n(v) for v in item['observationWindow']) + ' s；' + report_text(item.get('hypothesis') or '')
                 if item.get('actionAt') is not None:
                     detail += r('；干预执行 ') + n(item['actionAt']) + ' s'
             target = 'entry-' + item['entryId'] if item.get('entryId') else 'analysis-' + item['analysisId'] if item.get('analysisId') else 'source-' + item.get('linkId', '')
             time = timestamp(item['start'], axis) + (' → ' + timestamp(item['end'], axis) if item['end'] != item['start'] else '')
-            rows.append([e(time), f"""<a href="#{e(target)}">{e(report_text(KINDS.get(item['kind'], item['kind'])))} · {e(item['title'])}</a>""", e(detail), e(recorded_time(item['recordedAt']) if item.get('recordedAt') else r('事件范围'))])
+            rows.append([e(time), f"""<a href="#{e(target)}">{e(report_text(KINDS.get(item['kind'], item['kind'])))} · {e(event_title(item))}</a>""", e(detail), e(recorded_time(item['recordedAt']) if item.get('recordedAt') else r('事件范围'))])
         parts.append('<div class="timeline">' + table([r('实际观察时间 / 区间'), r('记录'), r('内容'), r('记录创建时间')], rows) + '</div>')
     parts.append(r('<h3>调查操作与未标注观察时间的记录</h3>'))
     recorded = sorted([v for v in view['events'] if v['start'] is None], key=lambda v: v.get('recordedAt', ''))
     rows = []
     labels = {'status': r('状态'), 'conclusion': r('结论'), 'title': r('标题'), 'description': r('概述'), 'start_time': r('开始时间'), 'end_time': r('结束时间'), 'time_origin': r('时间原点'), 'time_axis_key': r('时间来源')}
     for item in recorded:
-        detail = item.get('content', '')
+        detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
         if item.get('changes'):
             detail = '\n'.join(labels.get(k, k) + '：' + str(report_text(STATUS.get(v['before'], v['before'])) if k == 'status' and v['before'] is not None else v['before'] if v['before'] is not None else r('未设置')) + ' → ' + str(report_text(STATUS.get(v['after'], v['after'])) if k == 'status' else v['after']) for k, v in item['changes'].items())
-        rows.append([e(recorded_time(item['recordedAt'])), e(item['title']), '<span class="prose">' + e(detail) + '</span>'])
+        rows.append([e(recorded_time(item['recordedAt'])), e(event_title(item)), '<span class="prose">' + e(detail) + '</span>'])
     parts.append(table([r('记录时间（与设备观察时间分开）'), r('调查操作'), r('保存内容 / 变更')], rows) if rows else r('<p>没有此类记录。</p>'))
     parts.append(r('<h2>2. 监测与分析比较</h2><p class="muted">统计只计算本事件关联的区间；关联完整分析时纳入其全部区间。持续时间为首末样本时间差，单点报警为 0 s。共同／独有区间仅在各分析共同有有效观测的时间内判断，abstain 或窗口外不作为未报警。</p>'))
     for group in view['comparisons']:
@@ -230,7 +241,7 @@ def render_report(store, identity):
         parts.append('<h3>' + e(axis['label']) + '</h3>')
         parts.append(lanes(members, axis))
         parts.append(table([r('分析 / 数据集'), r('范围'), r('首次报警 / 峰值时间'), r('区间数 / 持续时间'), r('原始峰值 / 阈值'), r('主要变量')], [
-            [f"""<a href="#analysis-{a['id']}">{e(a['result']['name'])}</a><br>{e(a['datasetName'])}<br>{e(a['result']['algorithmLabel'])}""", e(a['scope']),
+            [f"""<a href="#analysis-{a['id']}">{e(a['result']['name'])}</a><br>{e(a['datasetName'])}<br>{e(report_text(a['result']['algorithmLabel']))}""", e(report_text(a['scope'])),
              e(timestamp(min((i['start'] for i in a['intervals']), default=None), axis)) + '<br>' + e(timestamp(max(a['intervals'], key=lambda i: i['peakScore'])['peakTime'], axis) if a['intervals'] else r('未检出')),
              str(len(a['intervals'])) + ' / ' + n(sum(i['end']-i['start'] for i in a['intervals'])) + ' s',
              n(max((i['peakScore'] for i in a['intervals']), default=None)) + ' / ' + n(a['result']['threshold']),
@@ -247,7 +258,7 @@ def render_report(store, identity):
     parts.append(r('<h2>3. 关键曲线、检测指标与变量贡献</h2>'))
     for a in view['analyses']:
         result, axis = a['result'], axes[a['axisId']]
-        parts.append(f"""<h3 id="analysis-{a['id']}">{e(result['name'])} · {e(result['algorithmLabel'])}</h3>""")
+        parts.append(f"""<h3 id="analysis-{a['id']}">{e(result['name'])} · {e(report_text(result['algorithmLabel']))}</h3>""")
         external = result.get('external') or datasets[a['datasetId']]['metadata'].get('external')
         onset = external.get('faultOnsetSeconds') if external else None
         markers = [dict(time=onset+a['offset'], label=r('数据集已知故障注入'))] if onset is not None else []
@@ -263,7 +274,7 @@ def render_report(store, identity):
         times = [t + a['offset'] for t in result['times']]
         scores = [None if result.get('states', [])[i:i+1] == ['abstain'] else v for i, v in enumerate(result['scores'])]
         segments = segment_ids(np.asarray(times), np.asarray([np.nan if v is None else v for v in scores]), datasets[a['datasetId']]['metadata']['quality']['gapThreshold']).tolist()
-        parts.append(chart(r('异常分数与固定阈值 · ') + a['datasetName'], times, [dict(label=result['algorithmLabel'], values=scores, segmentIds=segments, color='#b45742')],
+        parts.append(chart(r('异常分数与固定阈值 · ') + a['datasetName'], times, [dict(label=report_text(result['algorithmLabel']), values=scores, segmentIds=segments, color='#b45742')],
                            axis=axis, threshold=result['threshold'], intervals=a['intervals'], markers=markers, unit=r('算法原始分数（各方法尺度独立）')))
         summary = result['summary']
         parts.append(f"""{r('<p class="muted">拟合 ')}{summary['fitSamples']}{r(' 样本；校准 ')}{summary['calibrationSamples']}{r(' 样本；分析 ')}{summary['analysisSamples']}{r(' 样本；报警 ')}{summary['flaggedSamples']}{r(' 样本；abstain ')}{summary.get('abstainedSamples', 0)}{r(' 样本。以上为完整分析指标。</p>')}""")
@@ -314,7 +325,7 @@ def render_report(store, identity):
         if entry['kind'] == 'hypothesis':
             for stance in STANCE:
                 related = [v for v in entries if v['hypothesis_id'] == entry['id'] and v['stance'] == stance]
-                parts.append('<p>' + e(STANCE[stance]) + r('证据：') + ('、'.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>""" for v in related) or r('尚未记录')) + '</p>')
+                parts.append('<p>' + e(report_text(STANCE[stance])) + r('证据：') + ('、'.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>""" for v in related) or r('尚未记录')) + '</p>')
     if not entries:
         parts.append(r('<p>尚未保存调查证据或候选解释。</p>'))
     simulation_links = [l for l in incident['links'] if l['kind'] in ('simulation', 'run')]
@@ -327,46 +338,46 @@ def render_report(store, identity):
             parts.append(r('<h4>模型与场景来源</h4>') + parameters(dict(modelId=session['modelId'], modelVersion=session['modelVersion'],
                 modelName=session['modelDescriptor']['name'], scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'])))
             parts.append(r('<h4>过程模型配置</h4>') + parameters(session['config']))
-            parts.append(table([r('信号'),r('单位')], [[e(s.get('label', s.get('tag', s['key']))), e(s.get('unit',r('未知')))] for s in session['modelDescriptor']['signals']]))
+            parts.append(table([r('信号'),r('单位')], [[e(report_text(s.get('label', s.get('tag', s['key'])))), e(report_text(s.get('unit',r('未知'))))] for s in session['modelDescriptor']['signals']]))
             run = detail.get('run')
             if not run:
                 parts.append(r('<p>已保存观察上下文：</p>') + parameters(detail.get('observationWindow', {})))
                 continue
-            parts.append(f"{r('<p>实验 ID：')}{e(run['id'])}{r('；类型：')}{e(run['kind'])}{r('；记录时间：')}{e(recorded_time(run['createdAt']))}{r('</p><h4>实验参数与观察窗口</h4>')}" + parameters(run['request']))
+            parts.append(f"{r('<p>实验 ID：')}{e(run['id'])}{r('；类型：')}{e(report_text(run['kind']))}{r('；记录时间：')}{e(recorded_time(run['createdAt']))}{r('</p><h4>实验参数与观察窗口</h4>')}" + parameters(run['request']))
             result = run['result']
             if run['kind'] == 'intervention' and result.get('format') == 'model-forecast-v1':
                 paths = [result['baseline'], *result['branches']]
                 definitions = result['metricDefinitions']
-                parts.append(table([r('方案'), *[e(m['label']+' ('+m['unit']+')') for m in definitions]],
-                    [[e(p.get('action') or r('不干预基线')), *[n(p['metrics'][m['key']]) for m in definitions]] for p in paths]))
+                parts.append(table([r('方案'), *[e(report_text(m['label'])+' ('+report_text(m['unit'])+')') for m in definitions]],
+                    [[e(report_text(p.get('action')) or r('不干预基线')), *[n(p['metrics'][m['key']]) for m in definitions]] for p in paths]))
                 for signal in result['signalDefinitions']:
-                    parts.append(chart(signal.get('label', signal['key']), paths[0]['times'],
-                        [dict(label=p.get('action') or r('不干预基线'), values=p['values'][signal['key']], color=['#a34e3b','#246b63','#536daf','#9565a6','#957123'][i % 5]) for i,p in enumerate(paths)], unit=signal['unit']))
-                parts.append(prose(result['uncertainty']))
+                    parts.append(chart(report_text(signal.get('label', signal['key'])), paths[0]['times'],
+                        [dict(label=report_text(p.get('action')) or r('不干预基线'), values=p['values'][signal['key']], color=['#a34e3b','#246b63','#536daf','#9565a6','#957123'][i % 5]) for i,p in enumerate(paths)], unit=report_text(signal['unit'])))
+                parts.append(prose(report_text(result['uncertainty'])))
             elif run['kind'] == 'intervention':
                 paths = [result['baseline'], *result['branches']]
                 parts.append(table([r('方案'), r('物理峰值压力 kPa'), r('预测越限时间 s'), r('产量损失 %'), r('质量损失 pp'), r('能耗 %·s')], [
-                    [e(p.get('action', r('不干预基线'))), n(p['physicalPeak']), n(p['trip']), n(p['productionLoss']), n(p['qualityLoss']), n(p['utilityCost'])] for p in paths]))
+                    [e(report_text(p.get('action', r('不干预基线')))), n(p['physicalPeak']), n(p['trip']), n(p['productionLoss']), n(p['qualityLoss']), n(p['utilityCost'])] for p in paths]))
                 colors = ['#a34e3b', '#246b63', '#536daf', '#9565a6', '#957123']
                 # Runtime branches use the same simulation cadence. Retain each grid if a historical result differs.
                 same_grid = all(p['times'] == paths[0]['times'] for p in paths)
                 domain = [min(v for p in paths for v in p['pressure']), max(v for p in paths for v in p['pressure'])]
                 for group in [paths] if same_grid else [[p] for p in paths]:
-                    parts.append(chart(r('干预方案对比 · 物理压力'), group[0]['times'], [dict(label=p.get('action', r('不干预基线')), values=p['pressure'], color=colors[i % len(colors)]) for i, p in enumerate(group)], threshold=result['threshold'], unit=r('物理压力（kPa）'), domain=domain))
-                parts.append(r('<p class="muted">曲线颜色依次对应：') + e('、'.join(p.get('action', r('不干预基线')) for p in paths)) + r('。预测以保存的模型模式、候选解释和观察截止为条件。</p>'))
+                    parts.append(chart(r('干预方案对比 · 物理压力'), group[0]['times'], [dict(label=report_text(p.get('action', r('不干预基线'))), values=p['pressure'], color=colors[i % len(colors)]) for i, p in enumerate(group)], threshold=result['threshold'], unit=r('物理压力（kPa）'), domain=domain))
+                parts.append(r('<p class="muted">曲线颜色依次对应：') + e(' · '.join(report_text(p.get('action', r('不干预基线'))) for p in paths)) + r('。预测以保存的模型模式、候选解释和观察截止为条件。</p>'))
                 parts.append(r('<h4>拟合参数与恢复窗口</h4>') + parameters({k: result[k] for k in ('mode', 'hypothesis', 'observedThrough', 'at', 'horizon', 'fitError', 'fittedParameters') if k in result}))
                 if result.get('search'):
                     search = result['search']
                     parts.append(f"{r('<p>恢复窗口搜索分辨率：')}{e(n(search['resolution']))}{r(' s；计算 ')}{e(search['evaluated'])}{r(' 次模拟。下列边界仅对应实际搜索网格。</p>')}")
-                    parts.append(table([r('方案'), r('最晚可恢复起点（s）'), r('可恢复区间（s）')], [[e(action.get('name', action['id'])), n(action['latest']), e('；'.join(' - '.join(n(t) for t in span) for span in action['intervals']) or r('未检出'))] for action in search['actions']]))
+                    parts.append(table([r('方案'), r('最晚可恢复起点（s）'), r('可恢复区间（s）')], [[e(report_text(action.get('name', action['id']))), n(action['latest']), e('；'.join(' - '.join(n(t) for t in span) for span in action['intervals']) or r('未检出'))] for action in search['actions']]))
             else:
                 if result.get('summary'):
-                    parts.append(prose(result['summary']))
+                    parts.append(prose(local_brief_summary(result['summary']) if result.get('provider') == 'local' else result['summary']))
                 for trace in result.get('trace', []):
-                    parts.append('<h4>' + e(trace['tool']) + '</h4>' + technical(trace))
+                    parts.append('<h4>' + e(report_text(trace['tool'])) + '</h4>' + technical(trace))
                 if result.get('limitation'):
-                    parts.append(prose(result['limitation']))
-    parts.append(f"<h2>{(6 if simulation_links else 5)}{r('. 调查结论与主要依据</h2><p>当前状态：')}" + e(STATUS[incident['status']]) + '</p>' + prose(incident['conclusion']))
+                    parts.append(prose(report_text(result['limitation']) if result.get('provider') == 'local' else result['limitation']))
+    parts.append(f"<h2>{(6 if simulation_links else 5)}{r('. 调查结论与主要依据</h2><p>当前状态：')}" + e(report_text(STATUS[incident['status']])) + '</p>' + prose(incident['conclusion']))
     evidence = [v for v in entries if v['kind'] == 'evidence']
     parts.append(r('<p>已保存证据：') + ('、'.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>（{e(report_text(STANCE[v['stance']]))}）""" for v in evidence) or r('尚未记录')) + '</p>')
     parts.append(r('<h2>附录. 数据、参数与关联记录</h2>'))

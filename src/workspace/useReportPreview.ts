@@ -5,7 +5,8 @@ import { message } from "./api";
 export function useReportPreview(url: string, source: unknown, failureMessage: string) {
   const [html, setHtml] = useState(""), [error, setError] = useState(""), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null), generation = useRef(0);
-  useEffect(() => { generation.current++; setHtml(""); setError(""); setReady(false); setBusy(false); }, [url, source]);
+  useEffect(() => { generation.current++; setHtml(""); setReady(false); setBusy(false); }, [url, source]);
+  useEffect(() => { setError(""); }, [source]);
   useEffect(() => () => { generation.current++; }, []);
   async function generate() {
     const request = ++generation.current;

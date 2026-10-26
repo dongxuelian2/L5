@@ -124,7 +124,7 @@ export function SignalInspector({
   const available = time >= detection.time;
   return (
     <Modal
-      title={tag.name}
+      title={tr(tag.name)}
       eyebrow={tr("SIGNAL INSPECTOR / {0}", {0: tag.tag})}
       onClose={onClose}
     >
@@ -198,7 +198,7 @@ export function EvidenceInspector({
   const candidate = scenario.candidates.find((c) => c.id === candidateId)!;
   return (
     <Modal
-      title={candidate.name}
+      title={tr(candidate.name)}
       eyebrow={tr("EVIDENCE / {0}", {0: candidate.tag})}
       onClose={onClose}
     >
@@ -214,11 +214,11 @@ export function EvidenceInspector({
       </div>
       <div className="evidence-section">
         <h3 className="text-mint">{tr("[+] Supporting observations")}</h3>
-        <p>{candidate.support}</p>
+        <p>{tr(candidate.support)}</p>
       </div>
       <div className="evidence-section">
         <h3 className="text-amber">{tr("[−] Counter-evidence & uncertainty")}</h3>
-        <p>{candidate.against}</p>
+        <p>{tr(candidate.against)}</p>
       </div>
       <div className="evidence-path">
         {scenario.tags.slice(0, 4).map((tag, i) => (
@@ -227,7 +227,7 @@ export function EvidenceInspector({
               {i === 0 ? "┌" : i === 3 ? "└" : "├"}─
             </span>
             <span>{tag.tag}</span>
-            <span>{tag.name}</span>
+            <span>{tr(tag.name)}</span>
             <span className="muted">+{scenario.detections[tag.key].time}s</span>
           </div>
         ))}
@@ -276,7 +276,7 @@ export function AlarmInspector({
               className={filter === c.id ? "selected" : ""}
               onClick={() => setFilter(c.id)}
             >
-              {c.name}
+              {tr(c.name)}
             </button>
           ))}
         </div>
@@ -323,7 +323,7 @@ export function AlarmInspector({
                   </span>
                 </td>
                 <td>
-                  {event.message}
+                  {tr(event.message)}
                   {event.repeat && (
                     <span className="repeat-mark" title={tr("Repeated annunciation")}>
                       {" "}

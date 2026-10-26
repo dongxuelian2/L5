@@ -85,10 +85,10 @@ export { downloadFile } from "./download";
 
 export function briefMarkdown(brief: IncidentBrief): string {
   return (
-    `# TripLens · ${scenario.id}\n\n## ${scenario.title}\n\n${brief.summary}\n\n` +
+    `# TripLens · ${scenario.id}\n\n## ${t(scenario.title)}\n\n${brief.provider === "local" ? t(brief.summary) : brief.summary}\n\n` +
     brief.steps
-      .map((step) => `### ${step.action}\n\n${step.result}\n`)
+      .map((step) => `### ${brief.provider === "local" ? t(step.action) : step.action}\n\n${brief.provider === "local" ? t(step.result) : step.result}\n`)
       .join("\n") +
-    `\n## ${t("Evidence boundary")}\n\n${brief.limitation}\n\n${t("Source")}: ${scenario.provenance.model}. ${t("Analyst")}: ${brief.provider}.\n`
+    `\n## ${t("Evidence boundary")}\n\n${brief.provider === "local" ? t(brief.limitation) : brief.limitation}\n\n${t("Source")}: ${t(scenario.provenance.model)}. ${t("Analyst")}: ${t(brief.provider)}.\n`
   );
 }

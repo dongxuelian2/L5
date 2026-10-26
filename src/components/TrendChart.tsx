@@ -90,7 +90,7 @@ export function TrendChart({
           compare
             ? tr("Observed and intervention pressure trajectories over five minutes")
             : keys.length === 1
-              ? tr("{0} over five minutes", {0: scenario.tags.find((tag) => tag.key === keys[0])?.name})
+              ? tr("{0} over five minutes", {0: tr(scenario.tags.find((tag) => tag.key === keys[0])?.name)})
               : tr("Normalized process signal trends over five minutes")
         }
         onPointerMove={(event) => {

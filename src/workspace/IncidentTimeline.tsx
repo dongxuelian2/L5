@@ -2,7 +2,7 @@ import { errorMessage } from "../i18n/errors";
 import { t as tr, useLocale } from "../i18n";
 import { useEffect, useState } from "react";
 import { api, message } from "./api";
-import { incidentAxis, dateLabel, number, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
+import { axisLabel, timelineTitle, incidentAxis, dateLabel, number, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
 import { IncidentComparison } from "./IncidentComparison";
 
 const kinds: Record<string, string> = { get truth() { return tr("数据集已知故障"); }, get incident() { return tr("事件范围"); }, get alarm() { return tr("算法报警"); }, get note() { return tr("调查笔记"); }, get evidence() { return tr("调查证据"); }, get hypothesis() { return tr("候选解释"); }, get investigation() { return tr("工具调查"); }, get experiment() { return tr("干预实验"); }, get status() { return tr("状态变更"); }, get conclusion() { return tr("结论更新"); } };
@@ -19,7 +19,9 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
   onRecord: (event: TimelineEvent) => void; onSection: (id: string) => void;
 }) {
   useLocale();
-  const [view, setView] = useState<IncidentView | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(true);
+  const [savedView, setView] = useState<IncidentView | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(true);
+  const view = savedView && { ...savedView, axes: savedView.axes.map(a => ({ ...a, label: axisLabel(a, savedView.datasets) })),
+    events: savedView.events.map(event => ({ ...event, title: timelineTitle(event, savedView), content: event.kind === "truth" ? tr(event.content) : event.content })) };
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [axisId, setAxisId] = useState(""), [kind, setKind] = useState(""), [analysisId, setAnalysisId] = useState("");
   const [start, setStart] = useState(""), [end, setEnd] = useState("");

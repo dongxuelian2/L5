@@ -1,11 +1,16 @@
 """Real HTTP timeline/report workflows, clock alignment, and interval semantics."""
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from urllib.request import build_opener, ProxyHandler
 from xml.etree import ElementTree
 import unittest
 
 from l5.incident_timeline import compare_intervals, observed_spans
+from l5.report_locale import localized_report
+from l5.reports import chart, render_report
+from l5.workspace import WorkspaceStore
 from tests.test_incidents import IncidentHTTPFixture, csv_with_excursions
 
 
@@ -24,6 +29,59 @@ class ReportMarkup(HTMLParser):
 
     def handle_data(self, data):
         self.text.append(data)
+
+
+class ReportLocaleTests(unittest.TestCase):
+    def test_system_report_text_and_chart_defaults_follow_each_request_locale(self):
+        with TemporaryDirectory() as folder:
+            store = WorkspaceStore(Path(folder))
+            workspace = store.create_workspace('Project')
+            dataset = store.import_dataset(workspace['id'], dict(name='Measurements', csv=csv_with_excursions()))
+            result = store.analyze(workspace['id'], dict(name='Anomaly review', datasetId=dataset['id'],
+                signals=['temperature','feed','vibration'], baselineRange=[0,199], analysisRange=[200,599],
+                algorithm='robust-maxz', alpha=.01))
+            incident = store.incidents.create(workspace['id'], dict(title='Investigation', status='investigating',
+                source=dict(kind='analysis',analysisId=result['id'])))
+            english = render_report(store,incident['id'],locale='en')
+            chinese = render_report(store,incident['id'],locale='zh-CN')
+            self.assertNotRegex(''.join(ReportMarkup(english).text), r'[\u3400-\u9fff]')
+            self.assertIn('Current status:Investigating', english)
+            self.assertIn('Status change', english)
+            self.assertIn('Anomaly interval', english)
+            self.assertIn('当前状态：调查中', chinese)
+            self.assertIn('稳健最大 Z 分数', chinese)
+            self.assertEqual(english.count('<svg'),chinese.count('<svg'))
+            store.incidents.update(incident['id'],dict(title='状态变更',conclusion='Status'))
+            before = store.incidents.get(incident['id'])
+            retained = render_report(store,incident['id'],locale='en')
+            self.assertIn('状态变更',retained)
+            self.assertIn('Status',retained)
+            self.assertEqual(before,store.incidents.get(incident['id']))
+        render_chart = localized_report(lambda: chart('Raw signal',[0,1],[dict(label='raw',values=[1,2])]))
+        english_chart = render_chart(locale='en')
+        self.assertNotRegex(''.join(ReportMarkup(english_chart).text),r'[\u3400-\u9fff]')
+        self.assertIn('原始值（源数据未提供单位）',render_chart(locale='zh-CN'))
+
+    def test_model_forecast_display_translates_without_changing_saved_results(self):
+        with TemporaryDirectory() as directory:
+            store=WorkspaceStore(Path(directory))
+            workspace=store.create_workspace('Model language check')
+            session=store.runtime.create(dict(workspaceId=workspace['id'],modelId='coupled-tanks',
+                title='Tank trial',config=dict(duration=150,start=40.37,fault='pump_degradation',seed=7)))
+            run=store.runtime.intervene(session['id'],dict(asOf=80,at=83.17,horizon=150,
+                mode='known',hypothesis='pump_degradation',actions=['adjust_pump','open_valve']))
+            incident=store.incidents.create(workspace['id'],dict(title='Tank investigation',
+                source=dict(kind='simulation',simulationId=session['id'],windowStart=0,asOf=80)))
+            store.incidents.add_link(incident['id'],dict(kind='run',simulationId=session['id'],runId=run['id']))
+            english=render_report(store,incident['id'],locale='en')
+            chinese=render_report(store,incident['id'],locale='zh-CN')
+            self.assertNotRegex(''.join(ReportMarkup(english).text),r'[\u3400-\u9fff]')
+            self.assertIn('Adjust inlet pump command',english)
+            self.assertIn('调整进水泵指令',chinese)
+            self.assertIn('实际液位峰值',chinese)
+            self.assertIn('预测不确定性界限',chinese)
+            self.assertEqual(english.count('<svg'),chinese.count('<svg'))
+            self.assertEqual(run,store.runtime.run(session['id'],run['id']))
 
 
 class IncidentReportingHTTPTests(IncidentHTTPFixture):

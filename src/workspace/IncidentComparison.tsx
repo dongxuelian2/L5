@@ -15,7 +15,7 @@ export function IncidentComparison({ view, selectedIds, onIds, loading, selectio
   }
   return <section id="incident-comparison" className="ws-panel" aria-label={tr("事件级分析比较")} aria-busy={loading}>
     <h2>{tr("事件级分析比较")}</h2><p className="ws-muted">{tr("选择已关联分析，在兼容时间轴上比较报警。原始分数和阈值各自保留尺度，跨算法优先比较时间、区间和贡献变量。")}</p>
-    <div className="ws-option-grid">{view.analyses.map(a => <label key={a.id}><input type="checkbox" checked={selectedIds.includes(a.id)} onChange={e => onIds(e.target.checked ? [...selectedIds, a.id] : selectedIds.filter(id => id !== a.id))} />{a.result.name} · {a.scope}</label>)}</div>
+    <div className="ws-option-grid">{view.analyses.map(a => <label key={a.id}><input type="checkbox" checked={selectedIds.includes(a.id)} onChange={e => onIds(e.target.checked ? [...selectedIds, a.id] : selectedIds.filter(id => id !== a.id))} />{a.result.name} · {tr(a.scope)}</label>)}</div>
     {!view.analyses.length && <p className="ws-notice">{tr("关联两个或更多分析后，可以检查共同与独有报警。")}</p>}
     {loading ? <p role="status">{tr("正在更新比较…")}</p> : view.comparisons.map(group => {
       const axis = view.axes.find(a => a.id === group.axisId)!, clock = incidentAxis(axis);
@@ -27,7 +27,7 @@ export function IncidentComparison({ view, selectedIds, onIds, loading, selectio
         <h3>{axis.label}</h3><p>{tr("首次报警：")}{group.firstDetection == null ? tr("未检出") : timeLabel(clock, group.firstDetection)}{" "}{tr("· 首次报警时间差：")}{group.firstAlarmSpread == null ? tr("需要至少两个有报警的分析") : `${number(group.firstAlarmSpread)} s`}{" "}{tr("· 共同区间")}{" "}{group.common.length}{" "}{tr("个")}</p>
         {members.length === 1 && <p className="ws-muted">{tr("此时间轴只有一个所选分析；其他数据集的数值秒数不会自动对齐。")}</p>}
         {intervals.length > 0 && <div className="incident-lanes"><svg viewBox={`0 0 960 ${members.length*38+40}`} role="group" aria-label={tr("{0} 算法检测区间叠加", {0: axis.label})}>
-          {members.map((a, row) => <g key={a.id}><text x="0" y={row*38+25}>{a.result.algorithmLabel.slice(0, 22)}</text><line x1="185" x2="925" y1={row*38+20} y2={row*38+20} stroke="#3d4936" />
+          {members.map((a, row) => <g key={a.id}><text x="0" y={row*38+25}>{tr(a.result.algorithmLabel).slice(0, 22)}</text><line x1="185" x2="925" y1={row*38+20} y2={row*38+20} stroke="#3d4936" />
             {a.intervals.map(i => <g key={i.index} role="button" tabIndex={0} aria-label={tr("{0} 区间 {1} 至 {2}", {0: a.result.name, 1: timeLabel(clock, i.start), 2: timeLabel(clock, i.end)})} onClick={() => focus(a, i.start, i.end, i.peakTime, i.index, i.linkId)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); focus(a, i.start, i.end, i.peakTime, i.index, i.linkId); } }}>
               <rect x={x(i.start)} y={row*38+10} width={Math.max(6,x(i.end)-x(i.start))} height="20" rx="2" fill="#b5ed9a" opacity=".75" /><circle cx={x(i.peakTime)} cy={row*38+20} r="3" fill="#e2bc75" />
             </g>)}

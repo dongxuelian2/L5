@@ -215,11 +215,11 @@ export function ModelLab() {
         >
           <div className="check-list">
             {scenario.checks.map((check) => (
-              <div key={check.name}>
+              <div key={tr(check.name)}>
                 <span className="check-icon">{check.passed ? "✓" : "!"}</span>
                 <div>
-                  <strong>{check.name}</strong>
-                  <p>{check.detail}</p>
+                  <strong>{tr(check.name)}</strong>
+                  <p>{tr(check.detail)}</p>
                 </div>
                 <span className="check-pass">
                   {check.passed ? tr("PASS") : tr("FAIL")}
