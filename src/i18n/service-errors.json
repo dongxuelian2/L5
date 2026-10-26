@@ -47,7 +47,7 @@
   "Choose one or more of the nine available algorithms.": ["请从九种可用算法中选择至少一种。", "Choose one or more of the nine available algorithms."],
   "Unknown detection algorithm.": ["未知检测算法。", "Unknown detection algorithm."],
   "Each study parameter needs 1–8 candidate values.": ["每个研究参数需要 1–8 个候选值。", "Each study parameter needs 1–8 candidate values."],
-  "Experiment belongs to another workspace.": ["实验属于另一个工作区。", "Experiment belongs to another workspace."],
+  "Experiment belongs to another workspace.": ["此实验属于另一个工作区。", "Experiment belongs to another workspace."],
   "Experiment changed since it was opened. Reopen it before saving.": ["实验在打开后已有变化，请重新打开后再保存。", "Experiment changed since it was opened. Reopen it before saving."],
   "Conclusions must reference saved runs of this experiment.": ["结论必须引用此实验已保存的运行。", "Conclusions must reference saved runs of this experiment."],
   "Label version not found.": ["未找到标签版本。", "Label version not found."],

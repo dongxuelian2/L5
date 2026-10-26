@@ -33,6 +33,6 @@ npm run verify:artifacts
 
 浏览器实际检查了首页／跨路由语言保持、未保存名称、模型场景运行、Dataset 保存、分析、事件创建、报告失效与中英重新生成。语言状态测试还覆盖存储不可用、进行中的分析及 TripLens 表单。
 
-`npm run verify:artifacts` 的 `scenario.json` 全量复算通过；`platform.json.cases[0].diagnosis.clock` 报字段不一致。`simulation/`、`benchmarks/`、`examples/tep/`、`src/data/` 与本次 main 基线完全相同：这是已发布 platform 夹具与现有生成器的既有差异，包含 trace／诊断变化。本次没有覆盖该历史产物，也不将此项标为通过。
+`npm run verify:artifacts` 的 `scenario.json` 全量复算通过；`platform.json.cases[0].diagnosis.clock` 报字段不一致。实际检出主分支 `77f4d66` 运行同一命令，复现了完全相同的失败。`simulation/`、`benchmarks/`、`examples/tep/`、`src/data/` 与该基线完全相同。本次没有覆盖历史产物或放宽校验，也不将此项标为通过。
 
 原文保留范围：用户项目与调查文字、信号名称和元数据、JSON／CSV 技术内容；六信号历史示例 `scenario.json` 的研究说明与分析步骤；TEP 冻结协议的名称／局限及故障 3 原始解释；未知服务诊断。报告模板的固定文案随语言切换，已经下载的历史文件需重新生成，不回写原文件。

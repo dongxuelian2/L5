@@ -111,7 +111,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
     setBusy(true); setError(""); setNotice("");
     try {
       const updated = await api<Incident>(`${base}${path}`, body, method);
-      setIncident(updated); setNotice(tr("已保存到 Workspace，可以在下次打开时继续调查。"));
+      setIncident(updated); setNotice("已保存到 Workspace，可以在下次打开时继续调查。");
       if (focused && !updated.links.some(link => link.id === focused)) {
         setFocused(updated.links.find(link => link.details.datasetId || link.details.run)?.id || ""); setSelection(null);
       }

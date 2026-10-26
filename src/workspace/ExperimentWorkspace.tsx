@@ -1,5 +1,5 @@
 import { errorMessage } from "../i18n/errors";
-import { t as tr, useLocale } from "../i18n";
+import { t as tr, useLocale, type Message } from "../i18n";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, go, message } from "./api";
 import { AlgorithmParameters, algorithmParameters, algorithms } from "./AlgorithmControls";
@@ -48,7 +48,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
   const [algorithmFilter, setAlgorithmFilter] = useState(""), [statusFilter, setStatusFilter] = useState(""), [parameterFilter, setParameterFilter] = useState("");
   const [preview, setPreview] = useState<{ taskCount: number; tasks: Config[] } | null>(null), [snapshot, setSnapshot] = useState<ExperimentRun | null>(null);
   const [incidents, setIncidents] = useState<IncidentSummary[]>([]), [incidentId, setIncidentId] = useState(""), [linked, setLinked] = useState<IncidentSummary | null>(null), [intervals, setIntervals] = useState<Record<string, number>>({});
-  const [error, setError] = useState(""), [loading, setLoading] = useState(false), [busy, setBusy] = useState(false), [tick, setTick] = useState(0), [notice, setNotice] = useState("");
+  const [error, setError] = useState(""), [loading, setLoading] = useState(false), [busy, setBusy] = useState(false), [tick, setTick] = useState(0), [notice, setNotice] = useState<Message | null>(null);
   const form = useRef<HTMLFormElement>(null), previouslyRunning = useRef(false), context = useRef(0);
   const existingId = experimentId && experimentId !== "new" ? experimentId : undefined;
   useEffect(() => {
@@ -58,7 +58,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
     return () => controller.abort();
   }, [workspaceId, saved?.id, saved?.revision, saved?.runs.length, saved?.runs[0]?.id, linked?.id]);
   useEffect(() => {
-    const controller = new AbortController(); context.current++; setBusy(false); setError(""); setNotice(""); setSaved(null); setData(null); setSelected([]); setRunFilter(""); setPreview(null); setSnapshot(null); setLinked(null); setIntervals({});
+    const controller = new AbortController(); context.current++; setBusy(false); setError(""); setNotice(null); setSaved(null); setData(null); setSelected([]); setRunFilter(""); setPreview(null); setSnapshot(null); setLinked(null); setIntervals({});
     if (!existingId) { setLoading(false); setDraft(datasets.length ? initialDraft(datasets.find(d => d.id === initialDatasetId) || datasets[0], initialSignals) : null); return () => { controller.abort(); context.current++; }; }
     setLoading(true); setDraft(null);
     api<Experiment>(`/experiments/${existingId}`, undefined, "GET", controller.signal).then(result => {
@@ -101,7 +101,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
   function plan(index: number, changes: Partial<AlgorithmPlan>) { if (draft) configure({ algorithms: draft.config.algorithms.map((item, i) => i === index ? { ...item, ...changes } : item) }); }
   async function save(andRun = false) {
     if (!draft || !form.current?.reportValidity()) return;
-    const request = context.current; setBusy(true); setError(""); setNotice("");
+    const request = context.current; setBusy(true); setError(""); setNotice(null);
     try {
       const result = await api<Experiment>(saved ? `/experiments/${saved.id}` : `/workspaces/${workspaceId}/experiments`, { ...draft, ...(saved ? { revision: saved.revision } : {}) }, saved ? "PATCH" : "POST");
       if (request !== context.current) return;
@@ -109,8 +109,8 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
       if (andRun) {
         const run = await api<ExperimentRun>(`/experiments/${result.id}/runs`, {});
         if (request !== context.current) return;
-        setRunFilter(run.id); setSaved({ ...result, runs: [run, ...result.runs] }); setNotice(tr("Batch queued: {0} tasks. Completed results are saved as each task finishes.", {0: run.task_count}));
-      } else setNotice(tr("Experiment definition and research notes saved."));
+        setRunFilter(run.id); setSaved({ ...result, runs: [run, ...result.runs] }); setNotice(["Batch queued: {0} tasks. Completed results are saved as each task finishes.", {0: run.task_count}]);
+      } else setNotice(["Experiment definition and research notes saved."]);
       setTick(v => v+1); onChanged();
       if (!existingId) go(`workspaces/${workspaceId}/experiments/${result.id}`);
     } catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
@@ -150,7 +150,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
       <label>{tr("Open saved experiment")}<select value={existingId || ""} onChange={e => go(`workspaces/${workspaceId}/experiments/${e.target.value || "new"}`)}><option value="">{tr("New experiment")}</option>{list.map(item => <option key={item.id} value={item.id}>{item.name} · {item.run_count || 0}{" "}{tr("runs ·")}{" "}{item.historical_task_count || 0}{" "}{tr("tasks")}</option>)}</select></label>
       {saved && <div className="ws-inline ws-between"><span className="ws-muted">{saved.id}{" "}{tr("· revision")}{" "}{saved.revision}{" "}{tr("· updated")}{" "}{dateLabel(saved.updated_at)}{list.find(item => item.id === saved.id)?.last_run_at ? tr(" · last run {0}", {0: dateLabel(list.find(item => item.id === saved.id)!.last_run_at!)}) : ""}</span><button disabled={busy || dirty} onClick={() => void copy()}>{tr("Duplicate experiment")}</button></div>}
     </section>
-    {error && <p className="ws-error" role="alert">{errorMessage(error)}</p>}{notice && <p className="ws-notice" role="status">{tr(notice)}</p>}
+    {error && <p className="ws-error" role="alert">{errorMessage(error)}</p>}{notice && <p className="ws-notice" role="status">{tr(...notice)}</p>}
     {loading ? <p role="status">{tr("Opening saved experiment…")}</p> : !draft || !dataset ? <p className="ws-notice">{tr("Import a dataset to configure an experiment.")}</p> : <>
       <form id="experiment-definition" ref={form} className="ws-panel experiment-editor" inert={busy} aria-busy={busy} onSubmit={(e: FormEvent) => { e.preventDefault(); void save(); }} aria-label={tr("Experiment definition")}>
         <div className="ws-section-heading"><h2>{tr("01 / Define the experiment")}</h2><span className="ws-muted">{dirty ? tr("Unsaved changes") : tr("Saved definition")}</span></div>

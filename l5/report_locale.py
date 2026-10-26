@@ -14,9 +14,16 @@ def messages():
     result = {}
     for name in ('messages', 'common', 'catalog', 'service-errors'):
         result.update(json.loads((root / f'{name}.json').read_text(encoding='utf-8')))
-    for pair in list(result.values()):
-        for value in pair:
-            result.setdefault(value, pair)
+    english = {}
+    for pair in result.values():
+        label = pair[1]
+        if label not in english:
+            english[label] = pair
+        elif english[label] != pair:
+            english[label] = None
+    for label, pair in english.items():
+        if pair is not None:
+            result.setdefault(label, pair)
     return result
 
 

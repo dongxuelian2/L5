@@ -6,6 +6,7 @@ import serviceErrors from "./service-errors.json";
 import "./language.css";
 
 export type Locale = "zh-CN" | "en";
+export type Message = [key: string, params?: Record<string, unknown>];
 const storageKey = "l5.locale";
 const listeners = new Set<() => void>();
 export function preferredLocale(storage: Pick<Storage, "getItem"> | undefined, languages: readonly string[]): Locale {
@@ -40,31 +41,20 @@ export function useLocale() {
 }
 /** Source keys refer only to application-owned copy. Never pass user data here. */
 const copy: Record<string, readonly string[]> = { ...messages, ...common, ...catalog, ...serviceErrors };
-const alternatives = new Map(Object.values(copy).flatMap(pair => pair.map(value => [value, pair] as const)));
-const formats = Object.values(copy).flatMap(pair => pair.filter(value => /\{\d+\}/.test(value)).map(value => {
-  const names: string[] = [];
-  const parts = value.split(/(\{\d+\})/g).map(part => {
-    if (/^\{\d+\}$/.test(part)) { names.push(part.slice(1, -1)); return "(.+?)"; }
-    return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  });
-  return { pattern: new RegExp("^" + parts.join("") + "$"), names, pair };
-}));
+// Source keys win. Only unambiguous English labels may stand in for a source key;
+// Chinese translations and rendered messages are never parsed back into keys.
+const english = new Map<string, readonly string[] | null>();
+for (const pair of Object.values(copy)) {
+  if (!english.has(pair[1])) english.set(pair[1], pair);
+  else if (english.get(pair[1])?.[0] !== pair[0]) english.set(pair[1], null);
+}
 export function t(key: string, params?: Record<string, unknown>): string;
 export function t<T>(key: T, params?: Record<string, unknown>): T;
 export function t(key: unknown, params?: Record<string, unknown>): unknown {
   if (typeof key !== "string") return key;
   const trimmed = key.trim();
-  const pair = copy[key] || alternatives.get(key) || copy[trimmed] || alternatives.get(trimmed);
-  let value = pair ? key.slice(0, key.length - key.trimStart().length) + pair[getLocale() === "zh-CN" ? 0 : 1] + key.slice(key.trimEnd().length) : key;
-  if (!pair && !params) {
-    for (const format of formats) {
-      const match = trimmed.match(format.pattern);
-      if (!match) continue;
-      const values = Object.fromEntries(format.names.map((name, i) => [name, match[i + 1]]));
-      value = format.pair[getLocale() === "zh-CN" ? 0 : 1].replace(/\{(\d+)\}/g, (_, name: string) => values[name]);
-      break;
-    }
-  }
+  const pair = copy[key] || copy[trimmed] || english.get(trimmed);
+  const value = pair ? key.slice(0, key.length - key.trimStart().length) + pair[getLocale() === "zh-CN" ? 0 : 1] + key.slice(key.trimEnd().length) : key;
   return params ? value.replace(/\{(\w+)\}/g, (token, name: string) => Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : token) : value;
 }
 /** Runtime evidence uses fixed engine phrases, while saved tool payloads stay raw. */

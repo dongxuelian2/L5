@@ -68,12 +68,12 @@ export function ModelSimulation({ workspaceId, session, sessions, runId, initial
     try {
       const body={windowStart:start,asOf,...(operation==="tools" ? {calls:[{tool,args:{}}]} : {mode:"known",hypothesis:session.config.fault,at,horizon,actions,parameters})};
       const run=await api<RuntimeRun>(`/simulations/${session.id}/${operation}`,body);
-      if (active.current) {setRuns(previous=>[run,...previous]);setRestored(run);setNotice(tr("Calculated result and its inputs saved to this session."));}
+      if (active.current) {setRuns(previous=>[run,...previous]);setRestored(run);setNotice("Calculated result and its inputs saved to this session.");}
     } catch(e) {setError(message(e));} finally {setBusy(false);}
   }
   async function save() {
     setBusy(true);setError("");
-    try {const dataset=await api<Dataset>(`/simulations/${session.id}/save`,{workspaceId});if (active.current) {onDataset(dataset);onSaved(dataset);setNotice(tr("Dataset saved with signal units, model/scenario versions and fault truth."));}}
+    try {const dataset=await api<Dataset>(`/simulations/${session.id}/save`,{workspaceId});if (active.current) {onDataset(dataset);onSaved(dataset);setNotice("Dataset saved with signal units, model/scenario versions and fault truth.");}}
     catch(e) {setError(message(e));} finally {setBusy(false);}
   }
   function link(run?:RuntimeRun) {

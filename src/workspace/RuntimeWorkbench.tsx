@@ -101,7 +101,7 @@ export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWind
     e.preventDefault(); if (!config) return; setBusy(true); setError(""); setNotice("");
     try {
       const data = await api<Session>("/simulations", { config, title: title || undefined, workspaceId });
-      setSessions(previous => [data, ...previous]); setChosen(data.id); setConfigOpen(false); setNotice(tr("New trajectory computed and saved locally."));
+      setSessions(previous => [data, ...previous]); setChosen(data.id); setConfigOpen(false); setNotice("New trajectory computed and saved locally.");
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   async function save() {
@@ -110,7 +110,7 @@ export function RuntimeWorkbench({ workspaceId, simulationId, runId, initialWind
     try {
       const dataset = await api<Dataset>(`/simulations/${session.id}/save`, { workspaceId: saveWorkspace, name: session.title });
       setSession(s => s?.id === savingId ? { ...s, workspaceId: saveWorkspace, datasetId: dataset.id } : s); onSaved?.(dataset);
-      if (activeSession.current === savingId) setNotice(tr("Dataset and process model linked to the workspace. Saved experiments reopen with this session."));
+      if (activeSession.current === savingId) setNotice("Dataset and process model linked to the workspace. Saved experiments reopen with this session.");
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   function record(run: Run) { if (activeSession.current === session?.id) setRuns(previous => [run, ...previous]); }

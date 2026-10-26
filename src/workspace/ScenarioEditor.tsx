@@ -1,5 +1,5 @@
 import { errorMessage } from "../i18n/errors";
-import { t as tr, useLocale } from "../i18n";
+import { t as tr, useLocale, type Message } from "../i18n";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, message } from "./api";
 import { dateLabel } from "./types";
@@ -13,7 +13,7 @@ export function ScenarioEditor({ workspaceId, model, scenario, onSaved, onRun, o
   const [config,setConfig] = useState<ModelConfig>({ ...model.defaults,...scenario?.config });
   const [name,setName] = useState(scenario?.name || tr("{0} scenario", {0: model.name})), [description,setDescription] = useState(scenario?.description || "");
   const [saved,setSaved] = useState(scenario), [versions,setVersions] = useState<Scenario[]>([]);
-  const [busy,setBusy] = useState(false), [error,setError] = useState(""), [notice,setNotice] = useState("");
+  const [busy,setBusy] = useState(false), [error,setError] = useState(""), [notice,setNotice] = useState<Message | null>(null);
   const active = useRef(true);
   useEffect(() => {active.current=true;return () => {active.current=false;};},[]);
   const dirty = !saved || JSON.stringify(config) !== JSON.stringify(saved.config) || name !== saved.name || description !== saved.description;
@@ -30,7 +30,7 @@ export function ScenarioEditor({ workspaceId, model, scenario, onSaved, onRun, o
     if (!dirty && saved) return saved;
     const next = await api<Scenario>(saved ? `/scenarios/${saved.id}` : `/workspaces/${workspaceId}/scenarios`,
       { modelId:model.modelId,name,description,config,...(saved ? {expectedVersion:saved.version} : {}) },saved ? "PATCH" : "POST");
-    if (active.current) {setSaved(next);onSaved(next);setNotice(tr("Saved scenario v{0}. Previous runs retain their original version.", {0: next.version}));}
+    if (active.current) {setSaved(next);onSaved(next);setNotice(["Saved scenario v{0}. Previous runs retain their original version.", {0: next.version}]);}
     return next;
   }
   async function save(e: FormEvent) {
@@ -60,7 +60,7 @@ export function ScenarioEditor({ workspaceId, model, scenario, onSaved, onRun, o
       <label>{tr("Description")}<textarea maxLength={10000} value={description} onChange={e => setDescription(e.target.value)} rows={2} /></label>
       {groups.map(group => <details key={group} open={group !== "Model parameters"}><summary>{tr(group)}</summary><div className="ws-form-grid ws-three">{model.configFields.filter(f => f.group===group).map(f => <label key={f.key}>{tr(f.label)}{f.unit ? ` (${f.unit})` : ""}<input type="number" required={!f.nullable} min={f.min} max={f.max} step={f.type==="integer" ? 1 : "any"} value={config[f.key] ?? ""} onChange={e => setConfig({...config,[f.key]:e.target.value==="" ? null : Number(e.target.value)})} /><small>{f.min}–{f.max}{f.nullable ? tr("· optional") : ""}</small></label>)}</div></details>)}
     </fieldset><div className="ws-inline model-actions"><button disabled={busy || !dirty || historical}>{saved ? tr("Save new version") : tr("Save scenario")}</button>{saved && <button type="button" disabled={busy || dirty} onClick={() => void copy()}>{tr("Copy saved scenario")}</button>}<button type="button" className="ws-primary" disabled={busy || historical && dirty} onClick={() => void run()}>{busy ? tr("Computing…") : dirty ? tr("Save & run scenario ↗") : tr("Run saved version ↗")}</button></div></form>
-    {error && <p role="alert" className="ws-error">{errorMessage(error)}</p>}{notice && <p role="status" className="ws-notice">{tr(notice)}</p>}
+    {error && <p role="alert" className="ws-error">{errorMessage(error)}</p>}{notice && <p role="status" className="ws-notice">{tr(...notice)}</p>}
     <p className="ws-muted">{tr("Each run fixes its seed, model version and full configuration. A blank seed generates a new seed per run.")}</p>
   </section>;
 }

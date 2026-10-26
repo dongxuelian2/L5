@@ -1,5 +1,5 @@
 import { errorMessage } from "../i18n/errors";
-import { t as tr, useLocale } from "../i18n";
+import { t as tr, useLocale, type Message } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { analysisPath, api, go, message } from "./api";
 import { Plot } from "./Charts";
@@ -19,7 +19,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
   const [catalog, setCatalog] = useState<CatalogSignal[]>([]), [units, setUnits] = useState<EngineeringUnit[]>([]), [definitions, setDefinitions] = useState<Transformation[]>([]);
   const [config, setConfig] = useState<TransformationConfig>(blank), [name, setName] = useState(tr("Aligned process data")), [saved, setSaved] = useState<Transformation | null>(null);
   const [preview, setPreview] = useState<TransformPreview | null>(null), [generated, setGenerated] = useState<Dataset | null>(null);
-  const [loading, setLoading] = useState(true), [previewing, setPreviewing] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(""), [previewError, setPreviewError] = useState(""), [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true), [previewing, setPreviewing] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(""), [previewError, setPreviewError] = useState(""), [status, setStatus] = useState<Message | null>(null);
   const [search, setSearch] = useState(""), [nonce, setNonce] = useState(0);
   const restored = useRef("");
   const prefix = `/workspaces/${workspaceId}`;
@@ -28,7 +28,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
       resampling: "linear", maxGapSeconds: Math.max((signal.time.typicalInterval || 1) * 5, .000001), duplicatePolicy: "error", missing: { method: "keep" } };
   }
   function restore(definition: Transformation) {
-    setConfig(definition.config); setName(definition.name); setSaved(definition); setGenerated(null); setStatus(tr("Opened revision {0}", {0: definition.revision})); setError("");
+    setConfig(definition.config); setName(definition.name); setSaved(definition); setGenerated(null); setStatus(["Opened revision {0}", {0: definition.revision}]); setError("");
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -63,7 +63,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
     }, 450);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [workspaceId, configKey, nonce]);
-  function edit(next: TransformationConfig) { setConfig(next); setStatus(""); setGenerated(null); }
+  function edit(next: TransformationConfig) { setConfig(next); setStatus(null); setGenerated(null); }
   function changeSource(index: number, change: Partial<TransformSource>) { edit({ ...config, sources: config.sources.map((source, i) => i === index ? { ...source, ...change } : source) }); }
   function changeDerived(index: number, change: Partial<DerivedSignal>) { edit({ ...config, derived: config.derived.map((output, i) => i === index ? { ...output, ...change } : output) }); }
   function toggle(signal: CatalogSignal) {
@@ -86,8 +86,8 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
       const definition = await persist();
       if (execute) {
         const dataset = await api<Dataset>(`/transformations/${definition.id}/execute`, { name: tr("{0} · revision {1}", {0: name, 1: definition.revision}) });
-        setGenerated(dataset); onGenerated(dataset); setStatus(tr("Generated {0} samples. Previous datasets and analyses remain available.", {0: dataset.metadata.rowCount.toLocaleString()}));
-      } else setStatus(tr("Configuration saved · revision {0}", {0: definition.revision}));
+        setGenerated(dataset); onGenerated(dataset); setStatus(["Generated {0} samples. Previous datasets and analyses remain available.", {0: number(dataset.metadata.rowCount)}]);
+      } else setStatus(["Configuration saved · revision {0}", {0: definition.revision}]);
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   const selectedSignals = config.sources.map(source => catalog.find(s => s.id === source.signalId));
@@ -102,7 +102,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
     <fieldset className="transform-editor" disabled={busy || loading}>
       <section className="ws-panel"><div className="ws-form-grid">
         <label>{tr("Saved transformation")}<select value={saved?.id || ""} onChange={e => { const d = definitions.find(t => t.id === e.target.value); if (d) { restore(d); go(`workspaces/${workspaceId}/transformations/${d.id}`); } else { edit(blank()); setSaved(null); setName(tr("Aligned process data")); go(`workspaces/${workspaceId}/transformations/new`); } }}><option value="">{tr("New configuration")}</option>{definitions.map(d => <option key={d.id} value={d.id}>{d.name}{" "}{tr("· revision")}{" "}{d.revision}</option>)}</select></label>
-        <label>{tr("Transformation name")}<input value={name} maxLength={160} onChange={e => { setName(e.target.value); setStatus(""); }} /></label>
+        <label>{tr("Transformation name")}<input value={name} maxLength={160} onChange={e => { setName(e.target.value); setStatus(null); }} /></label>
       </div>{saved && <p className="ws-muted">{tr("Revision")}{" "}{saved.revision}{" "}{tr("· saved")}{" "}{dateLabel(saved.updated_at)}{" "}{tr("· each execution creates a separate dataset.")}</p>}</section>
       <section className="ws-panel"><h2>{tr("1. Select source signals")}</h2><label>{tr("Find signals")}<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder={tr("Name, dataset or unit")} /></label>
         <div className="transform-catalog">{catalog.filter(s => `${s.datasetName} ${s.name} ${s.displayName} ${s.unit}`.toLowerCase().includes(search.toLowerCase())).map(signal => <label key={signal.id} className="transform-source-choice"><input type="checkbox" checked={config.sources.some(s => s.signalId === signal.id)} onChange={() => toggle(signal)} /><span><strong>{signalLabel(signal)}</strong><small>{signal.datasetName} · {signal.clock.axisId === "utc" ? "UTC" : signal.clock.label}</small></span></label>)}</div>
@@ -150,7 +150,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
       <details><summary>{tr("Inspect sample values and provenance")}</summary><div className="ws-table-scroll"><table><thead><tr><th>{tr("Time (s)")}</th>{preview.metadata.columns.map(c => <th key={c.name}>{signalLabel(c)}</th>)}</tr></thead><tbody>{preview.samples.map((sample, i) => <tr key={i}><td>{number(sample.time)}</td>{preview.metadata.columns.map(c => <td key={c.name}>{shown(sample.values[c.name])}<small className="transform-cell-note">{tr(provenanceLabels[sample.provenance[c.name]])} · {sample.observed[c.name] ? tr("original coverage") : tr("processed / missing")}</small></td>)}</tr>)}</tbody></table></div></details>
     </section>}
     <div className="ws-panel transform-actions"><button className="ws-outlined" disabled={busy || !config.sources.length} onClick={() => setNonce(v => v + 1)}>{tr("Recompute preview")}</button><button className="ws-outlined" disabled={busy || !preview || previewing || !!previewError || !name.trim()} onClick={() => void save(false)}>{tr("Save configuration")}</button><button className="ws-primary" disabled={busy || !preview || previewing || !!previewError || !name.trim()} onClick={() => void save(true)}>{busy ? tr("Saving and computing…") : tr("Generate new dataset ↗")}</button></div>
-    {status && <p className="ws-notice" role="status">{tr(status)}</p>}{generated && <section className="ws-panel"><h2>{generated.name}</h2><p>{tr("The generated dataset is available in Signal catalog, Explorer, Analysis, Experiments and Incidents.")}</p><div className="ws-inline"><a className="ws-link" href={`#${prefix}/datasets/${generated.id}`}>{tr("Open dataset and provenance ↗")}</a><button className="ws-primary" onClick={() => { onGenerated(generated); go(analysisPath(workspaceId, generated.id, generated.metadata.columns.map(c => c.name))); }}>{tr("Analyze generated dataset ↗")}</button><a className="ws-link" href={`#${prefix}/experiments/new/${generated.id}`}>{tr("Create experiment from generated dataset ↗")}</a></div><TransformationLineage dataset={generated} /></section>}
+    {status && <p className="ws-notice" role="status">{tr(...status)}</p>}{generated && <section className="ws-panel"><h2>{generated.name}</h2><p>{tr("The generated dataset is available in Signal catalog, Explorer, Analysis, Experiments and Incidents.")}</p><div className="ws-inline"><a className="ws-link" href={`#${prefix}/datasets/${generated.id}`}>{tr("Open dataset and provenance ↗")}</a><button className="ws-primary" onClick={() => { onGenerated(generated); go(analysisPath(workspaceId, generated.id, generated.metadata.columns.map(c => c.name))); }}>{tr("Analyze generated dataset ↗")}</button><a className="ws-link" href={`#${prefix}/experiments/new/${generated.id}`}>{tr("Create experiment from generated dataset ↗")}</a></div><TransformationLineage dataset={generated} /></section>}
     {currentExecutions.length > 0 && <section className="ws-panel"><h2>{tr("Saved executions")}</h2>{currentExecutions.map(dataset => <p key={dataset.id}><a className="ws-link" href={`#${prefix}/datasets/${dataset.id}`}>{dataset.name}</a> · {dateLabel(dataset.created_at)} · {dataset.metadata.rowCount}{" "}{tr("samples")}</p>)}</section>}
   </>;
 }

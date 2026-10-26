@@ -1093,6 +1093,13 @@ test('scenario edits save a new version before a run and retain the original inp
   assert.equal(writes[0].body.config.area,2.4);
   assert.deepEqual(writes[1].body,{scenarioVersion:2,workspaceId:'test'});
   assert.equal(saved[0].version,2);assert.equal(JSON.stringify(scenario),original);
+  const name = inputFor('Scenario name'), requestCount = writes.length;
+  assert.match(container.querySelector('[role="status"]').textContent, /Saved scenario v2/);
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.querySelector('[role="status"]').textContent, /已保存场景版本 2/);
+  assert.equal(inputFor('Scenario name'), name);
+  assert.equal(writes.length, requestCount, 'relocalizing a saved notice does not run the model again');
+  assert.equal(JSON.stringify(scenario), original);
 });
 
 test('generic intervention records restore their own action parameters and observation window',async()=>{
@@ -1444,7 +1451,10 @@ test('known API errors localize at display time and unknown diagnostics remain i
   assert.equal(errorMessage('alpha must be a finite number.'), 'alpha 必须为有限数值。');
   assert.equal(errorMessage('Request failed (503).'), '请求失败（503）。');
   assert.equal(t('Saved: {0}', {0: 'Status'}), '已保存：Status', 'parameters retain user text even when it matches a UI key');
-  assert.equal(t('Saved: Status'), '已保存：Status');
+  assert.equal(t('Saved: Status'), 'Saved: Status', 'rendered or user-authored text is not parsed as a template');
+  assert.equal(t('missing'), '缺测');
+  assert.equal(t('Missing'), '缺失');
+  assert.equal(errorMessage('Experiment belongs to another workspace.'), '此实验属于另一个工作区。');
   assert.equal(runtimeText('Cooling flow falls — not observed'), '冷却流量下降 — 未观测到');
   const diagnostic = '用户数据 / Original diagnostic #42';
   assert.equal(errorMessage(diagnostic), diagnostic);
@@ -1469,8 +1479,15 @@ test('report generation uses the selected locale and discards responses from an 
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Old report/);
 });
 
-test('all static dictionaries provide both languages and retain interpolation parameters', () => {
+test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
+  const owners = new Map();
   for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+    const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
+    for (const property of source.statements[0].expression.properties) {
+      const key = property.name.text;
+      assert.ok(!owners.has(key), `${key}: duplicate in ${owners.get(key)} and ${file}`);
+      owners.set(key, file);
+    }
     for (const [key, pair] of Object.entries(require(`../src/i18n/${file}.json`))) {
       assert.equal(pair.length, 2, key);
       assert.ok(pair.every(value => typeof value === 'string' && value.length), key);
