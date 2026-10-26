@@ -1,6 +1,6 @@
 # L5 操作指南
 
-[中文首页](../README.md) · [English overview](../README.en.md) · [架构](architecture.md) · [第一阶段成果](stage-one-summary.md)
+[中文首页](../README.md) · [English overview](../README.en.md) · [架构](architecture.md)
 
 ## 数据与信号
 
@@ -26,7 +26,7 @@
 4. 查看实际计算预览、质量变化、原始观测掩码及逐点来源，保存配置并生成 Dataset。
 5. 通过 **Analyze generated dataset** 或 **Create experiment from generated dataset** 继续工作；来源附录可返回原 Dataset、配置和模型会话。
 
-单位转换区分绝对温度和温差；rpm／Hz 转换需要转速语义声明。统计填充使用所选输出窗口内的有效值。每次执行生成独立 Dataset，已有分析和事件继续引用原版本。[数值与来源规则](transformation-validation.md)。
+单位转换区分绝对温度和温差；rpm／Hz 转换需要转速语义声明。统计填充使用所选输出窗口内的有效值。每次执行生成独立 Dataset，已有分析和事件继续引用原版本。[数值与来源规则](architecture.md#transformation-pipeline)。
 
 ## 分析与实验
 
@@ -55,7 +55,7 @@
 
 手工创建或导入独立标签版本。JSON 包含 `timeBasis: "dataset-seconds"`、`timeSource` 和 `intervals`；区间包含 `kind: "normal" | "anomaly"`、`start`、`end`。闭区间不能重叠或共享端点。模型 Dataset 可从保存的模拟真值建立标签；有限故障结束后的恢复阶段保留未知。
 
-无标签时描述报警行为。有标签时只评价明确标注且未 abstain 的样本；未标注时间保持未知，零分母指标保持未定义。样本评价与事件检出／漏检、无观测事件、正常报警片段、检测延迟分别计算。持续时间为连续片段首末样本的时间差，单点为 0 秒，采样长空档不计入。完整定义见[实验验证](experiment-validation.md)与 [TEP 扩展协议](tep-benchmark-expanded.md)。
+无标签时描述报警行为。有标签时只评价明确标注且未 abstain 的样本；未标注时间保持未知，零分母指标保持未定义。样本评价与事件检出／漏检、无观测事件、正常报警片段、检测延迟分别计算。持续时间为连续片段首末样本的时间差，单点为 0 秒，采样长空档不计入。完整定义见[实验契约](architecture.md#analysis-experiments)与 [TEP 扩展协议](tep-benchmark-expanded.md)。
 
 ## 模型与场景
 
@@ -70,7 +70,7 @@ TripLens 诊断使用所选观察窗口内的前缀数据；过程诊断需要�
 
 保存模拟为 **Dataset** 后，共用 Signal Catalog、Transformation、九算法、Experiment 与 Incident。工具、干预输入和结果自动保存在模拟库；从事件中的实验引用重开时恢复原观察范围与参数。**Research across models** 汇总任务及其各自模型、标签、来源和分母。
 
-普通 CSV 使用统计分析和调查；物理诊断与预测由已关联模型提供。TripLens examples 保留原有调查、回放与教学入口。[模型实测记录](model-workspace-validation.md)。
+普通 CSV 使用统计分析和调查；物理诊断与预测由已关联模型提供。TripLens examples 保留原有调查、回放与教学入口。[模型方程、数值例子与限制](model-workspace.md)。
 
 ## 事件与报告
 
@@ -78,7 +78,7 @@ TripLens 诊断使用所选观察窗口内的前缀数据；过程诊断需要�
 
 事件工作站可维护状态、观察笔记、候选解释、支持／反对证据和结论。时间线按来源时钟组织记录；选择条目同步窗口、比较图和原始测量，并可返回原分析、实验或模型会话。绝对来源按 UTC 对齐；相对来源只按已明确建立的关系比较。
 
-在 **专业报告** 生成预览，导出独立 HTML 或使用浏览器打印保存 A4 PDF，也可导出事件 JSON。HTML 内嵌图表和样式，附上来源、参数、证据、结论及模型／变换记录。修改并保存事件后重新生成报告即可反映最新内容。[报告与重启验证](incident-reporting-validation.md)。
+在 **专业报告** 生成预览，导出独立 HTML 或使用浏览器打印保存 A4 PDF，也可导出事件 JSON。HTML 内嵌图表和样式，附上来源、参数、证据、结论及模型／变换记录。修改并保存事件后重新生成报告即可反映最新内容。[报告与持久化契约](architecture.md#事件时间线共享窗口与报告)。
 
 ## TEP 研究
 

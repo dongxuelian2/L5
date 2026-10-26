@@ -47,23 +47,12 @@ def csv_fixture(values, *, names=('a', 'b', 'c'), interval=180):
 
 
 class StreamTests(unittest.TestCase):
-    def test_published_real_result_retains_protocol_sources_and_negative_outcomes(self):
-        from examples.tep.verify import verify
+    def test_fixed_case_requires_declared_protocol(self):
         from examples.tep.run import require_fixed_protocol
-        report = json.loads((Path(__file__).resolve().parents[1]/'examples/tep/results.json').read_text(encoding='utf-8'))
-        self.assertTrue(verify(report))
-        faulty = copy.deepcopy(report)
-        faulty['sourceFiles'] = {}
-        with self.assertRaisesRegex(ValueError, 'three official'):
-            verify(faulty)
-        faulty = copy.deepcopy(report)
-        faulty['tasks'][0]['externalRun'] = 'unrelated-run'
-        with self.assertRaisesRegex(ValueError, 'predeclared'):
-            verify(faulty)
+        from l5.tep_import import PROTOCOL
+        self.assertEqual(len(PROTOCOL['algorithms']), 9)
         with self.assertRaisesRegex(ValueError, 'case-study protocol'):
             require_fixed_protocol(dict(snapshot=dict(config={})))
-        weak = [t for t in report['tasks'] if '-f03-' in t['externalRun']]
-        self.assertEqual(sum(t['metrics']['labelled']['event']['missedEvents'] for t in weak), 17)
 
     def test_selection_keeps_identity_sample_order_and_exact_52_features(self):
         with TemporaryDirectory() as tmp:

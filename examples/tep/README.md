@@ -2,7 +2,7 @@
 
 ## 扩展覆盖与正常训练稳定性
 
-原 PR22 的协议、72 项任务和结果文件继续保留。本轮另存[扩展协议](expanded_protocol.json)、[稳定性协议](robustness_protocol.json)、[研究报告](../../docs/tep-benchmark-expanded.md)、两组 `*_summary.json`／`*_per_run.csv` 和 `fault3_summary.json`。扩展有 585 项任务；A/B/C 在同一完整测试集合上有 1,755 项任务；每次正式批次不超过 252 项。
+原 PR22 的[协议](protocol.json)和 72 项任务定义继续保留。本轮使用[扩展协议](expanded_protocol.json)、[稳定性协议](robustness_protocol.json)、[研究报告](../../docs/tep-benchmark-expanded.md)。详细 CSV/JSON 与故障 3 过程记录仅生成到本地忽略目录。扩展有 585 项任务；A/B/C 在同一完整测试集合上有 1,755 项任务；每次正式批次不超过 252 项。
 
 显式准备 71 个所需运行（复用既有缓存时会校验哈希并跳过重复提取）：
 
@@ -22,19 +22,18 @@ node scripts/python.mjs -m examples.tep.expanded_verify /path/output/expanded/re
 node scripts/python.mjs -m examples.tep.finish_study --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output
 ```
 
-`study.json` 保存可恢复的 Workspace／study ID。给运行命令加 `--workspace-id ID --study-id ID` 会导出／继续既有研究，保留已失败的执行，不静默重试或替换负结果。需要重试时使用正式 Experiment 的 retry；结果页明确保留历史尝试。`finish_study` 输出两份研究 HTML、三个故障 3 运行的全部曲线 JSON、完整尝试审计、具体扩展故障的 Incident／Experiment HTML、72 项基线对照和恢复回执；可选 `--publish-dir examples/tep` 仅发布精简汇总与逐运行 CSV。
+`study.json` 保存可恢复的 Workspace／study ID。给运行命令加 `--workspace-id ID --study-id ID` 会导出／继续既有研究，保留已失败的执行，不静默重试或替换负结果。需要重试时使用正式 Experiment 的 retry；结果页明确保留历史尝试。`finish_study` 在本地输出研究 HTML、故障 3 曲线和必要的会话恢复信息；可选 `--publish-dir` 应指向本地忽略目录，不向 Git 发布生成产物。
 
 启动服务时把 `L5_TEP_CACHE` 指向相同缓存，并使用 `node scripts/python.mjs server.py --data-dir /path/workspace`。TEP 页的 Experiment protocol 可选择 Original case study、Expanded benchmark 和 Normal training robustness，选择已存 study 后查看故障矩阵、正常训练比较和故障 3 对照；协议、训练配置、指标和选中单元格保留在 URL，返回或刷新可以恢复。点击单元格进入真实 Dataset／Experiment，复用已有多算法比较、Signal Explorer 和 Incident。
 
-[TEP expanded benchmark and robustness](../../.github/workflows/tep-expanded.yml) 是明确启用的大文件工作流。可手动 dispatch，或给 PR 加 `run-external-tep` 标签；未启用时不下载大文件。它校验三份原文件，执行全部 2,340 项任务、故障 3、调查、HTML 和重启恢复，将完整结果作为 `l5-tep-expanded-robustness` artifact 保存 30 天。提交的 CSV/JSON 供普通离线回归检查；不是合成数据替代真实验收。
 
 ## 原始 72 项案例
 
 本案例把 Rieth 等人公开的 TEP mode 1 仿真轨迹接入 L5 的 Dataset、Experiment、AnalysisResult、Incident 和离线报告。发布结果使用官方原始文件；普通测试使用明确标记的生成夹具。
 
 - [固定协议](protocol.json)：在评分前固定正常训练运行 1、校准运行 2、正常测试运行 1–2，以及故障 1、3、5 的测试运行 1–2。九算法共 72 项任务。
-- [实际结果](results.json)：逐运行混淆计数、事件指标、覆盖率、abstain、计算时间、阈值、来源和代码哈希。
-- [结果表](scoreboard.md)：九种算法的独立正常误报和故障检测结果。
+- 逐运行结果通过下述本地命令生成 `output/tep/results.json`，不在 Git 中维护第二份过程记录。
+- 结果总结见[案例说明](../../docs/tep-case-study.md)；运行时另在本地生成 `output/tep/scoreboard.md`。
 - [案例说明](../../docs/tep-case-study.md)：时间约定、指标、发现、浏览器验收和限制。
 
 ## 准备环境与官方数据
@@ -101,4 +100,4 @@ npm run check
 npm run test:research
 ```
 
-带代理的环境应像仓库 CI 一样设置 `NO_PROXY=127.0.0.1,localhost`，让本机 HTTP 回归直连。普通 CI 无需外部数据；独立工作流 **TEP real-data case study** 下载／校验官方三份文件并生成完整实验和事件报告。在 PR 上添加 `run-external-tep` 标签可于合并前明确启用；工作流进入默认分支后也可手动触发。
+带代理的环境应像仓库 CI 一样设置 `NO_PROXY=127.0.0.1,localhost`，让本机 HTTP 回归直连。不再提供官方数据专项 CI；研究者根据上述命令在本地手动复算。

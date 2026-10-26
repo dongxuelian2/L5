@@ -57,7 +57,7 @@ Rieth, C. A.; Amsel, B. D.; Tran, R.; Cook, M. B. (2017). *Additional Tennessee 
 
 ## 实际结果
 
-命令行官方案例和真实 Chromium 浏览器分别完成同一协议的 72 项任务，均全部成功。每批只拟合九个模型。所有测试均为完整观测，覆盖率 100%，abstain 为 0。以下为发布的官方案例结果；[完整逐运行结果](../examples/tep/results.json) 保留阈值、全部计数、事件、持续时间、计算时间、输入／代码哈希和失败字段。
+命令行官方案例和真实 Chromium 浏览器分别完成同一协议的 72 项任务，均全部成功。每批只拟合九个模型。所有测试均为完整观测，覆盖率 100%，abstain 为 0。以下为发布的官方案例结果；完整逐运行结果按[固定协议和本地复现命令](../examples/tep/README.md)生成到忽略的输出目录；本页保留结果、分母与局限。
 
 | 算法 | 独立正常 FP / 1920 | 故障 1 Recall / 延迟中位数 s | 故障 3 Recall / 检出事件 | 故障 5 Recall / 延迟中位数 s |
 |---|---:|---:|---:|---:|
@@ -93,7 +93,7 @@ Rieth, C. A.; Amsel, B. D.; Tran, R.; Cook, M. B. (2017). *Additional Tennessee 
 
 预先指定的 fault 1/run 1 在浏览器中通过九个实际报警区间建立 Incident，保存候选解释、与 PCA-Q 区间关联的支持证据、结论和状态。该运行的 PCA-Q 首次报警为 29520 s，延迟 720 s；Max-Z 为 30600 s，延迟 1800 s。已知故障注入作为独立真值事件出现在时间线中。报告保留实际图表、训练来源、配置和保存的实验评价，说明标签与统计候选解释的区别。
 
-浏览器实际下载的事件 HTML 为 3159299 字节，包含 37 个内嵌 SVG。再次导入同一故障运行后创建了第 11 个 Dataset；随后实际重启服务，原有 92 个 CSV／NPZ／结果文件，以及 72 AnalysisResult、72 任务、实验、九个事件来源和两条调查记录均保持不变。浏览器重新打开后，结论、支持关系和注入时间线正常恢复。[验收记录与哈希](verification/tep-case-study-2026-10-25.json)。
+浏览器实际下载的事件 HTML 为 3159299 字节，包含 37 个内嵌 SVG。再次导入同一故障运行后创建了第 11 个 Dataset；随后实际重启服务，原有 92 个 CSV／NPZ／结果文件，以及 72 AnalysisResult、72 任务、实验、九个事件来源和两条调查记录均保持不变。浏览器重新打开后，结论、支持关系和注入时间线正常恢复。历史验收回执不再随源码维护。
 
 ![TEP 故障与算法矩阵](images/tep-benchmark.jpg)
 
@@ -109,7 +109,7 @@ Rieth, C. A.; Amsel, B. D.; Tran, R.; Cook, M. B. (2017). *Additional Tennessee 
 
 ## 复现、验收与边界
 
-获取、准备、启动和导出命令见 [examples/tep/README.md](../examples/tep/README.md)。`examples.tep.verify` 校验实际原始来源、72 项任务、九个固定模型、阈值一致性及指标分母。普通 CI 使用生成的离线格式夹具；大型官方数据由独立工作流通过手动触发或明确的 PR 标签 `run-external-tep` 启用。
+获取、准备、启动和导出命令见 [examples/tep/README.md](../examples/tep/README.md)。`examples.tep.verify` 校验实际原始来源、72 项任务、九个固定模型、阈值一致性及指标分母。不再提供大型数据专项 CI 和 PR 标签门禁；需要时在本机按固定命令复算。
 
 本地最终验证通过 72 项 Workspace Python、40 项模拟 Python、43 项 React DOM、TypeScript 和 Vite 生产构建，另有 115 项研究回归。新增检查覆盖源文件与缓存损坏、52 通道顺序、元数据分离、真实结果协议审计、训练不读测试值、拟合复用、九算法运行边界重置、缺测／采样周期、未知标签分母、快照变化拒绝和历史恢复。
 

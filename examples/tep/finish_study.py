@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 import shutil
 
-import numpy as np
-
 from .expanded_run import write_json
 from .run import investigate
 from l5.experiment_reports import render_experiment_report
@@ -23,7 +21,6 @@ def finish(data_dir, cache_dir, output, publish=None):
         ref = json.loads((output/kind/'study.json').read_text(encoding='utf-8'))
         study = store.tep_studies.get(ref['workspaceId'],ref['studyId'])
         summary = training_summary(study)
-        write_json(output/kind/'training-summary.json',summary)
         compact = dict(studyId=study['id'],workspaceId=study['workspaceId'],protocolId=study['protocol']['id'],
             protocolHash=study['protocolHash'],statusCounts=study['statusCounts'],tasks=len(study['tasks']),batches=study['batches'],training=summary,
             cells=[{k:c[k] for k in ('configuration','faultNumber','algorithm','plannedRuns','succeeded','failed','unresolvedRuns','sample','event','windows','burden','delay','delayDistribution')} for c in study['cells']])
@@ -39,12 +36,6 @@ def finish(data_dir, cache_dir, output, publish=None):
         (output/kind/'study.html').write_text(render_study_report(store,study),encoding='utf-8')
         write_json(output/kind/'compact-summary.json',compact)
         write_json(output/kind/'fault3-summary.json',controls)
-        audits = []
-        for attempt in study['attempts']:
-            run = store.experiments.run(attempt['id'])
-            audits.append(dict(runId=run['id'],experimentId=run['experiment_id'],status=run['status'],retryOf=run['retry_of'],
-                tasks=[dict(id=t['id'],algorithm=t['algorithm'],datasetId=t['config']['datasetId'],status=t['status'],error=t['error'],analysisId=t['result_id']) for t in run['tasks']]))
-        write_json(output/kind/'all-attempts.json',audits)
         verification[kind] = dict(studyId=study['id'],workspaceId=study['workspaceId'],tasks=len(study['tasks']),statusCounts=study['statusCounts'],
             fittedModels=len({t['metrics']['training']['fitId'] for t in study['tasks'] if t['metrics']}),
             newFits=sum(not t['metrics']['training']['reused'] for t in study['tasks'] if t['metrics']))
@@ -72,24 +63,6 @@ def finish(data_dir, cache_dir, output, publish=None):
     if before != dict(incident=reopened.incidents.get(incident['id']),counts=restored['statusCounts'],tasks=[t['result_id'] for t in restored['tasks']]):
         raise ValueError('Restart changed saved study/Incident evidence.')
     verification['restart'] = dict(restored=True,incidentId=incident['id'],links=len(incident['links']),entries=len(incident['entries']))
-    baseline = json.loads((Path(__file__).resolve().parent/'results.json').read_text(encoding='utf-8'))
-    report = json.loads((output/'expanded'/'results.json').read_text(encoding='utf-8'))
-    selected = {(t['algorithm'],t['externalRun']):t for t in report['tasks']}
-    exact_hashes, maximum_threshold_difference = 0,0.
-    for old in baseline['tasks']:
-        new = selected[(old['algorithm'],old['externalRun'])]
-        np.testing.assert_allclose(new['threshold'],old['threshold'],rtol=1e-12,atol=1e-12)
-        maximum_threshold_difference = max(maximum_threshold_difference,abs(new['threshold']-old['threshold']))
-        if new['metrics']['labelled'] != old['metrics']['labelled']:
-            # Label identities belong to different imports; numerical evaluation
-            # must still agree with all frozen PR22 sample and event records.
-            for key in ('sample','event'):
-                if new['metrics']['labelled'][key] != old['metrics']['labelled'][key]:
-                    raise ValueError('Expansion changed a published PR22 numerical outcome.')
-        exact_hashes += new['scoreSha256'] == old['scoreSha256']
-    verification['baseline'] = dict(comparedTasks=72,sampleAndEventMetricsEqual=True,exactScoreHashes=exact_hashes,
-        maximumThresholdDifference=maximum_threshold_difference)
-    write_json(output/'verification.json',verification)
     return verification
 
 

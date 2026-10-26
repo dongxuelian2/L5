@@ -1,11 +1,11 @@
 # Tennessee Eastman: independent detection benchmark
 
-The sections below preserve the chronological research record, including unsuccessful methods. For current cross-fold/seed/mode findings and executed consolidation checks, see [the integration audit](../docs/integration-2026-10-23.md). No individual early result establishes a deployment winner; the external datasets do not validate the simulator diagnosis or intervention engine.
+The sections below preserve the chronological research record, including unsuccessful methods. For current findings see the [case study](../docs/tep-case-study.md) and [expanded study](../docs/tep-benchmark-expanded.md). No single result establishes a deployment winner or validates the simulator intervention engine.
 
 This is a growing **external validation track** for L5, independent of the
 TripLens synthetic incident engine. Stage 1 imported the data; stage 2 adds
 three baseline detectors, chronological training, explicit evaluation
-protocols, auditable metrics and reproducible CI on the original reference
+protocols, auditable metrics and reproducible local research execution on the original reference
 files.
 
 ## Reproduce a full 21-fault reference evaluation
@@ -30,12 +30,12 @@ missing files cause an error, not silently missing fault scores. Reports
 `tep_detection_scoreboard.md` contain per-case results,
 evaluation configuration, original channel names and per-file SHA-256s.
 Continuous integration additionally runs the pinned external dataset
-workflow `.github/workflows/tep-reference.yml` and retains these reports as
+workflow `local reference commands` and retains these reports as
 workflow artifacts for 30 days.
 
 The reference mirror is pinned to commit
 `9a6c8e5fcef4a2850778704e7793c87b0a187005` to prevent unnoticed data drift.
-Downloads are opt-in through the command above or the dedicated external CI
+Downloads are opt-in through the command above or the dedicated external local research execution
 workflow. **No third-party DAT files are checked in**, and the L5 web app
 requires neither NumPy nor an external model/API key.
 
@@ -143,7 +143,7 @@ The evaluator writes JSON (all cases, original SHA-256 data hashes, frozen
 thresholds and scenario seeds) and a Markdown scoreboard (early-detection
 changes versus clean and nuisance alarm episode counts) named
 tep_robustness_report.json and tep_robustness_scoreboard.md. The same reports
-are collected as artifacts by the reference-evaluation GitHub workflow.
+are collected as artifacts by the reference-evaluation local research run.
 
 **Leakage control:** normal fit data determine imputation medians, noise
 scales and model parameters; the normal calibration partition determines
@@ -280,7 +280,7 @@ the original Max-Z / PCA-Q / PCA-T2 baselines use those identical rules.
     python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --output-dir /tmp/tep-temporal
     python3 -m benchmarks.temporal_evaluate /tmp/tep-reference --faults 1 --alpha .01
 
-The full 21-fault reference CI generates tep_temporal_comparison.json and
+The full 21-fault reference local research execution generates tep_temporal_comparison.json and
 tep_temporal_comparison.md in the same artifact as all previous reports.
 These show early (60-minute) fault detections, eventual detections,
 **healthy alarm episodes**, alarm-active samples and delay conditional
@@ -355,7 +355,7 @@ clean-data control is checked against the original reference pipeline.
 
 Outputs: tep_bounded_cusum_report.json, tep_bounded_cusum_scoreboard.md
 and the separate coverage audit's standard JSON/Markdown reports, retained
-by the pinned 21-fault GitHub workflow.
+by the pinned 21-fault local research run.
 
 These bounded detectors are **candidate baselines, not production-ready
 alarms**. Even matched normal-calibration workload does not imply matched
@@ -421,7 +421,7 @@ and any early-hit loss is reported plainly. The evaluation does not learn
 a production safety rule or propose unattended plant actuation.
 
 Output artifacts: tep_drift_recovery_report.json and
-tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault CI.
+tep_drift_recovery_scoreboard.md, archived by the pinned full 21-fault local research execution.
 
 ## Causal dynamic PCA: multivariate time-lag structure (stage 9)
 
@@ -542,7 +542,7 @@ algorithm based on these reused held-out fault outcomes.
 
 Artifacts: tep_normal_budget_validation.json and
 tep_normal_budget_scoreboard.md, attached to the pinned public
-21-fault GitHub CI run.
+21-fault GitHub local research execution run.
 
 ## Separately seeded TEP normal trajectories: Rieth external replication (stage 11)
 
@@ -560,7 +560,7 @@ TEP_FaultFree_Training.RData (~24MB) and
 TEP_FaultFree_Testing.RData (~45MB). The near-gigabyte fault datasets
 are never downloaded or consulted. The Dataverse page uses **custom
 dataset terms**, so this repository redistributes **no** underlying
-sensor data. The external CI reports persistent file IDs, actual
+sensor data. The external local research execution reports persistent file IDs, actual
 SHA-256 and file sizes, and rejects incomplete or mixed simulation runs,
 nonfinite features, feature reordering and fault-labeled records.
 
@@ -595,7 +595,7 @@ this stage establishes whether the nuisance-alarm conclusions
 generalize to more than the original one normal trajectory.
 
 The optional RData parser dependency pyreadr==0.5.7 is installed only
-in the dedicated workflow under .github/workflows/tep-rieth-external.yml.
+in the dedicated workflow under local Rieth commands.
 Use --local-only to rerun from locally cached original RData files.
 All source binaries stay outside the repository.
 
@@ -665,7 +665,7 @@ study multi-mode classifiers, mode transitions or fault detection.
 It cannot establish independent mode-specific false-alarm confidence
 intervals or a safe automatic plant control policy.
 
-The dedicated reference action in .github/workflows/tep-six-mode.yml
+The dedicated reference action in local six-mode commands
 archives tep_six_mode_normal_report.json and
 tep_six_mode_normal_scoreboard.md. The original model and all prior
 reference workflows remain unchanged.
@@ -691,9 +691,9 @@ Next independent increments can add:
 
 ## Integrated reproducibility entry points (2026-10-23)
 
-All historical experiments and negative findings above remain in scope. Use `benchmarks.run_suite` to execute the eleven original Braatz configurations from a hash-checked local cache; its per-study subprocesses retain explicit sequence boundaries and separate logs. `benchmarks.verify_reports` checks recorded numerical projections for `reference`, `rieth` and `six-mode` outputs. The snapshot records software regression, not a new independent holdout or a recommended algorithm.
+All historical experiments and negative findings above remain in scope. Use `benchmarks.run_suite` to execute the eleven original Braatz configurations from a hash-checked local cache; its per-study subprocesses retain explicit sequence boundaries and separate logs. Numerical research can be rerun manually; no separate checked-in report snapshot or automatic verification gate is maintained.
 
-Source hashes are enforced for all classic cached inputs as well as the Rieth/THUFDD downloads. `ResearchSession` and `l5/contracts.py` keep the 52-, 53- and 18-signal spaces separate; native 53-column physical meanings/units and sampling seconds remain unverified. No model is promoted into the workstation's default diagnosis path. See [architecture](../docs/architecture.md) and [the complete integration audit](../docs/integration-2026-10-23.md) for executed results, source identities, full commands, unresolved limitations and the twelve-PR ancestry audit.
+Source hashes are enforced for all classic cached inputs as well as the Rieth/THUFDD downloads. `ResearchSession` and `l5/contracts.py` keep the 52-, 53- and 18-signal spaces separate; native 53-column physical meanings/units and sampling seconds remain unverified. No model is promoted into the workstation's default diagnosis path. See [architecture](../docs/architecture.md) and the existing TEP research documents for executed results and remaining limitations.
 
 ## Source references
 

@@ -14,3 +14,12 @@ data/
 .env
 .env.*
 !.env.example
+
+# Local-only regenerated or published outputs
+/examples/tep/results.json
+/examples/tep/*_summary.json
+/examples/tep/*_per_run.csv
+/examples/tep/scoreboard.md
+/benchmarks/numeric_reference.json
+/video/triplens-pitch.mp4
+/docs/verification/

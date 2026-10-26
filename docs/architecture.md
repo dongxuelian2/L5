@@ -30,7 +30,7 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
-`npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+`npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes the existing product/example tests and production build; optional research tests remain available locally through `npm run test:research`.
 
 ### Navigation and workflow context
 
@@ -70,7 +70,7 @@ Experiment HTML reports read saved runs and records without rerunning detection.
 | `POST /api/experiment-runs/:id/incidents` | Associate selected tasks/scoped intervals with a new/existing incident |
 | `GET /api/experiments/:id/report.html` | Offline report; optional `run` and `download=1` |
 
-Verification covers nine-method execution, studies and bounds, partial failures/retries, immutable history, restart recovery, labels/unknown/abstain/gaps, source clocks, derived observation policies, simulator truth, scoped incident lineage and HTML evidence. DOM tests cover the actual editor, filters/notes/references, stale loads, label import, synchronous cursors and report generations. [Browser validation](experiment-validation.md) records the actual exercised workflows and remaining limits.
+Verification covers nine-method execution, studies and bounds, partial failures/retries, immutable history, restart recovery, labels/unknown/abstain/gaps, source clocks, derived observation policies, simulator truth, scoped incident lineage and HTML evidence. DOM tests cover the actual editor, filters/notes/references, stale loads, label import, synchronous cursors and report generations. The executable cases live in [backend tests](../tests/test_experiments.py) and the existing [DOM tests](../tests/workspace-ui.test.mjs).
 
 ## Signal & Time-Series Workspace
 
@@ -101,7 +101,7 @@ CSV 导入显式区分相对数值时间、生成时间、ISO 日期时间及 Un
 
 `SignalWorkspace.tsx` 提供目录、元数据编辑器、时间关系表单、质量分布、共享窗口、曲线与游标。Explorer 通过已有数据集和原始信号键进入 Monitoring，携带当前窗口；用户仍须选择健康且在分析之前的基线。选中来源窗口可经 `IncidentLinkDialog` 创建事件，也可打开重叠的已有分析。模拟信号带原会话入口，调查与干预继续使用现有运行时。事件曲线、贡献度和独立报告展示保存的名称和单位，报告附录保留原始列名及来源／浏览时钟。
 
-验证覆盖 `tests/test_data_foundation.py` 和真实 React DOM 交互测试；[浏览器及旧库验证记录](signal-workspace-validation.md) 包含重启恢复和原始文件校验。统一网格、单位转换与派生计算由以下独立变换模块实现。
+[数据基础测试](../tests/test_data_foundation.py)和现有 DOM 测试覆盖数值、HTTP、重启及旧库兼容。统一网格、单位转换与派生计算由以下独立变换模块实现。
 
 ## Transformation pipeline
 
@@ -127,7 +127,7 @@ Monitoring uses the ordinary analysis endpoint and saved result format. Generate
 | `POST /api/transformations/:id/execute` | Create a new Dataset from the saved revision |
 | `GET /api/datasets/:id/sample` | Existing full-resolution sample plus provenance/observation flags for generated data |
 
-The React workspace restores definitions, allows per-source policy and expression editing, debounces actual previews and rejects stale responses. Save/generate actions validate with the same computation engine. An unchanged repeat execution reuses the definition revision and creates another dataset ID. `TransformationLineage` is shared by dataset details, analysis results and Incident sources. Existing Explorer plots, monitoring forms, incident timelines and report rendering remain the downstream path. [Acceptance records](transformation-validation.md) cover numerical, HTTP/restart, DOM and browser workflows.
+The React workspace restores definitions, allows per-source policy and expression editing, debounces actual previews and rejects stale responses. Save/generate actions validate with the same computation engine. An unchanged repeat execution reuses the definition revision and creates another dataset ID. `TransformationLineage` is shared by dataset details, analysis results and Incident sources. Existing Explorer plots, monitoring forms, incident timelines and report rendering remain the downstream path. [Transformation tests](../tests/test_transformations.py) cover numerical, HTTP/restart and lineage behavior; the existing DOM suite exercises the editor.
 
 ## 持久化事件调查
 
@@ -181,7 +181,7 @@ The workstation and external monitoring studies share evidence contracts while r
 | Diagnosis Engine | `simulation/platform.py::diagnose` | Observations only; no simulator Config/fault label argument; support, contradiction and unavailable evidence remain separate |
 | Decision & Counterfactual Engine | `fit_hypothesis`, `simulate`, `interventions` | Configurable duration and stable 0.05–1s cadence, explicit observation window and selectable hypothesis; on-demand recovery grid; physical pressure determines trip status |
 | Investigation Workstation | `src/components/Investigation.tsx`, `src/workspace/RuntimeWorkbench.tsx`, `src/lib/platform.ts`, `server.py` | Shared ProcessEvidence components and RuntimeWorkbench; arbitrary time-matched prefixes, user-selected tools and intervention parameters |
-| Benchmark & Verification | `benchmarks/run_suite.py`, `verify_reports.py`, `simulation/verify_artifacts.py`, `tests/`, Actions | Pinned sources, frozen protocols, separate software/numerical regressions and external research reports |
+| Benchmark & Research | `benchmarks/run_suite.py`, `benchmarks/test_*.py`, `tests/` | Manual research runs, frozen protocols and focused regression tests; no committed execution-report inventory |
 
 ## Signal spaces
 
@@ -214,7 +214,7 @@ Pressure-intervention rankings are withheld when the fitted physical baseline re
 
 `ScenarioService` 在 SQLite 中添加定义和不可变版本表。会话固定模型描述、配置、场景版本、测量和真值，保存后编辑或再次运行不会重写已有轨迹。旧 TripLens 文件读取时仅补充投影元数据。模型数据与派生数据保留来源快照，实验真值入口读取保存的故障区间并映射时钟；有限故障结束后的恢复时间保持未知标签。
 
-前端 Models 从实际目录生成配置表单、保存与复制场景、恢复版本及会话。TripLens 使用原专业调查组件，双水箱使用公共曲线、窗口和通用指标展示。Incident、实验研究索引及报告保留各自模型、场景、单位和评价分母。[接口、方程、数值方法与存储细节](model-workspace.md) 和 [实际验收](model-workspace-validation.md) 单独记录。
+前端 Models 从实际目录生成配置表单、保存与复制场景、恢复版本及会话。TripLens 使用原专业调查组件，双水箱使用公共曲线、窗口和通用指标展示。Incident、实验研究索引及报告保留各自模型、场景、单位和评价分母。[模型文档](model-workspace.md)统一记录接口、方程、数值例子与边界；[模型测试](../tests/test_models.py)覆盖实现与持久化。
 
 ## External TEP and independent datasets
 
@@ -254,6 +254,6 @@ Experiment 单 worker 维护最多 36 个已拟合模型的 LRU。键包含完�
 
 ## Verification and operation
 
-`npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete numerical regeneration is available separately through `npm run verify:artifacts`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI checks Linux and Windows. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.
+`npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete example regeneration is available locally through `npm run generate`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI only builds the frontend on main; full tests are run locally when needed. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.
 
 The reference suite preserves all eleven study configurations and their logs. Numerical snapshots capture audited thresholds, workload, coverage, fold/seed summaries and negative outcomes with float tolerance. They check software drift; repeatedly consulted simulator data provide no new independent evidence. Raw third-party datasets remain outside Git and report artifacts.
