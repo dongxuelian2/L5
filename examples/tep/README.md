@@ -1,34 +1,34 @@
 # Tennessee Eastman 外部数据案例
 
-## PR23 扩展覆盖与正常训练稳定性
+## 扩展覆盖与正常训练稳定性
 
 原 PR22 的协议、72 项任务和结果文件继续保留。本轮另存[扩展协议](expanded_protocol.json)、[稳定性协议](robustness_protocol.json)、[研究报告](../../docs/tep-benchmark-expanded.md)、两组 `*_summary.json`／`*_per_run.csv` 和 `fault3_summary.json`。扩展有 585 项任务；A/B/C 在同一完整测试集合上有 1,755 项任务；每次正式批次不超过 252 项。
 
 显式准备 71 个所需运行（复用既有缓存时会校验哈希并跳过重复提取）：
 
 ```sh
-python -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source fault-free-training --faults 0 --runs 1 2 3 4 5 6 --download
-python -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source fault-free-testing --faults 0 --runs 1 2 3 4 5 --download
-python -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source faulty-testing --faults 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 --runs 1 2 3 --download
+node scripts/python.mjs -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source fault-free-training --faults 0 --runs 1 2 3 4 5 6 --download
+node scripts/python.mjs -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source fault-free-testing --faults 0 --runs 1 2 3 4 5 --download
+node scripts/python.mjs -m examples.tep.prepare --source-dir /path/rieth --cache-dir /path/cache --source faulty-testing --faults 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 --runs 1 2 3 --download
 ```
 
 下面命令应使用空闲、独立的数据目录，避免离线 CLI 与正在运行的服务同时持有同一个 worker。建议 `OPENBLAS_NUM_THREADS=1`、`OMP_NUM_THREADS=1`；本地 HTTP 验证设置 `NO_PROXY=127.0.0.1,localhost`。`--download` 是显式网络入口；正式运行不会自行下载大型数据。
 
 ```sh
-python -m examples.tep.expanded_run --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output/expanded
+node scripts/python.mjs -m examples.tep.expanded_run --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output/expanded
 # 从 /path/output/expanded/study.json 读取实际 workspaceId，替换下面 ID。
-python -m examples.tep.robustness --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output/robustness --workspace-id ID
-python -m examples.tep.expanded_verify /path/output/expanded/results.json /path/output/robustness/results.json
-python -m examples.tep.finish_study --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output
+node scripts/python.mjs -m examples.tep.robustness --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output/robustness --workspace-id ID
+node scripts/python.mjs -m examples.tep.expanded_verify /path/output/expanded/results.json /path/output/robustness/results.json
+node scripts/python.mjs -m examples.tep.finish_study --data-dir /path/workspace --cache-dir /path/cache --output-dir /path/output
 ```
 
 `study.json` 保存可恢复的 Workspace／study ID。给运行命令加 `--workspace-id ID --study-id ID` 会导出／继续既有研究，保留已失败的执行，不静默重试或替换负结果。需要重试时使用正式 Experiment 的 retry；结果页明确保留历史尝试。`finish_study` 输出两份研究 HTML、三个故障 3 运行的全部曲线 JSON、完整尝试审计、具体扩展故障的 Incident／Experiment HTML、72 项基线对照和恢复回执；可选 `--publish-dir examples/tep` 仅发布精简汇总与逐运行 CSV。
 
-启动服务时把 `L5_TEP_CACHE` 指向相同缓存，并使用 `python server.py --data-dir /path/workspace`。TEP 页的 Experiment protocol 可选择原始、扩展和 A/B/C，选择已存 study 后查看故障矩阵、正常训练比较和故障 3 对照；点击单元格进入真实 Dataset／Experiment，复用已有多算法比较、Signal Explorer 和 Incident。
+启动服务时把 `L5_TEP_CACHE` 指向相同缓存，并使用 `node scripts/python.mjs server.py --data-dir /path/workspace`。TEP 页的 Experiment protocol 可选择 Original case study、Expanded benchmark 和 Normal training robustness，选择已存 study 后查看故障矩阵、正常训练比较和故障 3 对照；协议、训练配置、指标和选中单元格保留在 URL，返回或刷新可以恢复。点击单元格进入真实 Dataset／Experiment，复用已有多算法比较、Signal Explorer 和 Incident。
 
 [TEP expanded benchmark and robustness](../../.github/workflows/tep-expanded.yml) 是明确启用的大文件工作流。可手动 dispatch，或给 PR 加 `run-external-tep` 标签；未启用时不下载大文件。它校验三份原文件，执行全部 2,340 项任务、故障 3、调查、HTML 和重启恢复，将完整结果作为 `l5-tep-expanded-robustness` artifact 保存 30 天。提交的 CSV/JSON 供普通离线回归检查；不是合成数据替代真实验收。
 
-## PR22 原始案例
+## 原始 72 项案例
 
 本案例把 Rieth 等人公开的 TEP mode 1 仿真轨迹接入 L5 的 Dataset、Experiment、AnalysisResult、Incident 和离线报告。发布结果使用官方原始文件；普通测试使用明确标记的生成夹具。
 
@@ -42,10 +42,10 @@ python -m examples.tep.finish_study --data-dir /path/workspace --cache-dir /path
 在仓库根目录使用 Python 3.12+。运行环境只使用已有 NumPy、pandas；新版提取器不需要 R、pyreadr 或新增解析依赖。原有可选研究环境继续支持 pyreadr。
 
 ```bash
-python -m pip install -r requirements.txt
-python -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source fault-free-training --faults 0 --runs 1 2 --download
-python -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source fault-free-testing --faults 0 --runs 1 2 --download
-python -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source faulty-testing --faults 1 3 5 --runs 1 2 --download --metrics output/tep-extraction.json
+node scripts/python.mjs -m pip install -r requirements.txt
+node scripts/python.mjs -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source fault-free-training --faults 0 --runs 1 2 --download
+node scripts/python.mjs -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source fault-free-testing --faults 0 --runs 1 2 --download
+node scripts/python.mjs -m examples.tep.prepare --source-dir .integration-cache/tep-originals --cache-dir .integration-cache/tep-cache --source faulty-testing --faults 1 3 5 --runs 1 2 --download --metrics output/tep-extraction.json
 ```
 
 下载源为 [Harvard Dataverse V1](https://doi.org/10.7910/DVN/6C3JR1)。三份文件合计 908,887,717 字节；Faulty Testing 为 836,882,037 字节。文件大小、官方 MD5 和固定 SHA-256 见 [来源清单](../../benchmarks/rieth_sources.json)。已有原始文件时，指定其目录并省略 `--download`。准备步骤逐块校验、逐列读取，只保存所选独立运行的 52 个输入及原始 sample 索引。
@@ -84,8 +84,8 @@ npm run serve
 在单独的数据目录中执行；不要同时让另一个 L5 服务管理同一目录的任务。
 
 ```bash
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m examples.tep.run --data-dir .integration-cache/tep-workspace --cache-dir .integration-cache/tep-cache --output-dir output/tep --investigate
-python -m examples.tep.verify output/tep/results.json
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 node scripts/python.mjs -m examples.tep.run --data-dir .integration-cache/tep-workspace --cache-dir .integration-cache/tep-cache --output-dir output/tep --investigate
+node scripts/python.mjs -m examples.tep.verify output/tep/results.json
 ```
 
 PowerShell 可先分别设置 `$env:OPENBLAS_NUM_THREADS='1'` 和 `$env:OMP_NUM_THREADS='1'`，然后执行同一 Python 命令。

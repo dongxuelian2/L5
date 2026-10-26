@@ -146,64 +146,61 @@
   },
   "github": {
     "status": "passed",
-    "implementationCommit": "e24e883da75ea601bef3db17cac4edf0e5997dfb",
+    "implementationCommit": "0eb7a099eedfff69e9d7cfb30b4dba5548e8153b",
     "runs": [
       {
         "workflow": "Check (Ubuntu and Windows)",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225992",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012539",
         "conclusion": "success"
       },
       {
         "workflow": "TEP expanded benchmark and robustness",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240042",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012552",
         "conclusion": "success"
       },
       {
         "workflow": "TEP real-data case study",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240091",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012560",
         "conclusion": "success"
       },
       {
         "workflow": "Tennessee Eastman reference evaluation",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225939",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012607",
         "conclusion": "success"
       },
       {
         "workflow": "Rieth independently seeded normal evaluation",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225998",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012502",
         "conclusion": "success"
       },
       {
         "workflow": "Six-mode normal transfer audit",
-        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225978",
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012521",
         "conclusion": "success"
       }
     ],
     "artifact": {
-      "id": 12599731161,
-      "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240042/artifacts/12599731161",
-      "bytes": 5154300,
-      "digest": "sha256:7f92d79b7e995ddbd656e99bbfff0e9d13e5b5220dad92f1878a5195b12d1525"
+      "id": 12599833163,
+      "url": "https://github.com/dongxuelian2/L5/actions/runs/40197012552/artifacts/12599833163",
+      "bytes": 5153867,
+      "digest": "sha256:4180b0ccc7c7f63895afa0cd2781c8e71da7067ca3443775c16b95327d7201ea",
+      "expiresAt": "2026-11-24T13:21:30Z"
     },
     "numericalComparison": {
       "expanded": {
         "tasks": 585,
-        "statusAndAllDetectionMetricsEqual": true,
-        "allBehaviorMetricsEqualExceptTiming": true,
-        "maximumThresholdDifference": 1.2079226507921703e-13,
-        "exactScoreHashes": 325
+        "allDetectionMetricsEqual": true,
+        "maximumThresholdDifference": 8.526512829121202e-14
       },
       "robustness": {
         "tasks": 1755,
-        "statusAndAllDetectionMetricsEqual": true,
-        "allBehaviorMetricsEqualExceptTiming": true,
-        "maximumThresholdDifference": 1.2079226507921703e-13,
-        "exactScoreHashes": 975
+        "allDetectionMetricsEqual": true,
+        "maximumThresholdDifference": 1.2789769243681803e-13
       },
       "officialVerification": {
         "expanded": {
-          "studyId": "023ae3f711e146bba6a0735ba485bef5",
-          "workspaceId": "c57c85fdce5e4c3eb64c7842fcfe4a53",
+          "studyId": "ceaa77b8643f40ad954cf8ebe5d2643b",
+          "workspaceId": "45892e7436924329985fdb5981861530",
           "tasks": 585,
           "statusCounts": {
             "succeeded": 585,
@@ -217,8 +214,8 @@
           "newFits": 9
         },
         "robustness": {
-          "studyId": "6fe112bfc2d14cc0b06da2c66806e8a9",
-          "workspaceId": "c57c85fdce5e4c3eb64c7842fcfe4a53",
+          "studyId": "83452173d15b46a2a316e529561ec006",
+          "workspaceId": "45892e7436924329985fdb5981861530",
           "tasks": 1755,
           "statusCounts": {
             "succeeded": 1755,
@@ -233,7 +230,7 @@
         },
         "restart": {
           "restored": true,
-          "incidentId": "cbbcb8f7588b4e0695bc2f30bbcf89a7",
+          "incidentId": "109da98e27f343b89215d96a7568e25b",
           "links": 9,
           "entries": 4
         },
@@ -241,10 +238,113 @@
           "comparedTasks": 72,
           "sampleAndEventMetricsEqual": true,
           "exactScoreHashes": 40,
-          "maximumThresholdDifference": 1.2079226507921703e-13
+          "maximumThresholdDifference": 8.526512829121202e-14
         }
       }
-    }
+    },
+    "initialAcceptance": {
+      "status": "passed",
+      "implementationCommit": "e24e883da75ea601bef3db17cac4edf0e5997dfb",
+      "runs": [
+        {
+          "workflow": "Check (Ubuntu and Windows)",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225992",
+          "conclusion": "success"
+        },
+        {
+          "workflow": "TEP expanded benchmark and robustness",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240042",
+          "conclusion": "success"
+        },
+        {
+          "workflow": "TEP real-data case study",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240091",
+          "conclusion": "success"
+        },
+        {
+          "workflow": "Tennessee Eastman reference evaluation",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225939",
+          "conclusion": "success"
+        },
+        {
+          "workflow": "Rieth independently seeded normal evaluation",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225998",
+          "conclusion": "success"
+        },
+        {
+          "workflow": "Six-mode normal transfer audit",
+          "url": "https://github.com/dongxuelian2/L5/actions/runs/40195225978",
+          "conclusion": "success"
+        }
+      ],
+      "artifact": {
+        "id": 12599731161,
+        "url": "https://github.com/dongxuelian2/L5/actions/runs/40195240042/artifacts/12599731161",
+        "bytes": 5154300,
+        "digest": "sha256:7f92d79b7e995ddbd656e99bbfff0e9d13e5b5220dad92f1878a5195b12d1525"
+      },
+      "numericalComparison": {
+        "expanded": {
+          "tasks": 585,
+          "statusAndAllDetectionMetricsEqual": true,
+          "allBehaviorMetricsEqualExceptTiming": true,
+          "maximumThresholdDifference": 1.2079226507921703e-13,
+          "exactScoreHashes": 325
+        },
+        "robustness": {
+          "tasks": 1755,
+          "statusAndAllDetectionMetricsEqual": true,
+          "allBehaviorMetricsEqualExceptTiming": true,
+          "maximumThresholdDifference": 1.2079226507921703e-13,
+          "exactScoreHashes": 975
+        },
+        "officialVerification": {
+          "expanded": {
+            "studyId": "023ae3f711e146bba6a0735ba485bef5",
+            "workspaceId": "c57c85fdce5e4c3eb64c7842fcfe4a53",
+            "tasks": 585,
+            "statusCounts": {
+              "succeeded": 585,
+              "failed": 0,
+              "interrupted": 0,
+              "not-run": 0,
+              "queued": 0,
+              "running": 0
+            },
+            "fittedModels": 9,
+            "newFits": 9
+          },
+          "robustness": {
+            "studyId": "6fe112bfc2d14cc0b06da2c66806e8a9",
+            "workspaceId": "c57c85fdce5e4c3eb64c7842fcfe4a53",
+            "tasks": 1755,
+            "statusCounts": {
+              "succeeded": 1755,
+              "failed": 0,
+              "interrupted": 0,
+              "not-run": 0,
+              "queued": 0,
+              "running": 0
+            },
+            "fittedModels": 27,
+            "newFits": 27
+          },
+          "restart": {
+            "restored": true,
+            "incidentId": "cbbcb8f7588b4e0695bc2f30bbcf89a7",
+            "links": 9,
+            "entries": 4
+          },
+          "baseline": {
+            "comparedTasks": 72,
+            "sampleAndEventMetricsEqual": true,
+            "exactScoreHashes": 40,
+            "maximumThresholdDifference": 1.2079226507921703e-13
+          }
+        }
+      }
+    },
+    "recheckedDuringConsolidation": "2026-10-25; GitHub workflow and artifact metadata read through the connected GitHub account; final numerical receipt retained from the original acceptance."
   },
   "actualServiceRestart": {
     "port": 8790,

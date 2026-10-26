@@ -1,51 +1,94 @@
-# L5 / Industrial Analysis Workspace
+# L5 — Industrial Process Analysis & Investigation Workspace
 
-**Turn your industrial time series into a lasting analysis project.**
+**Industrial time-series analysis, anomaly detection, process experiments and incident investigation.**
 
-[中文](README.md) · [Architecture](docs/architecture.md) · [TripLens video](video/README.md)
+[中文](README.md) · [Quick Start](#quick-start) · [Features](#core-features) · [TEP Case Study](#tennessee-eastman-case-study) · [Architecture](docs/architecture.md) · [Documentation](#examples--documentation)
 
-L5 opens a local Workspace where you can import your own CSV, run anomaly detection, and organize intervals, analyses and model experiments into a persistent **Incident**. The incident workstation saves editable notes, evidence, hypotheses and conclusions so investigation can continue after restarting. **Models** selects TripLens or a coupled-tank process from the backend catalog, saves versioned scenarios and opens each model’s supported investigation and intervention tools. **TripLens examples** retains the original professional interface.
+[![Check](https://github.com/dongxuelian2/L5/actions/workflows/check.yml/badge.svg)](https://github.com/dongxuelian2/L5/actions/workflows/check.yml)
 
-**TEP case study** imports verified original Harvard Dataverse process simulation runs with 52 feature identities and separate published labels. Experiments fit on one normal dataset, calibrate on another and score independent test datasets with fresh sequence state. The fixed case runs all nine existing detectors on eight held-out trajectories, retaining missed faults, per-run distributions, Incident evidence and offline measurement reports. [Prepare and reproduce](examples/tep/README.md) · [Actual results and limitations](docs/tep-case-study.md).
+L5 keeps industrial data, processing steps, detection results and investigation evidence together in a persistent local project. Start with your own CSV, explore multiple sources, derive a dataset and compare nine detectors. Turn alarm intervals, evidence and conclusions into an incident and an offline report. TripLens and coupled-tank models provide a second complete path from fault scenarios to intervention experiments.
 
-## Capabilities
+![L5 Experiment Workspace comparing nine detectors on one derived Dataset, with a shared timeline and saved alarm intervals](docs/images/workspace-experiment.jpg)
 
-The [expanded TEP study](docs/tep-benchmark-expanded.md) covers faults 1–20 with three Testing runs each and five normal runs, then repeats the same 65 trajectories under three disjoint normal fit/calibration configurations (2,340 successful tasks). The live dashboard separates protocols and training sources, shows early/eventual detection and alarm burden, and compares fault 3 with normal-background scores and original measurements. Results retain weak faults and strong training sensitivity: Page CUSUM normal alarm samples vary from 0 to 1,833 out of 4,800. [Reproduce](examples/tep/README.md).
+*Align three CSV sources into a derived Dataset, compare nine detectors on the same timeline and link the results to an Incident. This is the saved example experiment from this consolidation run.*
 
-- Create, open, rename and delete projects, each containing multiple datasets and analyses.
-- Preview and save CSV/TSV data with arbitrary numeric signal names. Choose a timestamp or numeric time column and its unit, or generate time from a sampling interval. Comma, semicolon, tab and pipe delimiters are supported.
-- Maintain a persistent signal catalog with stable IDs, display names, units, descriptions, categories, devices, tags and explicit logical measurement keys across datasets.
-- Inspect actual missing measurements, invalid/duplicate timestamps, irregular sampling, long interruptions, statistics and available sample spans. Open a problem's original curve from its quality view.
-- Browse multiple sources in Signal Explorer with shared windows and full-resolution cursor readings. Absolute sources share UTC; relative sources require saved references or explicit UTC origins. Save and restore selections, windows, cursors and layouts.
-- Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, Dynamic PCA-Q/T² and experimental Adaptive Max-Z against an explicitly chosen normal baseline. Max-Z also supports one signal.
-- Inspect raw measurements, scores, fixed thresholds, above-threshold intervals, first detection time and related signals.
-- Automatically retain successful analyses with their models and parameters. Reopen a result, adjust parameters for another run, or export JSON.
-- Save, edit and duplicate formal experiments; batch the nine existing detectors and finite parameter studies with task progress, individual errors and independently saved AnalysisResults.
-- Configure independent fit/calibration/test datasets, native time ranges, verified original-name signal mappings and observation policies. Reuse each fitted detector across test runs; preserve all dataset hashes, source identities and label versions. Inspect the TEP fault-by-method matrix, delays in seconds, coverage, missed events and per-run median/ranges.
-- Evaluate reviewed normal/anomaly intervals or saved model simulation truth, compare alarm timing and independent score scales, retain research records with run references, and export offline experiment reports.
-- Create, edit, find and archive incidents. Associate multiple datasets, analyses and detection intervals; inspect source-window curves, peaks and contributions; maintain hypotheses with supporting or opposing evidence.
-- Store metadata in SQLite and keep original CSV, numeric arrays and result files on disk.
+## Core Features
 
-## Models and scenarios
+| Module | What you can do |
+|---|---|
+| **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
+| **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
+| **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
+| **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
+| **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
+| **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
+| **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
+| **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
 
-Open **Models** in a Workspace. The backend registry supplies model versions, signal definitions and units, parameter ranges, faults, tools, actions and capability declarations. Scenario forms use those descriptors. Save, copy, inspect historical versions and rerun a scenario; every session fixes its model descriptor, scenario version, configuration, seed, measurements and fault truth.
+## Workflows & Screenshots
 
-| Model | Signals and faults | Investigation and intervention |
-|---|---|---|
-| TripLens `triplens-synthetic-18-v2` v2.0.0 | The original 18 channels and 12 faults | Existing diagnosis, alarms, 11 tools, seven actions, observed-data fitting, known-model forecasts and recovery-window search |
-| Coupled-Tank Process `coupled-tanks` v1.0.0 | Seven level, flow and control signals; pump degradation, restricted connection, leakage and sensor bias | Level trends, measured flow balance and sensor checks; computed pump/valve changes, backup pump and controlled supply stop |
+```mermaid
+flowchart LR
+    A[Import data] --> B[Explore signals]
+    B --> C[Transform]
+    C --> D[Analyze and compare]
+    D --> E[Investigate]
+    E --> F[Report]
+```
 
-The tank model uses volume balances and square-root head-dependent flow. Conservative SSPRK2 stages preserve nonnegative physical levels, with separate sampling and integration settings. Default levels of 1.5625 m and 1 m balance a 0.03 m³/s flow. Parameters are illustrative rather than plant-calibrated. Measured levels include noise and possible sensor bias; forecasts show physical levels. An observed balance residual is evidence, not a fault classification.
+**Multiple sources → derived Dataset.** Make time relationships and units explicit while retaining original observations and processing provenance.
 
-Inspect an observation window, overlay another run of the same model/version, save tool results and compare real simulated interventions. Save either model's output as a normal Dataset for the Signal Catalog, quality tools, transformations, all nine detectors, Experiments and Incidents. Derived provenance retains model/scenario/session snapshots. Evaluation uses saved model fault intervals; recovery after a finite fault remains unlabelled.
+<details>
+<summary>Signal Explorer: three sources, one observation window and a raw-sample cursor</summary>
 
-**Research across models** indexes persisted experiment tasks and evaluations with their own datasets, model/scenario identities and label versions. It does not normalize physical variables or rank incompatible score scales. Real CSV data without a supported process model retain generic analysis and incident workflows without physical intervention forecasts. Existing TripLens URLs, APIs, sessions and saved results remain supported.
+![Signal Explorer aligns the selected temperature, flow and pressure sources on a UTC window and distinguishes measured samples, missing values and gaps](docs/images/workspace-signals.jpg)
 
-[Model interface, equations and storage](docs/model-workspace.md) · [Validation, migration and limitations](docs/model-workspace-validation.md)
+</details>
 
-## Run locally
+<details>
+<summary>Transformation: resampling, unit conversion and measured quality preview</summary>
 
-Requires Node.js 20.19+ / 22.12+, npm and Python 3.12+.
+![Transformation Workspace previews a common grid, kPa-to-MPa conversion and a calculated pressure rate using three example sources](docs/images/transformation-preview.jpg)
+
+</details>
+
+**Detection results → investigation records.** Place detector alarms, published events and observations on one timeline, then link evidence and generate a report.
+
+![The CSV example's saved Incident timeline, with the original temperature analysis, nine detector results and investigation records](docs/images/workspace-incident.jpg)
+
+**Model scenario → intervention comparison → Dataset → Experiment.** Save each simulation with its configuration and continue with the same data, analysis and investigation tools.
+
+<details>
+<summary>Coupled-Tank: measured levels and inlet flow under pump degradation</summary>
+
+![Actual coupled-tank observations showing the two measured levels and inlet flow during the 0–80 second window of a pump-degradation scenario](docs/images/workspace-model-tank.jpg)
+
+</details>
+
+These images come from completed browser acceptance runs. [Screenshot sources and records](docs/images/README.md) identify their datasets and workflows.
+
+## Tennessee Eastman Case Study
+
+L5 brings [Rieth et al.'s official public TEP simulation data](https://doi.org/10.7910/DVN/6C3JR1) into the Dataset → Experiment → Incident workflow: **52 process variables, nine detectors, 20 faults and three normal-training configurations**.
+
+The expanded study completed **585 executions**; the A/B/C normal-training study completed **1,755 executions**, for **2,340 successful records**. They cover **1,755 unique training-configuration/algorithm/test-run combinations**. Configuration A was executed in both studies and checked for agreement. The original **72-task** independent-run case study is retained separately.
+
+| Fixed configuration A | Detected within 30 min / 60 fault events | Eventual nominal detections / 60 | Normal alarm samples / 4,800 |
+|---|---:|---:|---:|
+| PCA-Q | 19 | 51 | 2 |
+| DPCA-Q | 20 | 54 | 2 |
+
+- **Normal training affects false alarms.** On the same test set with fixed parameters, Page CUSUM produced **0**, **739** and **1,833** normal alarm samples under A, B and C respectively, each out of 4,800.
+- **Early detection and sustained alarming have separate measures.** The dashboard displays 30-minute, one-hour, four-hour and eventual hits alongside delays and alarm burden.
+- **Fault 3 includes normal-background controls.** The late DPCA-Q alarm for A/run 1 occurs at the same time in the normal trajectory. Alarm intervals coincide in all nine normal/fault pairs, so that nominal hit supplies no fault-3-specific evidence.
+
+![Saved TEP robustness results: individual fault-3 test runs and normal-training sensitivity under fixed method parameters](docs/images/workspace-tep-study.jpg)
+
+These fixed-protocol results cover mode 1 and three test runs per fault. [Expanded study](docs/tep-benchmark-expanded.md) · [Original 72-task case](docs/tep-case-study.md) · [Data preparation and reproduction](examples/tep/README.md) · [Final official acceptance and artifacts](https://github.com/dongxuelian2/L5/actions/runs/40197012552)
+
+## Quick Start
+
+Install **Node.js 20.19+ or 22.12+, npm and Python 3.12+**. From the repository root:
 
 ```bash
 npm ci
@@ -55,107 +98,36 @@ npm run build
 npm run serve
 ```
 
-Open **http://127.0.0.1:8787**. No API key or cloud service is needed. The Python runner prefers `.venv`; `PYTHON` can select another interpreter.
+Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). The default engine runs locally; prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
 
-For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The examples can still run as a static app; workspaces use the Python service.
+For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
 
-## Analysis workflow
-
-1. Create a Workspace on the home page.
-2. Open **Datasets**, choose your CSV, check the time axis and preview, then import it.
-3. Select signals and choose **Configure analysis**.
-4. Set an assumed-normal baseline and a later, disjoint analysis window. Inputs use seconds; timestamp datasets also show their UTC origin.
-5. Select an algorithm and parameters, then choose **Run analysis and save**.
-6. Inspect results. Use **History** to reopen a run and rerun its parameters.
-7. Choose **创建事件** (create incident) on an interval card or in the complete anomaly record. Edit the title, time range and description before saving.
-8. Add other intervals or algorithm results with **添加到已有事件** (add to existing incident). Save notes, hypotheses, evidence relationships and the current conclusion in the incident workstation.
-9. Restart the service, open **事件** (incidents) in the Workspace sidebar and continue the same investigation.
-
-The configured chronological split needs at least 30 fit and 30 calibration observations (default 70%/30%). The first partition fits preprocessing and the model; the second calibrates a fixed empirical threshold. Target data never select that threshold. Raw missing measurements remain missing in plots and are filled with fit-partition medians for computation. The original observation mask gates decisions: insufficient coverage or missing required channels produces abstain and resets temporal history. Configure persistence, sensor loss, noise and offset experiments, then compare saved runs in History. Review the baseline and choose data you believe are healthy.
-
-## Experiment workflow
-
-Open **Experiments**, or start from a saved Dataset. Choose signals, a normal baseline, a later analysis window, alpha, coverage policy and one or more methods. Method-specific controls reuse the existing analysis controls. **Parameter study** accepts comma-separated candidates: at most eight per parameter and 64 Cartesian-product tasks per batch. Preview the concrete plan, then **Save & run all tasks**.
-
-A local sequential worker saves progress, timing and individual AnalysisResults. Successful tasks survive other failures. Restarting marks unfinished work as interrupted; **Retry unfinished tasks** starts a new run using the original input snapshot. Editing or rerunning never replaces previous results. Snapshots include dataset/CSV hashes, source lineage, signal metadata, clock, effective configuration, engine source hashes and the full immutable label version.
-
-Labels explicitly declare native dataset seconds and their time source. Create closed normal/anomaly intervals in the editor, import JSON with `timeBasis: "dataset-seconds"`, `timeSource` and `intervals`, or use saved TripLens truth. Intervals must not overlap or share endpoints. Unlabelled and abstained samples are excluded from TP/FP/TN/FN. Precision, recall and F1 describe only reviewed intervals; positive-only labels cannot establish false-alarm behavior outside them. A zero denominator produces an undefined metric. Event recall, unobserved truth events, normal-only false alarm events and onset delay are reported separately from sample metrics.
-
-Filter tasks by method, parameter text, run or status. Select up to 12 successful tasks to compare common/unique alarm spans, exact-timestamp agreement, separate score scales and variable contributions. A shared cursor reads full-resolution dataset measurements. Different clocks remain separate; different windows, coverage, inputs/baselines or truth versions are identified. Duration is last minus first timestamp within each contiguous alarm span, excluding acquisition gaps.
-
-Save notes and conclusions with explicit run references; revisions remain available. Associate one run’s selected analyses or specific intervals with a new or existing Incident, and return from its sources to the experiment. **Experiment report** previews persisted evidence, provenance, real measurement and detection plots, parameters, evaluation, notes and result IDs. Download independent HTML or print with A4 browser styles. The same data directory restores the research after restarting. See [validation and boundaries](docs/experiment-validation.md).
-
-## Multi-source signal workflow
-
-Import each file in **Datasets**, reviewing the displayed time interpretation. Choose **Unix epoch time** explicitly for Unix seconds or milliseconds. ISO timestamps normalize to UTC; naive dates use the entered timezone (UTC by default). Numeric and generated time remain relative.
-
-Use **Signal catalog** to edit semantics and filter by dataset, device, category or tag. Equal logical measurement keys explicitly associate physical points; each source keeps its own unit. **Data quality** shows measured statistics, coverage and timestamp issues; problem buttons open the corresponding signal window.
-
-Select signals and open **Signal Explorer**. Relative sources start on independent clocks. In **Time relationships**, choose another dataset or a timezone-aware source-zero timestamp and save the relationship. Source seconds plus offset equal reference-source seconds. References stay within a workspace and cannot form cycles.
-
-Different physical quantities use separate curves sharing time. Overlay mode groups only signals with equal, nonempty units and categories. Set a window, zoom, and move or type the cursor offset to inspect the original value and actual measurement time. Missing values, sampling gaps and stopped-source coverage are distinct. Save the named view to restore signals, per-clock windows, cursor and layout after restarting. Continue with an existing analysis, configure a new one, create an incident, or return to a saved process simulation.
-
-Quality counts include source rows with invalid time. Those rows remain in the original CSV; timed arrays and analyses omit them. Finite-value statistics include those measurements, while usable counts require valid timestamps. Duplicate timestamps retain every row; the cursor shows the first row at the nearest timestamp. Gaps exceed five times the median positive interval; remaining deviations above 5% are irregular. Sample spans do not claim continuous observation. Display reduction preserves extrema and hole boundaries; cursor readings use full arrays. Use Transformation Workspace to generate a common grid or calculated variables.
-
-## Transformation Workspace
-
-Select signals in the catalog or Explorer and choose **Transform selected signals**, or open **Transformations** in the sidebar. UTC sources align directly; relative sources need an explicit saved reference. Choose intersection, union or custom coverage, a sampling interval, and per-signal units, resampling, maximum gap, duplicate and missing-value policies. Available resampling methods are nearest, linear, previous, and left-closed window mean/min/max. Missing values can remain missing or use bounded linear/previous, a fixed value, or a valid-source statistic. No method fills outside source coverage.
-
-Bind expressions to stable selected signal IDs through editable keys. Arithmetic, abs, sqrt, log, exp, sin, cos, minimum, maximum, clip, diff and rate use a bounded AST interpreter. Compatible arithmetic converts units; absolute-temperature subtraction yields a temperature difference. Scalar bounds in clip/minimum/maximum use the first input's unit. Ambiguous absolute-temperature arithmetic is rejected; complex products need an explicit output unit and use the displayed numeric input units. rate uses elapsed seconds and leaves its first point missing.
-
-Engineering conversions cover °C/K/°F, Pa/kPa/MPa/bar, m³/s/m³/h/L/min, W/kW/MW, V/kV, A/mA, s/ms/min/h, and explicitly identified rotational rpm/Hz. Unknown custom units can only be preserved. Simple rate units and temperature differences support proportional conversion.
-
-The computed preview shows curves, before/after fill counts, missing fractions, ranges and point provenance. Save the editable definition, then generate an ordinary Dataset for monitoring, Explorer and Incidents. Each execution keeps its own arrays, resolved clock, definition revision, source hashes and provenance masks; rerunning never replaces past data or analysis references. Saved definitions retain source clocks and unit semantics until **Use current source clocks and units** explicitly refreshes them. The grid budget is 1,000,000 rows and 10,000,000 values.
-
-Monitoring defaults to original observation coverage. **Include processed values** explicitly permits interpolation and fills to count; remaining missing data still cause abstention under the selected coverage rule. Max-Z/PCA need 30 eligible fit and 30 eligible calibration rows; temporal models require a covered baseline. Statistical fills use original valid data across the output window, which can contain information from the entire window. Provenance links open original signals, datasets and TripLens sessions; incident reports embed the source and processing appendix. See [validation](docs/transformation-validation.md).
-
-See the [three synthetic industrial CSV examples](examples/data-foundation/README.md) and [validation record](docs/signal-workspace-validation.md).
-
-## Continuing an incident investigation
-
-Users create and maintain incidents. Several adjacent, overlapping or independently detected intervals can belong to one incident. Each source retains its own time axis; the incident's overall range is maintained by the user. The list supports status, title and intersecting time-range filters. Archived incidents remain available and can be reopened by changing their status.
-
-The workstation links to original analyses at the selected interval and shows the corresponding raw signals and score curve. Editable evidence can point to a source and support or oppose a candidate explanation. Notes, observation times, conclusions and all associations are stored in Workspace SQLite, using stable incident IDs. Forms have explicit save controls with service confirmation.
-
-RuntimeWorkbench can associate its current hypothesis, latest completed result or any saved experiment with an incident. The event displays existing tool outputs and intervention plots; returning to the simulation restores the recorded observation window, hypothesis and experiment parameters. Ordinary CSV investigations work independently of process models.
-
-## Runtime process workflow
-
-1. Open **Process simulator** in a Workspace. Start from any of twelve fault templates or healthy operation. Configure onset, severity, initial temperature offset, noise, response, actuator delay, seed, duration and integration step. **Run new simulation** computes new observations in Python.
-2. Set any observation cutoff, such as `93` or `156.6` seconds, and an optional window start. Diagnosis, alarms and propagation use only that prefix. Process diagnosis needs an assumed-stable first 20 seconds; early windows report insufficient data.
-3. Inspect all hypotheses and select any one. Invoke signal/window inspection, change points, controllers, alarms, downstream paths, hypothesis comparison, sensor consistency, measurement suggestions, SOP checks or a fitted fault trial.
-4. In **Interventions**, choose observation-only fitting or an explicit known-model trial, action times, horizon, feed reduction, setpoint reduction, bypass flow and pump strength. Compare multiple actions and successive parameter runs. Optionally search safe start times at a chosen resolution.
-5. **Save dataset & model** links the observations and reusable model to Datasets. Run generic monitoring or reopen model investigation. Tools, assistant outputs and interventions persist in **Saved experiments**, including editable parameters.
-
-The stable integration step is 0.05–1 second, with 100,000 steps per simulation and a 3,000,000-step recovery-search budget. Physical pressure determines simulated limit crossings. Generic CSV does not acquire topology or counterfactual control from its column names.
-
-The assistant executes selected deterministic tools or routes keywords. Optional `TRIPLENS_MODEL_ENDPOINT`, `TRIPLENS_MODEL` and `TRIPLENS_MODEL_API_KEY` settings enable a model to summarize current observed context and actual Python outputs. Numerical computation stays in Python.
-
-## Persistent data
-
-The default directory is the Git-ignored `data/` folder. Incident information, source references, records, evidence relationships and conclusions live in `workspace.sqlite3`, without browser storage. Startup adds the incident tables while retaining existing database records and data files. Use `L5_DATA_DIR` or:
+Projects live in `data/` by default: SQLite stores metadata and investigation records; CSV, NumPy arrays and result files retain numerical evidence. Restart with the same directory to continue. Set `L5_DATA_DIR` or choose a directory explicitly:
 
 ```bash
 node scripts/python.mjs server.py --data-dir /path/to/l5-data
 ```
 
-Reuse the directory after restarting. Copy the entire directory to back up projects. Deleting a Workspace removes its incidents, investigation records, datasets and generic analysis history. Simulation sessions and their experiments remain in the local simulator library with that Workspace association removed.
+## Examples & Documentation
 
-## Examples and research
+| Start here | Further details |
+|---|---|
+| [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signals and clock validation](docs/signal-workspace-validation.md) · [Transformation validation](docs/transformation-validation.md) |
+| [Analysis and experiments](docs/user-guide.md#分析与实验) | [Batch execution, labels and evaluation rules](docs/experiment-validation.md) |
+| [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations and parameters](docs/model-workspace.md) · [Model acceptance](docs/model-workspace-validation.md) |
+| [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reporting and restart acceptance](docs/incident-reporting-validation.md) |
+| [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction guide and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
+| [Stage-one summary](docs/stage-one-summary.md) | [Architecture and storage](docs/architecture.md) · [Consolidation validation](docs/stage-one-validation.md) |
+| [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |
 
-**TripLens examples** retains the original Live / Replay / Lab teaching experience. Runtime investigation and comparison share the same engine and components as Workspaces.
+## Development & Validation
 
-`benchmarks/` retains the Tennessee Eastman, temporal, PCA/DPCA, independent-seed and six-mode studies. Workspace temporal, DPCA, adaptation and coverage reuse existing research implementations. Generic Max-Z/PCA computation lives in `l5/monitoring.py` and is shared with research. No physical interpretation is inferred across 52-, 53- and 18-channel datasets.
-
-Statistical signal contributions describe deviations. Process evidence scores are not probabilities, and conditional simulator forecasts are not plant control guarantees.
-
-## Verification
+React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. Existing CI runs product checks on **Windows and Ubuntu**. Public research protocols and historical acceptance records are retained in the repository.
 
 ```bash
-npm run test:workspace   # CSV, algorithms, incident/model workflows and HTTP restart
-npm run check            # product/example tests, TypeScript and production build
-npm run test:research     # existing research tests separately
-npm run verify:artifacts # optional numerical artifact verification
+npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build
+npm run test:research     # Research regressions
+npm run verify:artifacts  # Optional regeneration checks for published example artifacts
 ```
 
-Full research and artifact regeneration are separate from the daily Workspace checks. [Research documentation](benchmarks/README.md) · [PR #13 integration record](docs/integration-2026-10-23.md)
+[Stage-one capabilities and validation index](docs/stage-one-summary.md) · [Research integration record](docs/integration-2026-10-23.md) · [MIT License](LICENSE)
