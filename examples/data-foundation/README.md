@@ -13,3 +13,16 @@ The first two sources share a UTC clock. Pressure uses an independent recorder. 
 Temperature has one missing measurement and a rise at 380–434 s. Flow samples every two seconds, has two missing measurements, and stops at 520 s. Pressure samples irregularly, has a long interruption near 220–280 s, missing measurements, one duplicate timestamp and one invalid timestamp. The quality view identifies these from the files.
 
 Select all three signals in the catalog, open Signal Explorer, configure the pressure reference, inspect 250–470 seconds, and save the view. For Max-Z, use temperature with baseline 0–199 s and analysis 200–599 s. Analysis, incidents and reports retain the original `temp_C` key while displaying saved names and units.
+
+## Transformation example
+
+The recorded three-source example uses finite-mean duplicate handling, kPa→MPa conversion, linear pressure interpolation with a 4-second maximum bracket, previous-value flow resampling, retained missing values and `rate(pressure)`. The 1-second intersection grid runs from 2026-10-24 00:00:25 to 00:08:40 UTC: **496 rows**, with pressure initially **0.3 MPa**. The pressure interruption remains missing.
+
+| Output | Valid / 496 | Originally observed | Processing |
+|---|---:|---:|---|
+| pressure | 431 | 43 | 388 interpolated; 65 missing |
+| flow | 492 | 246 | 246 held; 4 missing |
+| temperature | 495 | 495 | 1 missing |
+| pressure_rate | 428 | 14 | MPa/s; 68 missing, including the first point |
+
+At temperature-source second 302, the raw temperature is 80.168506 °C, flow is missing and pressure is in its recording gap. After source second 520, flow is outside its coverage. These examples illustrate the [time, coverage and transformation rules](../../docs/architecture.md#transformation-pipeline); generated datasets preserve the original files and fixed definition revision.

@@ -10,7 +10,7 @@ L5 将工业数据、处理步骤、检测结果和调查证据组织在一个�
 
 ![L5 Experiment Workspace 的实际九算法比较：同一派生 Dataset、共享时间轴与各算法保存的报警区间](docs/images/workspace-experiment.jpg)
 
-*将三源 CSV 对齐为派生 Dataset，在同一时间轴上比较九种算法，再将结果关联到 Incident。图中为本轮实际保存的示例实验。*
+*将三源 CSV 对齐为派生 Dataset，在同一时间轴上比较九种算法，再将结果关联到 Incident。图中为已保存的合成示例实验。*
 
 ## 核心功能
 
@@ -71,16 +71,7 @@ flowchart LR
 
 L5 将 [Rieth 等人的官方公开 TEP 仿真数据](https://doi.org/10.7910/DVN/6C3JR1) 接入完整的 Dataset → Experiment → Incident 工作流：**52 个过程变量、九种检测算法、20 种故障、三组正常训练配置**。
 
-扩展研究完成 **585 项**执行，A／B／C 正常训练稳定性研究完成 **1,755 项**执行，共 **2,340 项成功记录**。它们覆盖 **1,755 个独特的训练配置／算法／测试运行组合**；A 配置在两项研究中重复执行并校验。原始 **72 项**独立运行案例另行保留。
-
-| 固定配置 A 的结果 | 30 分钟内检出 / 60 故障事件 | 最终名义检出 / 60 | 正常报警样本 / 4,800 |
-|---|---:|---:|---:|
-| PCA-Q | 19 | 51 | 2 |
-| DPCA-Q | 20 | 54 | 2 |
-
-- **正常训练来源影响误报。** 同样的测试集合和固定参数下，Page CUSUM 的正常报警样本从 A 的 **0** 变为 B 的 **739**、C 的 **1,833**，各组分母均为 4,800。
-- **早期检出与持续报警分别评价。** Dashboard 同时展示 30 分钟、1 小时、4 小时及最终命中、检测延迟和报警负担。
-- **故障 3 有正常背景对照。** A／run 1 的晚期 DPCA-Q 报警与正常运行出现在同一时段；九组正常／故障配对的报警片段均重合，因此该名义命中没有提供故障 3 特异性证据。
+原始案例、扩展覆盖与正常训练稳定性研究分别保留固定协议、逐运行结果和失败案例。研究区分早期检出、最终名义命中与正常报警负担；正常训练来源影响误报，故障 3 的晚期报警没有提供故障特异性证据。数值、分母与局限见[研究正文](docs/tep-benchmark-expanded.md)。
 
 ![TEP 正常训练稳定性研究：故障 3 的逐运行结果与固定参数下的正常训练敏感性表](docs/images/workspace-tep-study.jpg)
 
@@ -100,7 +91,7 @@ npm run serve
 
 打开 **http://127.0.0.1:8787**，创建 Workspace 并导入 CSV。可从仓库中的 [三份信号示例](examples/data-foundation/README.md) 开始。程序在本机运行，默认使用本地计算引擎；TEP 官方数据按[复现指南](examples/tep/README.md)单独准备。
 
-右上角 **中文 / EN** 可即时切换界面语言，选择保存在当前浏览器；切换时保留路由、表单和正在运行的分析。重新生成的离线报告遵循当前语言，用户文本及原始研究材料保留原文。源码与研究产物的维护规则见[开发约定](docs/development.md)。
+右上角 **中文 / EN** 可即时切换界面语言，选择保存在当前浏览器；切换时保留路由、表单和正在运行的分析。重新生成的离线报告遵循当前语言，用户文本及原始研究材料保留原文。源码与研究产物的维护规则见[工程约定](AGENTS.md)。
 
 开发时在两个终端分别运行 `npm run serve` 与 `npm run dev`。Vite 将 `/api` 代理到 8787。Python 脚本优先使用项目 `.venv`，也可通过 `PYTHON` 指定解释器。
 
@@ -114,17 +105,16 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 
 | 从这里开始 | 进一步了解 |
 |---|---|
-| [操作指南：数据、信号与变换](docs/user-guide.md#数据与信号) | [信号和时间语义验收](docs/signal-workspace-validation.md) · [变换验证](docs/transformation-validation.md) |
-| [分析与实验](docs/user-guide.md#分析与实验) | [批量执行、标签和评价规则](docs/experiment-validation.md) |
-| [模型与场景](docs/user-guide.md#模型与场景) | [模型接口、方程与参数](docs/model-workspace.md) · [实际模型验收](docs/model-workspace-validation.md) |
-| [事件与报告](docs/user-guide.md#事件与报告) | [时间线、报告和重启验收](docs/incident-reporting-validation.md) |
+| [操作指南：数据、信号与变换](docs/user-guide.md#数据与信号) | [信号与时间契约](docs/architecture.md#signal--time-series-workspace) · [变换契约](docs/architecture.md#transformation-pipeline) |
+| [分析与实验](docs/user-guide.md#分析与实验) | [配置、标签、评价与 API](docs/architecture.md#analysis-experiments) |
+| [模型与场景](docs/user-guide.md#模型与场景) | [模型接口、方程、数值例子与限制](docs/model-workspace.md) |
+| [事件与报告](docs/user-guide.md#事件与报告) | [时间线、报告与持久化](docs/architecture.md#事件时间线共享窗口与报告) |
 | [TEP 原始案例](docs/tep-case-study.md) · [扩展 Benchmark](docs/tep-benchmark-expanded.md) | [复现指南与结果文件](examples/tep/README.md) · [早期算法研究](benchmarks/README.md) |
-| [第一阶段成果总结](docs/stage-one-summary.md) | [架构与存储](docs/architecture.md) · [本轮整合验证](docs/stage-one-validation.md) |
 | [TripLens 示例视频](video/README.md) | 在程序中打开 **TripLens examples**，浏览原有调查与教学案例。 |
 
 ## 开发与验证
 
-React 19、TypeScript、Vite 构成前端；Python 3.12+、NumPy、pandas 与 SQLite 提供本地分析和存储。现有 CI 在 **Windows 与 Ubuntu** 上执行产品检查，公开研究协议和历史验收记录保存在仓库中。
+React 19、TypeScript、Vite 构成前端；Python 3.12+、NumPy、pandas 与 SQLite 提供本地分析和存储。现有 CI 在 **Windows 与 Ubuntu** 上执行产品检查，必要的研究协议、结果与证据保存在仓库中。
 
 ```bash
 npm run check             # Workspace／模拟 Python、React DOM、TypeScript、生产构建
@@ -132,4 +122,6 @@ npm run test:research     # 研究回归
 npm run verify:artifacts  # 按需重新验证已发布的示例数值产物
 ```
 
-[第一阶段成果与验证索引](docs/stage-one-summary.md) · [研究整合记录](docs/integration-2026-10-23.md) · [MIT License](LICENSE)
+已知基线：实际检出的 main `77f4d66` 与国际化分支均在 `npm run verify:artifacts` 报 `platform.json.cases[0].diagnosis.clock: different fields`；`scenario.json` 全量复算通过。该失败尚未修复，不能视为检查通过。
+
+[工程约定](AGENTS.md) · [研究整合记录](docs/integration-2026-10-23.md) · [MIT License](LICENSE)

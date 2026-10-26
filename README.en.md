@@ -10,7 +10,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 
 ![L5 Experiment Workspace comparing nine detectors on one derived Dataset, with a shared timeline and saved alarm intervals](docs/images/workspace-experiment.jpg)
 
-*Align three CSV sources into a derived Dataset, compare nine detectors on the same timeline and link the results to an Incident. This is the saved example experiment from this consolidation run.*
+*Align three CSV sources into a derived Dataset, compare nine detectors on the same timeline and link the results to an Incident. This is a saved synthetic example experiment.*
 
 ## Core Features
 
@@ -71,16 +71,7 @@ These images come from completed browser acceptance runs. [Screenshot sources an
 
 L5 brings [Rieth et al.'s official public TEP simulation data](https://doi.org/10.7910/DVN/6C3JR1) into the Dataset → Experiment → Incident workflow: **52 process variables, nine detectors, 20 faults and three normal-training configurations**.
 
-The expanded study completed **585 executions**; the A/B/C normal-training study completed **1,755 executions**, for **2,340 successful records**. They cover **1,755 unique training-configuration/algorithm/test-run combinations**. Configuration A was executed in both studies and checked for agreement. The original **72-task** independent-run case study is retained separately.
-
-| Fixed configuration A | Detected within 30 min / 60 fault events | Eventual nominal detections / 60 | Normal alarm samples / 4,800 |
-|---|---:|---:|---:|
-| PCA-Q | 19 | 51 | 2 |
-| DPCA-Q | 20 | 54 | 2 |
-
-- **Normal training affects false alarms.** On the same test set with fixed parameters, Page CUSUM produced **0**, **739** and **1,833** normal alarm samples under A, B and C respectively, each out of 4,800.
-- **Early detection and sustained alarming have separate measures.** The dashboard displays 30-minute, one-hour, four-hour and eventual hits alongside delays and alarm burden.
-- **Fault 3 includes normal-background controls.** The late DPCA-Q alarm for A/run 1 occurs at the same time in the normal trajectory. Alarm intervals coincide in all nine normal/fault pairs, so that nominal hit supplies no fault-3-specific evidence.
+The original case, expanded coverage and normal-training study retain their protocols, per-run results and failures. Early detection, eventual nominal hits and normal alarm burden have separate measures. Normal training affects false alarms; late fault-3 alarms supply no fault-specific evidence. See the [study](docs/tep-benchmark-expanded.md) for the numerical results, denominators and limits.
 
 ![Saved TEP robustness results: individual fault-3 test runs and normal-training sensitivity under fixed method parameters](docs/images/workspace-tep-study.jpg)
 
@@ -100,7 +91,7 @@ npm run serve
 
 Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). The default engine runs locally; prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
 
-Use **中文 / EN** at the top right to switch languages immediately. The browser remembers your choice, while routes, form edits and running analyses stay intact. Newly generated offline reports follow the selected language; user text and original research material remain verbatim. See the [development conventions](docs/development.md) for source and research artifact maintenance.
+Use **中文 / EN** at the top right to switch languages immediately. The browser remembers your choice, while routes, form edits and running analyses stay intact. Newly generated offline reports follow the selected language; user text and original research material remain verbatim. See the [engineering conventions](AGENTS.md) for source and research artifact maintenance.
 
 For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
 
@@ -114,17 +105,16 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 
 | Start here | Further details |
 |---|---|
-| [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signals and clock validation](docs/signal-workspace-validation.md) · [Transformation validation](docs/transformation-validation.md) |
-| [Analysis and experiments](docs/user-guide.md#分析与实验) | [Batch execution, labels and evaluation rules](docs/experiment-validation.md) |
-| [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations and parameters](docs/model-workspace.md) · [Model acceptance](docs/model-workspace-validation.md) |
-| [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reporting and restart acceptance](docs/incident-reporting-validation.md) |
-| [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction guide and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
-| [Stage-one summary](docs/stage-one-summary.md) | [Architecture and storage](docs/architecture.md) · [Consolidation validation](docs/stage-one-validation.md) |
+| [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
+| [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
+| [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
+| [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
+| [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
 | [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |
 
 ## Development & Validation
 
-React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. Existing CI runs product checks on **Windows and Ubuntu**. Public research protocols and historical acceptance records are retained in the repository.
+React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. Existing CI runs product checks on **Windows and Ubuntu**. Necessary research protocols, saved results and evidence are retained in the repository.
 
 ```bash
 npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build
@@ -132,4 +122,4 @@ npm run test:research     # Research regressions
 npm run verify:artifacts  # Optional regeneration checks for published example artifacts
 ```
 
-[Stage-one capabilities and validation index](docs/stage-one-summary.md) · [Research integration record](docs/integration-2026-10-23.md) · [MIT License](LICENSE)
+[Engineering conventions](AGENTS.md) · [Known artifact-verification baseline](README.md#开发与验证) · [Research integration record](docs/integration-2026-10-23.md) · [MIT License](LICENSE)

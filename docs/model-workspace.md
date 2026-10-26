@@ -60,3 +60,21 @@ The model research index reads saved Experiment run snapshots and task metrics. 
 | `GET /api/workspaces/:wid/model-research` | Compare saved research rows with explicit provenance |
 
 `/api/simulations/catalog` and `/labels/triplens` remain compatibility entry points. The generic Models page lives at `#/workspaces/:wid/models`; existing `simulations/:sessionId[/runId]` and saved observation-window links still open the appropriate model. `ModelWorkspace`, `ScenarioEditor`, `ModelSimulation` and `ModelResults` reuse Dataset charts, Incident linking and the existing Experiment workflow. React does not maintain a separate catalog of model metadata.
+
+## 数值验证与示例
+
+数值断言、场景版本、HTTP／重启兼容和双模型端到端回归见 [tests/test_models.py](../tests/test_models.py)。下面保留 2026-10-25 的数值检查与已保存演示例，不作为实际工厂精度或外部验证。
+
+默认无故障、无噪声的 180 s 运行保持 `h1=1.5625 m`、`h2=1 m`，质量残差为 0。健康、泄漏、反向流、干箱和溢流测试的最大绝对体积残差小于 `1e-9 m³`，所有物理液位非负。泄漏运行中，0.025 与 0.05 s 的液位差小于 `2e-6 m`；0.1 s 积分配合 0.4 s 采样与默认结果的差小于 `1e-5 m`。这些阈值验证数值实现，不代表实际装置精度。
+
+浏览器运行的双水箱场景使用泵退化、强度 0.6、故障起点 40.37 s、种子 1、时长 180 s、采样 0.2 s、积分 0.05 s。观察至 80 s，动作从 83.17 s 开始。保存的实际结果为：
+
+| 方案 | Tank 2 液位绝对偏差积分 m·s | 预测期峰值液位 m | 供水量 m³ | 溢流 m³ |
+|---|---:|---:|---:|---:|
+| 不干预 | 30.581 | 1.203 | 2.398 | 0 |
+| 泵命令 125% | 25.000 | 1.203 | 2.500 | 0 |
+| 切换备用泵，命令 100% | 14.712 | 1.408 | 2.675 | 0 |
+
+TripLens 的浏览器已知模型试验使用冷却阀故障，观察至 93 s，在 96.4 s 干预，预测至 240 s。基准物理压力峰值约 3214.5 kPa，旁路方案约 3025.6 kPa，减料方案约 3112.6 kPa；旁路分支在本次时域内未跨过 3050 kPa，基准及减料分支仍跨限。原有产量、质量和能耗指标继续显示。
+
+双水箱不提供观测拟合、分类诊断或恢复窗口搜索；未关联过程模型的 CSV 不提供物理干预预测。

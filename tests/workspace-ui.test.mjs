@@ -586,6 +586,9 @@ test('professional report preview/export uses current saved content and invalida
     await click(button('导出离线 HTML'));
     assert.match(filename, /l5-incident-event-one\.html/);
     assert.match(await blob.text(), /<svg>/);
+    await click(button('导出事件 JSON'));
+    assert.match(filename, /l5-incident-event-one\.json/);
+    assert.deepEqual(JSON.parse(await blob.text()), saved, 'JSON export retains the original saved record');
   } finally { URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; window.HTMLAnchorElement.prototype.click = originalClick; }
   saved = { ...saved, conclusion: '更新后的现场结论', updated_at: '2026-10-24T03:00:00Z' };
   await act(async () => root.render(React.createElement(IncidentReport, { incident: saved })));
@@ -1048,8 +1051,8 @@ test('experiment comparison warns on mismatched coverage and synchronizes indepe
 });
 
 test('experiment report discards late generation and requires saved notes before export', async () => {
-  const fixture = researchFixture(), pending = [];
-  globalThis.fetch = () => new Promise(resolve => pending.push(resolve));
+  const fixture = researchFixture(), pending = [], urls = [];
+  globalThis.fetch = url => new Promise(resolve => { urls.push(url); pending.push(resolve); });
   await mount(React.createElement(ExperimentReport, { experiment: fixture.experiment, dirty: true }));
   assert.equal(button('Preview experiment report').disabled, true);
   await act(async () => root.render(React.createElement(ExperimentReport, { experiment: fixture.experiment, dirty: false })));
@@ -1061,6 +1064,18 @@ test('experiment report discards late generation and requires saved notes before
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /Current saved conclusion/);
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Stale/);
   assert.ok(container.querySelector('a[download]'));
+  await setField(field('Report executions'), fixture.run.id);
+  assert.equal(container.querySelector('iframe'), null);
+  await click(button('Preview experiment report'));
+  assert.match(urls[2], /\?lang=en&run=run-original$/);
+  await act(async () => setLocale('zh-CN'));
+  await click(button('Preview experiment report'));
+  assert.match(urls[3], /\?lang=zh-CN&run=run-original$/);
+  await act(async () => pending[3](new Response('<h1>保存的原始结论 / original text</h1>', { headers: { 'content-type': 'text/html' } })));
+  await act(async () => pending[2](new Response('<h1>Obsolete English preview</h1>', { headers: { 'content-type': 'text/html' } })));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /保存的原始结论 \/ original text/);
+  assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Obsolete/);
+  assert.match(container.querySelector('a[download]').getAttribute('href'), /lang=zh-CN&run=run-original&download=1$/);
 });
 
 function modelFixture(id = 'independent-process') {
