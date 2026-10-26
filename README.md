@@ -1,85 +1,92 @@
 # L5 — Industrial Process Analysis & Investigation Workspace
 
-**工业时序数据分析、异常检测、过程模型实验与事件调查。**
+**Industrial time-series analysis, anomaly detection, process experiments and incident investigation.**
 
-[English](README.en.md) · [快速开始](#快速开始) · [核心功能](#核心功能) · [TEP 案例](#tennessee-eastman-案例) · [架构](docs/architecture.md) · [文档](#示例与文档)
+[Quick Start](#quick-start) · [Features](#core-features) · [TEP Case Study](#tennessee-eastman-case-study) · [Architecture](docs/architecture.md) · [Documentation](#examples--documentation)
 
 [![Check](https://github.com/dongxuelian2/L5/actions/workflows/check.yml/badge.svg)](https://github.com/dongxuelian2/L5/actions/workflows/check.yml)
 
-L5 将工业数据、处理步骤、检测结果和调查证据组织在一个可持续保存的本地项目中。从自己的 CSV 开始，浏览多源曲线、生成派生数据、比较九种检测算法，再将异常区间、证据与结论汇成事件和离线报告。TripLens 与双水箱模型提供从故障场景到干预实验的另一条完整路径。
+L5 keeps industrial data, processing steps, detection results and investigation evidence together in a persistent local project. Start with your own CSV, explore multiple sources, derive a dataset and compare nine detectors. Turn alarm intervals, evidence and conclusions into an incident and an offline report. TripLens and coupled-tank models provide a second complete path from fault scenarios to intervention experiments.
 
-![L5 Experiment Workspace 的实际九算法比较：同一派生 Dataset、共享时间轴与各算法保存的报警区间](docs/images/workspace-experiment.jpg)
+![L5 Experiment Workspace comparing nine detectors on one derived Dataset, with a shared timeline and saved alarm intervals](docs/images/workspace-experiment.jpg)
 
-*将三源 CSV 对齐为派生 Dataset，在同一时间轴上比较九种算法，再将结果关联到 Incident。图中为已保存的合成示例实验。*
+*Align three CSV sources into a derived dataset, compare nine detectors on a shared timeline, and link the saved results to an incident.*
 
-## 核心功能
+## Core Features
 
-| 模块 | 可以完成的工作 |
+| Module | What you can do |
 |---|---|
-| **Data Management** | 创建持久化 Workspace，导入 CSV／TSV，预览样本、时间轴和质量，管理多个 Dataset 与历史结果。 |
-| **Signal Explorer** | 编辑信号名称、工程单位、设备和标签；关联多源时钟，以共享窗口和游标浏览原始测量、缺测与采样空档，保存浏览视图。 |
-| **Data Transformation** | 转换单位、重采样、处理重复时间和缺失值，计算派生变量；预览实际曲线与逐点来源，生成可直接分析的 Dataset。 |
-| **Anomaly Detection** | 运行 Robust Max-Z、PCA-Q／T²、EWMA、Page CUSUM、有限窗口 CUSUM、DPCA-Q／T²、自适应 Max-Z（Experimental）；查看分数、阈值、区间和变量贡献。 |
-| **Experiment & Benchmark** | 批量比较算法与参数，独立配置正常拟合、校准和测试数据；保留每次运行快照、逐任务状态、标签评价、研究笔记和结论。 |
-| **Incident Investigation** | 将多个 Dataset、分析和异常区间组织为事件；联动时间线、原始曲线、候选解释与支持／反对证据，返回来源继续调查。 |
-| **Models & Scenarios** | 从模型目录创建版本化场景、模拟故障、调用调查工具并比较干预；TripLens 提供 18 信号与 12 种故障，Coupled-Tank 提供 7 信号与 4 种故障。 |
-| **Reporting & Export** | 从保存结果生成包含真实曲线、来源、参数和结论的独立 HTML；通过浏览器打印保存 A4 PDF，导出分析／事件 JSON 及模拟观测 CSV。 |
+| **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
+| **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
+| **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
+| **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
+| **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
+| **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
+| **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
+| **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
 
-## 工作流与界面
+## Workflows & Screenshots
 
 ```mermaid
 flowchart LR
-    A[导入数据] --> B[浏览信号]
-    B --> C[数据变换]
-    C --> D[分析与实验比较]
-    D --> E[事件调查]
-    E --> F[研究报告]
+    A[Import data] --> B[Explore signals]
+    B --> C[Transform]
+    C --> D[Analyze and compare]
+    D --> E[Investigate]
+    E --> F[Report]
 ```
 
-**多源信号 → 派生 Dataset**：明确时间关系与单位，保留原始观测和处理来源。
+**Multiple sources → derived Dataset.** Make time relationships and units explicit while retaining original observations and processing provenance.
 
 <details>
-<summary>查看 Signal Explorer：三源曲线、共同窗口与原始样本游标</summary>
+<summary>Signal Explorer: three sources, one observation window and a raw-sample cursor</summary>
 
-![Signal Explorer：选中的温度、流量和压力来源在 UTC 窗口中对齐，游标区分真实测量、缺测与采样空档](docs/images/workspace-signals.jpg)
+![Signal Explorer aligns the selected temperature, flow and pressure sources on a UTC window and distinguishes measured samples, missing values and gaps](docs/images/workspace-signals.jpg)
 
 </details>
 
 <details>
-<summary>查看 Transformation：多源重采样、单位转换与质量预览</summary>
+<summary>Transformation: resampling, unit conversion and measured quality preview</summary>
 
-![Transformation Workspace：三源共同网格、kPa 转 MPa 及压力变化率的实际计算预览](docs/images/transformation-preview.jpg)
+![Transformation Workspace previews a common grid, kPa-to-MPa conversion and a calculated pressure rate using three example sources](docs/images/transformation-preview.jpg)
 
 </details>
 
-**检测结果 → 调查记录**：把算法报警、已知事件与人工观察放入同一条时间线，关联证据和报告。
+**Detection results → investigation records.** Place detector alarms, published events and observations on one timeline, then link evidence and generate a report.
 
-![CSV 示例的真实 Incident 时间线：原始温度分析、九算法异常区间与保存的调查记录](docs/images/workspace-incident.jpg)
+![The CSV example's saved Incident timeline, with the original temperature analysis, nine detector results and investigation records](docs/images/workspace-incident.jpg)
 
-**模型场景 → 干预对照 → Dataset → Experiment**：保存每次模拟及其配置，再使用同一套数据、分析和调查工具。
+**Model scenario → intervention comparison → Dataset → Experiment.** Save each simulation with its configuration and continue with the same data, analysis and investigation tools.
 
 <details>
-<summary>查看 Coupled-Tank：泵退化场景的液位与进水流量</summary>
+<summary>Coupled-Tank: measured levels and inlet flow under pump degradation</summary>
 
-![双水箱模型的实际观测：泵退化后两级液位与进水流量在 0–80 秒窗口中的变化](docs/images/workspace-model-tank.jpg)
+![Actual coupled-tank observations showing the two measured levels and inlet flow during the 0–80 second window of a pump-degradation scenario](docs/images/workspace-model-tank.jpg)
 
 </details>
 
-截图来自已完成的真实浏览器验收；[图片来源与对应记录](docs/images/README.md) 可单独查阅。
+[More screenshots and example data](docs/images/README.md).
 
-## Tennessee Eastman 案例
+## Tennessee Eastman Case Study
 
-L5 将 [Rieth 等人的官方公开 TEP 仿真数据](https://doi.org/10.7910/DVN/6C3JR1) 接入完整的 Dataset → Experiment → Incident 工作流：**52 个过程变量、九种检测算法、20 种故障、三组正常训练配置**。
+L5 brings [Rieth et al.'s official public TEP simulation data](https://doi.org/10.7910/DVN/6C3JR1) into the Dataset → Experiment → Incident workflow: **52 process variables, nine detectors, 20 faults and three normal-training configurations**.
 
-原始案例、扩展覆盖与正常训练稳定性研究分别保留固定协议、逐运行结果和失败案例。研究区分早期检出、最终名义命中与正常报警负担；正常训练来源影响误报，故障 3 的晚期报警没有提供故障特异性证据。数值、分母与局限见[研究正文](docs/tep-benchmark-expanded.md)。
+The expanded benchmark completed **585 executions**, and the A/B/C normal-training study completed **1,755 executions**: **2,340 successful executions** across both studies, covering **1,755 distinct training-configuration/detector/test-run combinations**. Training configuration A was evaluated in both studies.
 
-![TEP 正常训练稳定性研究：故障 3 的逐运行结果与固定参数下的正常训练敏感性表](docs/images/workspace-tep-study.jpg)
+| Fixed configuration A | Detected within 30 min / 60 fault events | Eventual nominal detections / 60 | Alarm samples on normal data / 4,800 |
+|---|---:|---:|---:|
+| PCA-Q | 19 | 51 | 2 |
+| DPCA-Q | 20 | 54 | 2 |
 
-以上为 mode 1、每故障三个测试运行的固定协议结果。[完整扩展研究](docs/tep-benchmark-expanded.md) · [原始 72 项案例](docs/tep-case-study.md) · [数据准备与复现](examples/tep/README.md) · [最终官方验收与产物](https://github.com/dongxuelian2/L5/actions/runs/40197012552)
+On the same normal test data, Page CUSUM produced **0, 739 and 1,833** alarm samples under training configurations A, B and C. The study reports early detections, eventual alarm overlap, detection delay and normal-data alarm burden separately. See the [expanded benchmark](docs/tep-benchmark-expanded.md) for the full nine-detector results and per-fault analysis.
 
-## 快速开始
+![Saved TEP robustness results: individual fault-3 test runs and normal-training sensitivity under fixed method parameters](docs/images/workspace-tep-study.jpg)
 
-需要 **Node.js 20.19+ 或 22.12+、npm、Python 3.12+**。在仓库根目录执行：
+Results use TEP mode 1 and three test runs per fault. [Original 72-task case](docs/tep-case-study.md) · [Data preparation and reproduction](examples/tep/README.md)
+
+## Quick Start
+
+Install **Node.js 20.19+ or 22.12+, npm and Python 3.12+**. From the repository root:
 
 ```bash
 npm ci
@@ -89,37 +96,36 @@ npm run build
 npm run serve
 ```
 
-打开 **http://127.0.0.1:8787**，创建 Workspace 并导入 CSV。可从仓库中的 [三份信号示例](examples/data-foundation/README.md) 开始。程序在本机运行，默认使用本地计算引擎；TEP 官方数据按[复现指南](examples/tep/README.md)单独准备。
+Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). The default engine runs locally; prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
 
-右上角 **中文 / EN** 可即时切换界面语言，选择保存在当前浏览器；切换时保留路由、表单和正在运行的分析。界面、系统提示、示例说明及重新生成的离线报告遵循当前语言；用户输入、信号标识和原始技术记录保留原文。源码与研究产物的维护规则见[工程约定](AGENTS.md)。
+The interface supports English and Chinese, with a language switch in the top-right corner. Your selection also applies to newly generated offline reports.
 
-开发时在两个终端分别运行 `npm run serve` 与 `npm run dev`。Vite 将 `/api` 代理到 8787。Python 脚本优先使用项目 `.venv`，也可通过 `PYTHON` 指定解释器。
+For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
 
-项目默认保存在 `data/`：SQLite 保存元数据和调查记录，CSV、NumPy 数组和结果文件保存数值证据。使用同一目录重启即可继续工作；可通过 `L5_DATA_DIR` 或以下命令指定保存位置：
+Projects live in `data/` by default: SQLite stores metadata and investigation records; CSV, NumPy arrays and result files retain numerical evidence. Restart with the same directory to continue. Set `L5_DATA_DIR` or choose a directory explicitly:
 
 ```bash
 node scripts/python.mjs server.py --data-dir /path/to/l5-data
 ```
 
-## 示例与文档
+## Examples & Documentation
 
-| 从这里开始 | 进一步了解 |
+| Start here | Further details |
 |---|---|
-| [操作指南：数据、信号与变换](docs/user-guide.md#数据与信号) | [信号与时间契约](docs/architecture.md#signal--time-series-workspace) · [变换契约](docs/architecture.md#transformation-pipeline) |
-| [分析与实验](docs/user-guide.md#分析与实验) | [配置、标签、评价与 API](docs/architecture.md#analysis-experiments) |
-| [模型与场景](docs/user-guide.md#模型与场景) | [模型接口、方程、数值例子与限制](docs/model-workspace.md) |
-| [事件与报告](docs/user-guide.md#事件与报告) | [时间线、报告与持久化](docs/architecture.md#事件时间线共享窗口与报告) |
-| [TEP 原始案例](docs/tep-case-study.md) · [扩展 Benchmark](docs/tep-benchmark-expanded.md) | [复现指南与结果文件](examples/tep/README.md) · [早期算法研究](benchmarks/README.md) |
-| [TripLens 示例视频](video/README.md) | 在程序中打开 **TripLens examples**，浏览原有调查与教学案例。 |
+| [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
+| [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
+| [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
+| [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
+| [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
+| [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |
 
-## 开发与验证
+## Development & Validation
 
-React 19、TypeScript、Vite 构成前端；Python 3.12+、NumPy、pandas 与 SQLite 提供本地分析和存储。CI 仅在 main 推送后进行轻量前端构建；完整产品与科研测试由个人开发者本地按需运行。固定研究协议和结论留在仓库，逐运行结果留在本地输出目录。
+React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. GitHub Actions builds the application on pushes to `main`. Run the application and research checks locally:
 
 ```bash
-npm run check             # Workspace／模拟 Python、React DOM、TypeScript、生产构建
-npm run test:research     # 研究回归
+npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build
+npm run test:research     # Research regressions
 ```
 
-
-[工程约定](AGENTS.md) · [研究方法与局限](benchmarks/README.md) · [MIT License](LICENSE)
+[Engineering conventions](AGENTS.md) · [Research methods and limitations](benchmarks/README.md) · [MIT License](LICENSE)
