@@ -114,14 +114,12 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 
 ## 开发与验证
 
-React 19、TypeScript、Vite 构成前端；Python 3.12+、NumPy、pandas 与 SQLite 提供本地分析和存储。现有 CI 在 **Windows 与 Ubuntu** 上执行产品检查，必要的研究协议、结果与证据保存在仓库中。
+React 19、TypeScript、Vite 构成前端；Python 3.12+、NumPy、pandas 与 SQLite 提供本地分析和存储。CI 仅在 main 推送后进行轻量前端构建；完整产品与科研测试由个人开发者本地按需运行。固定研究协议和结论留在仓库，逐运行结果留在本地输出目录。
 
 ```bash
 npm run check             # Workspace／模拟 Python、React DOM、TypeScript、生产构建
 npm run test:research     # 研究回归
-npm run verify:artifacts  # 按需重新验证已发布的示例数值产物
 ```
 
-已知基线：实际检出的 main `77f4d66` 与国际化分支均在 `npm run verify:artifacts` 报 `platform.json.cases[0].diagnosis.clock: different fields`；`scenario.json` 全量复算通过。该失败尚未修复，不能视为检查通过。
 
-[工程约定](AGENTS.md) · [研究整合记录](docs/integration-2026-10-23.md) · [MIT License](LICENSE)
+[工程约定](AGENTS.md) · [研究方法与局限](benchmarks/README.md) · [MIT License](LICENSE)

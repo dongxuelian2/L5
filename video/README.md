@@ -1,6 +1,6 @@
 # TripLens product video / 项目展示视频
 
-[Watch / download MP4](triplens-pitch.mp4) · [English subtitles](triplens-pitch.en.srt) · [中文字幕](triplens-pitch.zh-CN.srt)
+MP4 成片不再随源码提交；本地可生成到忽略的 `output/video/`。原成片仍可通过清理前 Git 历史恢复。 [English subtitles](triplens-pitch.en.srt) · [中文字幕](triplens-pitch.zh-CN.srt)
 
 **2:50 · 1920×1080 · 30 fps · H.264 / AAC · English narration and burned-in English captions.**
 
@@ -43,6 +43,8 @@ The app itself still has no new runtime dependencies. Video production uses sepa
 - System DejaVu Sans / DejaVu Sans Mono fonts; change the paths in `render.py` on another platform.
 
 Local production assets live under ignored `output/video/`; raw recordings live under ignored `output/playwright/video-v2/`. Model weights and the virtual environment are intentionally outside Git.
+
+如需恢复原成片，在本地仓库从清理前的提交取出：`git show ddc4696:video/triplens-pitch.mp4 > output/video/triplens-pitch.mp4`。请先建立输出目录；PowerShell 请采用二进制安全的重定向方式。本操作不会使 Git 历史变小。
 
 1. Build and serve the project at `http://127.0.0.1:8787`.
 2. Place the Kokoro ONNX model at `output/video/models/kokoro-v1.0.onnx` and voices at `output/video/models/voices-v1.0.bin`.

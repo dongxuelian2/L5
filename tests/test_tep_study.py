@@ -18,25 +18,6 @@ from test_external_tep import csv_fixture
 
 
 class StudyMetricTests(unittest.TestCase):
-    def test_saved_small_exports_retain_all_runs_methods_and_negative_outcomes(self):
-        root = Path(__file__).resolve().parents[1]/'examples/tep'
-        for kind, count in (('expanded',585),('robustness',1755)):
-            with (root/f'{kind}_per_run.csv').open(encoding='utf-8',newline='') as stream:
-                rows = list(csv.DictReader(stream))
-            self.assertEqual(len(rows),count)
-            self.assertEqual(len({(r['configuration'],r['externalRun'],r['algorithm']) for r in rows}),count)
-            self.assertEqual({r['status'] for r in rows},{'succeeded'})
-            for configuration in {r['configuration'] for r in rows}:
-                for algorithm in {r['algorithm'] for r in rows}:
-                    group = [r for r in rows if r['configuration']==configuration and r['algorithm']==algorithm]
-                    self.assertEqual(len(group),65)
-                    self.assertEqual(len({r['fitId'] for r in group}),1)
-                    self.assertEqual(len({r['threshold'] for r in group}),1)
-                    self.assertEqual(sum(int(r['eventCount']) for r in group),60)
-            weak = [r for r in rows if r['configuration']=='A' and r['faultNumber']=='3']
-            self.assertEqual(sum(int(r['missedEvents']) for r in weak),26)
-            self.assertEqual(sum(int(r['detected30m']) for r in weak),0)
-
     def test_gap_without_observations_and_truncated_follow_up_remain_visible(self):
         labels = dict(id='truth',version=1,source='generated',intervals=[dict(kind='anomaly',start=180,end=360),
             dict(kind='anomaly',start=720,end=1080,onset=540)])

@@ -185,7 +185,7 @@ A/run 1 的正常和故障序列均只在 167,580–167,760 s 有两个报警样
 
 TEP 页面可切换原 PR22、扩展和 A/B/C 协议。故障矩阵支持早期／最终事件率、样本 Recall、正常误报、检测延迟和注入后报警比例；点击单元格显示各 run、分母、失败与真实 Dataset／Experiment 链接。具体运行继续使用既有 ExperimentComparison、Plot 和 Signal Explorer。专题正常／故障对照只按模拟 elapsed time 叠加，不把它们写成共同物理时钟。
 
-实际扩展 fault 1 / run 1 关联九条保存的算法结果，保存原始测量、时延证据、候选解释和结论，并生成 Incident HTML 和正式 Experiment HTML。完整研究还生成两份带内嵌 SVG 的离线 HTML。研究和调查在重新打开 WorkspaceStore 后保持一致；真实服务重启与浏览器验收记录见[验收文件](verification/tep-expanded-2026-10-25.json)。
+实际扩展 fault 1 / run 1 关联九条保存的算法结果，保存原始测量、时延证据、候选解释和结论，并生成 Incident HTML 和正式 Experiment HTML。完整研究还生成两份带内嵌 SVG 的离线 HTML。研究和调查在重新打开 WorkspaceStore 后保持一致；历史服务重启与浏览器验收不再单独维护 JSON 回执。
 
 真实浏览器完成同一故障的 Dataset、九算法比较、既有 Incident 关联、中文结论保存和 HTML 下载。实际停启端口 8790 的服务后，71 个 Dataset、2,340 个结果、12 个 Experiment／Run、九条事件关联及结论全部恢复；2,482 个原始与结果文件哈希保持一致。下载报告含 37 个内嵌 SVG 和刚保存的结论。浏览器同时检查了窄屏表格横向滚动，并修复原移动侧栏导航导致整页溢出的问题。
 
@@ -195,18 +195,9 @@ TEP 页面可切换原 PR22、扩展和 A/B/C 协议。故障矩阵支持早期�
 
 ## 结果文件与复现
 
-- [扩展汇总](../examples/tep/expanded_summary.json)、[稳定性汇总](../examples/tep/robustness_summary.json)：每故障／方法／配置的计数、时延分布、报警负担、阈值与拟合记录。
-- [扩展逐运行 CSV](../examples/tep/expanded_per_run.csv)、[稳定性逐运行 CSV](../examples/tep/robustness_per_run.csv)：585 与 1,755 行，含错误、分母、漏检、各窗口命中、阈值、持续比例、来源与实际产品 ID。
-- [故障 3 专题摘要](../examples/tep/fault3_summary.json)：原始差异、贡献、同刻九算法、所有正常与故障 3 控制运行。
-- 完整 results JSON、不可变执行快照、全部尝试、专题原始曲线和 HTML 放在 opt-in GitHub Actions artifact；原始大文件和工作目录不提交 Git。[复现命令](../examples/tep/README.md)。
+正式研究结果、事件分母、失败和局限在本研究正文中保留；运行参数与冻结条件见固定协议，复算命令见 [TEP 复现指南](../examples/tep/README.md)。逐运行 CSV、完整 JSON、故障 3 对照及 HTML 默认生成到本机忽略的 `output/`，不再随源码提交。
 
-与 PR22 重叠的 72 项任务，其样本／事件指标、72 个分数 SHA-256 及阈值在本机全部完全一致；原 PR22 的协议和结果文件未改写。正式 GitHub 外部工作流重新校验三份官方原文件并运行本轮全部 2,340 项任务，结果链接与数值对照保存在验收文件中。
-
-最终 head `0eb7a099eedfff69e9d7cfb30b4dba5548e8153b` 的 GitHub [官方扩展验收](https://github.com/dongxuelian2/L5/actions/runs/40197012552)成功完成。[最终完整产物](https://github.com/dongxuelian2/L5/actions/runs/40197012552/artifacts/12599833163)已在原验收中下载比对：585＋1,755 项检测指标全部与本机一致，扩展阈值最大绝对差为 `8.526512829121202e-14`，稳定性为 `1.2789769243681803e-13`。分数浮点末位的字节差异与检测状态分开记录。
-
-同一最终提交的[Ubuntu／Windows Check](https://github.com/dongxuelian2/L5/actions/runs/40197012539)、[原始 72 项案例](https://github.com/dongxuelian2/L5/actions/runs/40197012560)、[reference](https://github.com/dongxuelian2/L5/actions/runs/40197012607)、[独立正常](https://github.com/dongxuelian2/L5/actions/runs/40197012502)和[六工况](https://github.com/dongxuelian2/L5/actions/runs/40197012521)均成功。阶段整理时重新读取了这些运行与产物的 GitHub 元数据；数值对照沿用正式验收保存的回执。
-
-初始实现 `e24e883` 的验收、产物和数值对照继续保存在[结构化回执](verification/tep-expanded-2026-10-25.json)的 `github.initialAcceptance`，最终结果位于 `github`。完整 artifact 保留至 2026-11-24；之后可按[固定协议与复现指南](../examples/tep/README.md)重新生成，Git 中的精简结果持续保留。
+研究曾在固定协议下完成 585＋1,755 项任务。原 GitHub Actions 运行记录仍可在历史 PR 中查阅，但不作为永久产物存储。本次整理不重新生成数据、不更改本文原有数值结论。
 
 ## 适用条件与后续问题
 

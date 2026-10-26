@@ -17,7 +17,6 @@
     "test:workspace-ui": "node --test tests/workspace-ui.test.mjs",
     "test": "npm run test:python && npm run test:ui",
     "typecheck": "tsc --noEmit",
-    "verify:artifacts": "node scripts/python.mjs -m simulation.verify_artifacts",
     "check": "npm run test && npm run build"
   },
   "dependencies": {

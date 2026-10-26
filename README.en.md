@@ -114,12 +114,11 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 
 ## Development & Validation
 
-React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. Existing CI runs product checks on **Windows and Ubuntu**. Necessary research protocols, saved results and evidence are retained in the repository.
+React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. CI runs one lightweight build on main. Full app and research checks are local; regenerated run-level results are not tracked.
 
 ```bash
 npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build
 npm run test:research     # Research regressions
-npm run verify:artifacts  # Optional regeneration checks for published example artifacts
 ```
 
-[Engineering conventions](AGENTS.md) · [Known artifact-verification baseline](README.md#开发与验证) · [Research integration record](docs/integration-2026-10-23.md) · [MIT License](LICENSE)
+[Engineering conventions](AGENTS.md) · [Research methods and limits](benchmarks/README.md) · [MIT License](LICENSE)
