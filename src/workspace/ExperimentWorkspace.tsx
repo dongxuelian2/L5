@@ -17,14 +17,15 @@ function draftOf(experiment: Experiment): Draft {
   const { name, description, config, notes, conclusion, conclusion_run_ids } = experiment;
   return { name, description, config, notes, conclusion, conclusion_run_ids };
 }
-export function newExperimentConfig(dataset: Dataset): ExperimentConfig {
+export function newExperimentConfig(dataset: Dataset, initialSignals?: string[]): ExperimentConfig {
   const time = dataset.metadata.time, span = time.end-time.start;
-  return { datasetId: dataset.id, signals: dataset.metadata.columns.slice(0,4).map(c => c.name),
+  const signals = initialSignals?.length ? initialSignals.filter(name => dataset.metadata.columns.some(c => c.name === name)) : dataset.metadata.columns.slice(0,4).map(c => c.name);
+  return { datasetId: dataset.id, signals,
     ...(dataset.metadata.suggestedRanges || { baselineRange: [time.start, time.start+span*.3], analysisRange: [time.start+span*.3+(time.typicalInterval || time.sampleInterval || span/dataset.metadata.rowCount), time.end] }),
     alpha: .01, fitFraction: .7, minCoverage: .9, persistence: 1, requiredSignals: [], observationPolicy: "measured",
-    algorithms: [{ algorithm: "robust-maxz", parameters: {}, study: {} }, { algorithm: "pca-q", parameters: {}, study: {} }] };
+    algorithms: [{ algorithm: "robust-maxz", parameters: {}, study: {} }, ...(signals.length >= 2 ? [{ algorithm: "pca-q" as const, parameters: {}, study: {} }] : [])] };
 }
-function initialDraft(dataset: Dataset): Draft { return { name: "Untitled experiment", description: "", config: newExperimentConfig(dataset), notes: "", conclusion: "", conclusion_run_ids: [] }; }
+function initialDraft(dataset: Dataset, signals?: string[]): Draft { return { name: "Untitled experiment", description: "", config: newExperimentConfig(dataset, signals), notes: "", conclusion: "", conclusion_run_ids: [] }; }
 
 function CandidateValues({ name, values, onChange }: { name: string; values?: number[]; onChange: (values: number[]) => void }) {
   const [text, setText] = useState(values?.join(", ") || "");
@@ -37,7 +38,7 @@ function CandidateValues({ name, values, onChange }: { name: string; values?: nu
   }} /></label>;
 }
 
-export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initialDatasetId, onChanged }: { workspaceId: string; datasets: Dataset[]; experimentId?: string; initialDatasetId?: string; onChanged: () => void }) {
+export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initialDatasetId, initialSignals, onChanged }: { workspaceId: string; datasets: Dataset[]; experimentId?: string; initialDatasetId?: string; initialSignals?: string[]; onChanged: () => void }) {
   const [list, setList] = useState<Experiment[]>([]), [saved, setSaved] = useState<Experiment | null>(null), [draft, setDraft] = useState<Draft | null>(null);
   const [data, setData] = useState<ExperimentComparisonData | null>(null), [selected, setSelected] = useState<string[]>([]), [runFilter, setRunFilter] = useState("");
   const [algorithmFilter, setAlgorithmFilter] = useState(""), [statusFilter, setStatusFilter] = useState(""), [parameterFilter, setParameterFilter] = useState("");
@@ -54,7 +55,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
   }, [workspaceId, saved?.id, saved?.revision, saved?.runs.length, saved?.runs[0]?.id, linked?.id]);
   useEffect(() => {
     const controller = new AbortController(); context.current++; setBusy(false); setError(""); setNotice(""); setSaved(null); setData(null); setSelected([]); setRunFilter(""); setPreview(null); setSnapshot(null); setLinked(null); setIntervals({});
-    if (!existingId) { setLoading(false); setDraft(datasets.length ? initialDraft(datasets.find(d => d.id === initialDatasetId) || datasets[0]) : null); return () => { controller.abort(); context.current++; }; }
+    if (!existingId) { setLoading(false); setDraft(datasets.length ? initialDraft(datasets.find(d => d.id === initialDatasetId) || datasets[0], initialSignals) : null); return () => { controller.abort(); context.current++; }; }
     setLoading(true); setDraft(null);
     api<Experiment>(`/experiments/${existingId}`, undefined, "GET", controller.signal).then(result => {
       if (controller.signal.aborted) return;
@@ -62,7 +63,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
       setSaved(result); setDraft(draftOf(result));
     }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); context.current++; };
-  }, [workspaceId, existingId, initialDatasetId]);
+  }, [workspaceId, existingId, initialDatasetId, initialSignals?.join("\0")]);
   useEffect(() => {
     if (!saved || saved.id !== existingId) return;
     const controller = new AbortController();

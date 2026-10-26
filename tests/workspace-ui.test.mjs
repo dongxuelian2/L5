@@ -29,11 +29,14 @@ globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.win
 globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(dom.window);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+dom.window.scrollTo = () => {};
 dom.window.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 const { createRoot } = await import('react-dom/client');
 const { Plot, SignalPlots } = require('../src/workspace/Charts.tsx');
 const { ResultView } = require('../src/workspace/Results.tsx');
-const { ImportDataset } = require('../src/workspace/WorkspaceApp.tsx');
+const { ImportDataset, AnalysisPage } = require('../src/workspace/WorkspaceApp.tsx');
+const App = require('../src/App.tsx').default;
+const { analysisPath } = require('../src/workspace/api.ts');
 const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
 const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/SignalWorkspace.tsx');
@@ -461,6 +464,7 @@ test('saved runtime experiment reopens its observation and intervention paramete
   const run = { id: 'saved-trial', kind: 'intervention', request: savedBody, result: forecastFor(savedBody), createdAt: '2026-10-24T00:00:00Z' }, writes = [];
   globalThis.fetch = async (url, options = {}) => {
     if (url === '/api/simulations?workspaceId=test') return response({ simulations: [{ ...simulation('A'), workspaceId: 'test' }] });
+    if (url === '/api/simulations/A') return response({ ...simulation('A'), workspaceId: 'test', datasetId: 'saved-model-data' });
     if (url === '/api/simulations/A/runs') return response({ runs: [run] });
     if (url === '/api/workspaces/test/incidents') return response({ incidents: [emptyIncident()] });
     if (url === '/api/incidents/event-one/links') { writes.push(JSON.parse(options.body)); return response(emptyIncident()); }
@@ -468,6 +472,8 @@ test('saved runtime experiment reopens its observation and intervention paramete
   };
   await mount(React.createElement(RuntimeWorkbench, { workspaceId: 'test', simulationId: 'A', runId: run.id }));
   await debounceAnalysis(); await resolveAnalysis(api.analyses.at(-1));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/saved-model-data"]'), 'reopened simulation links to its exact saved Dataset');
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/saved-model-data"]'), 'model Dataset can continue directly into an experiment');
   assert.equal(field('Observe through').value, '156'); assert.equal(field('Intervention starts at').value, '162');
   assert.equal(field('Prediction ends at').value, '400'); assert.equal(field('Bypass cooling flow').value, '63');
   assert.ok(container.querySelector('.runtime-forecast'), 'stored forecast opens without recomputation');
@@ -834,6 +840,7 @@ test('transformation editor sends stable signal IDs, previews computed curves, s
   await click(button('Generate new dataset'));
   assert.equal(generated.length, 1);
   assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/generated-0"]'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/generated-0"]'), 'generated data opens an experiment directly');
   assert.equal(writes.filter(w => w.url.endsWith('/transformations')).length, 1);
   await click(button('Generate new dataset'));
   assert.equal(generated.length, 2);
@@ -1249,4 +1256,95 @@ test('TEP study dashboard isolates protocols/configurations and exposes failed r
   await setField(inputFor('Experiment protocol'),'original');
   assert.equal(container.querySelector('.tep-fault-matrix'),null,'original protocol never inherits expanded results');
   assert.match(container.textContent,/72 tasks/);
+  const search = new URLSearchParams({ protocol: saved.protocol.id, study: saved.id, training: 'B', metric: 'eventual', fault: '3', algorithm: 'robust-maxz' }).toString();
+  await act(async () => root.render(React.createElement(TEPStudyDashboard,{key:'reopened',workspaceId:'test',search,onChanged(){}})));
+  assert.equal(inputFor('Experiment protocol').value, saved.protocol.id);
+  assert.equal(inputFor('Normal training configuration').value, 'B');
+  assert.equal(inputFor('Matrix metric').value, 'eventual');
+  assert.match(container.querySelector('[aria-label="Selected matrix cell"]').textContent,/configuration B/);
+});
+
+test('analysis links restore signals and windows, and entering History refreshes results completed while away', async () => {
+  const first = dataset('first-source'), selected = dataset('second-source');
+  const historyRows=[];
+  selected.metadata.columns[1].name = 'pressure, backup + unit';
+  const signals = [selected.metadata.columns[1].name];
+  const route = analysisPath('test', selected.id, signals, [300, 470]);
+  window.location.hash = `#/${route}`;
+  globalThis.fetch = async url => {
+    if (url === '/api/workspaces') return response({workspaces:[{id:'test',name:'Restored project'}]});
+    if (url === '/api/workspaces/test') return response({id:'test',name:'Restored project'});
+    if (url.endsWith('/datasets')) return response({datasets:[first, selected]});
+    if (url.endsWith('/analyses')) return response({jobs:historyRows});
+    if (url.includes('/series?')) return response(seriesFor(url));
+    throw new Error('Unexpected restoration request '+url);
+  };
+  await mount(React.createElement(App));
+  assert.equal(inputFor('Dataset').value, selected.id);
+  assert.equal(inputFor('Analysis start (s)').value, '300');
+  assert.equal(inputFor('Analysis end (s)').value, '470');
+  assert.deepEqual([...container.querySelectorAll('.ws-signal-picker input[type="checkbox"]')].filter(n=>n.checked).map(n=>n.closest('label').textContent.trim()), signals);
+  assert.equal(container.querySelector('nav[aria-label="Workspace"] a').getAttribute('href'),'#/workspaces/test/datasets/second-source');
+  const scrolls=[];
+  dom.window.scrollTo=(...args)=>scrolls.push(args);
+  try {
+    await act(async()=>{
+      window.location.hash=`#/${analysisPath('test',selected.id,signals,[320,450])}`;
+      window.dispatchEvent(new dom.window.HashChangeEvent('hashchange'));
+    });
+    assert.equal(inputFor('Analysis start (s)').value,'320');
+    assert.equal(scrolls.length,0,'changing query context keeps the current scroll position');
+    await act(async()=>{
+      window.location.hash='#/workspaces/test/datasets/second-source';
+      window.dispatchEvent(new dom.window.HashChangeEvent('hashchange'));
+    });
+    assert.equal(container.querySelector('select[aria-label="Saved dataset"]').value,selected.id);
+    assert.equal(scrolls.length,1,'changing workstation scrolls to the new page');
+    historyRows.push({id:'background-saved',dataset_id:selected.id,name:'Completed while away',created_at:'2026-10-26T00:00:00Z',config:{algorithm:'robust-maxz',signals,analysisRange:[320,450]},summary:{flaggedSamples:1}});
+    await act(async()=>{
+      window.location.hash='#/workspaces/test/history';
+      window.dispatchEvent(new dom.window.HashChangeEvent('hashchange'));
+    });
+    assert.ok(container.querySelector('a[href="#/workspaces/test/analysis/background-saved"]'),'history fetches a saved result even when its original page has unmounted');
+  } finally { dom.window.scrollTo=()=>{}; }
+});
+
+test('a completed analysis cannot redirect or refresh a workstation that the user has already left', async () => {
+  const source = dataset('pending-analysis');
+  source.metadata.suggestedRanges = {baselineRange:[0,199],analysisRange:[200,899]};
+  let resolveAnalysis, changed = 0;
+  globalThis.fetch = () => new Promise(resolve => {resolveAnalysis=resolve;});
+  await mount(React.createElement(AnalysisPage,{workspaceId:'test',datasets:[source],selected:source.id,setSelected(){},preferences:{},refresh(){changed++;}}));
+  await click(button('Run analysis and save'));
+  assert.ok(resolveAnalysis);
+  await act(async () => root.render(React.createElement('p',null,'Another workstation')));
+  const route = window.location.hash;
+  await act(async () => resolveAnalysis(response({id:'completed-in-background'})));
+  assert.equal(window.location.hash,route);
+  assert.equal(changed,0);
+  assert.equal(container.textContent,'Another workstation');
+});
+
+test('late saved analysis responses and failed deep links cannot restore an old result or hide the failure', async () => {
+  const source = dataset('incident-data'), loads = [];
+  globalThis.fetch = url => new Promise(resolve => loads.push({url,resolve}));
+  const props={workspaceId:'test',datasets:[source],selected:source.id,setSelected(){},preferences:{},refresh(){}};
+  await mount(React.createElement(AnalysisPage,{...props,jobId:'old'}));
+  await act(async () => root.render(React.createElement(AnalysisPage,{...props,jobId:'missing'})));
+  await act(async () => loads[1].resolve(new Response(JSON.stringify({error:'Saved analysis was not found.'}),{status:404,headers:{'Content-Type':'application/json'}})));
+  await act(async () => loads[0].resolve(response(incidentResult('old'))));
+  assert.match(container.querySelector('[role="alert"]').textContent,/Saved analysis was not found/);
+  assert.equal(container.querySelector('.ws-analysis-form'),null);
+  assert.equal(container.querySelector('.ws-result-anchor'),null);
+});
+
+test('new experiments retain dataset signal selection and start single-signal data with a compatible algorithm', async () => {
+  const source=dataset('chosen-signals');
+  globalThis.fetch=async url => response(url.endsWith('/incidents') ? {incidents:[]} : url.endsWith('/labels') ? {labels:[]} : {experiments:[]});
+  await mount(React.createElement(ExperimentWorkspace,{workspaceId:'test',datasets:[source],initialDatasetId:source.id,initialSignals:[names[6]],onChanged(){}}));
+  const checked=[...container.querySelectorAll('.experiment-editor .ws-signal-list input[type="checkbox"]')].filter(n=>n.checked).map(n=>n.closest('label').textContent.trim());
+  assert.deepEqual(checked,[names[6]]);
+  const config=newExperimentConfig({...source,metadata:{...source.metadata,columns:[source.metadata.columns[6]]}});
+  assert.deepEqual(config.algorithms.map(a=>a.algorithm),['robust-maxz']);
+  assert.deepEqual(newExperimentConfig(source,[names[6]]).signals,[names[6]]);
 });

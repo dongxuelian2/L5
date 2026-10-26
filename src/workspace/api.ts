@@ -13,3 +13,9 @@ export async function api<T>(path: string, body?: unknown, method = body === und
 }
 export function message(error: unknown) { return error instanceof Error ? error.message : "Unable to complete this operation."; }
 export function go(path: string) { window.location.hash = `#/${path}`; }
+export function analysisPath(workspaceId: string, datasetId: string, signals: string[], range?: [number, number]) {
+  const query = new URLSearchParams({ dataset: datasetId });
+  signals.forEach(signal => query.append("signal", signal));
+  if (range) { query.set("start", String(range[0])); query.set("end", String(range[1])); }
+  return `workspaces/${workspaceId}/analysis?${query}`;
+}

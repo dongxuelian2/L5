@@ -19,6 +19,8 @@ The default React route is a persistent, dataset-neutral workspace. `#/examples`
 | Experiment evaluation and reports | `l5/experiment_evaluation.py`, `experiment_reports.py`, `src/workspace/ExperimentComparison.tsx`, `ExperimentLabels.tsx`, `ExperimentReport.tsx` | Explicit truth versions, separate sample/event evaluation, clock-aware comparisons, shared measurement cursor and offline research reports |
 | Runtime model sessions | `l5/runtime.py`, `simulation/platform.py` | Configurable simulation, cached prefix evidence, user tools, fitted/known-model forecasts and optional recovery grid search |
 | Analysis assistant | `l5/assistant.py` | Selected deterministic tools, keyword routing and an optional evidence summarizer |
+| Model catalog and scenarios | `l5/models/`, `l5/scenarios.py`, `src/workspace/ModelWorkspace.tsx` | Explicit model/version/capability registry, immutable scenario versions and saved simulation sessions |
+| Public TEP studies | `l5/tep_import.py`, `tep_study.py`, `tep_fault3.py`, `src/workspace/TEPWorkspace.tsx` | Verified independent datasets, original/expanded/robustness protocols and saved normal-background controls |
 | Local API | `l5/api.py`, `server.py` | JSON routes and experiment progress polling on the local HTTP server serving the built React application |
 | Workspace workstation | `src/workspace/`, `src/App.tsx` | Projects, import, signal plots, analysis configuration, saved results and history |
 
@@ -29,6 +31,12 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
 `npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+
+### Navigation and workflow context
+
+Hash routes address saved Workspace, Dataset, AnalysisResult, Experiment, Incident and simulation IDs. The application separates the hash path from its query. Analysis entry links carry the source Dataset, repeated `signal` parameters and optional source-native `start`/`end` seconds; refresh and browser history restore that selection without relying on an in-memory draft. Dataset-to-Experiment links retain selected input signals. Generated Dataset actions open either analysis or experiment through the existing workspaces.
+
+TEP dashboard URLs retain `protocol`, `study`, `training`, `metric` and selected `fault`/`algorithm`. Returning from a Dataset or Experiment restores the specific saved research view. Analysis requests discard responses after the user changes context or leaves the page; completed backend results remain in History. Missing saved analyses clear the previous form and display the API error.
 
 ## Analysis experiments
 
@@ -172,7 +180,7 @@ The workstation and external monitoring studies share evidence contracts while r
 | Monitoring Engine | `benchmarks/monitoring.py`, `session.py`, `coverage.py`, temporal/adaptive/DPCA modules | Research-only sessions enforce normal fit/calibration roles, chronological disjointness, schema compatibility and fresh sequence state |
 | Diagnosis Engine | `simulation/platform.py::diagnose` | Observations only; no simulator Config/fault label argument; support, contradiction and unavailable evidence remain separate |
 | Decision & Counterfactual Engine | `fit_hypothesis`, `simulate`, `interventions` | Configurable duration and stable 0.05–1s cadence, explicit observation window and selectable hypothesis; on-demand recovery grid; physical pressure determines trip status |
-| Investigation Workstation | `src/components`, `src/lib/comparison.ts`, `src/lib/platform.ts`, `server.py` | Shared ProcessEvidence components and RuntimeWorkbench; arbitrary time-matched prefixes, user-selected tools and intervention parameters |
+| Investigation Workstation | `src/components/Investigation.tsx`, `src/workspace/RuntimeWorkbench.tsx`, `src/lib/platform.ts`, `server.py` | Shared ProcessEvidence components and RuntimeWorkbench; arbitrary time-matched prefixes, user-selected tools and intervention parameters |
 | Benchmark & Verification | `benchmarks/run_suite.py`, `verify_reports.py`, `simulation/verify_artifacts.py`, `tests/`, Actions | Pinned sources, frozen protocols, separate software/numerical regressions and external research reports |
 
 ## Signal spaces

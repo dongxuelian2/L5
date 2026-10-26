@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { api, go, message } from "./api";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { analysisPath, api, go, message } from "./api";
 import { Plot, SignalPlots } from "./Charts";
 import { ResultView } from "./Results";
 import { AlgorithmControls } from "./AlgorithmControls";
@@ -132,40 +132,46 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title="Signals to plot and analyze" />
         <SignalPlots dataset={dataset} signals={chosen} />
         <TransformationLineage dataset={dataset} /><ExternalProvenance dataset={dataset} />
-        <div className="ws-dataset-actions"><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/new/${dataset.id}`}>Create a multi-algorithm experiment from this dataset ↗</a>
+        <div className="ws-dataset-actions"><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/new/${dataset.id}?${new URLSearchParams(chosen.map(signal => ["signal", signal]))}`}>Create a multi-algorithm experiment from this dataset ↗</a>
         {dataset.metadata.model && <a className="ws-primary" href={`#/workspaces/${workspaceId}/simulations/${dataset.metadata.model.simulationId}`}>Open process investigation & interventions ↗</a>}</div>
-        <div className="ws-inline ws-between"><a className="ws-link" href={`#/workspaces/${workspaceId}/explorer/${dataset.metadata.columns.filter(c => chosen.includes(c.name)).map(c => c.id).filter(Boolean).join(",")}`}>Open Signal Explorer ↗</a><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setSelected(dataset.id); setPreferences(dataset.id, chosen); go(`workspaces/${workspaceId}/analysis`); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
+        <div className="ws-inline ws-between"><a className="ws-link" href={`#/workspaces/${workspaceId}/explorer/${dataset.metadata.columns.filter(c => chosen.includes(c.name)).map(c => c.id).filter(Boolean).join(",")}`}>Open Signal Explorer ↗</a><span className="ws-muted">Original CSV and numeric data are saved locally.</span><button className="ws-primary" onClick={() => { setPreferences(dataset.id, chosen); go(analysisPath(workspaceId, dataset.id, chosen)); }} disabled={!chosen.length}>Configure analysis ↗</button></div>
       </section>
     </>}
   </>;
 }
 
-function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex, initialRange }: {
-  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number; initialRange?: [number, number];
+export function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex, initialRange, initialDatasetId, initialSignals }: {
+  workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number; initialRange?: [number, number]; initialDatasetId?: string; initialSignals?: string[];
 }) {
-  const dataset = datasets.find(d => d.id === selected) || datasets[0];
+  const dataset = datasets.find(d => d.id === (initialDatasetId || selected)) || datasets[0];
   const [config, setConfig] = useState<Config | null>(null), [result, setResult] = useState<AnalysisResult | null>(null);
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
   const resultPanel = useRef<HTMLDivElement>(null);
+  const context = useRef(0);
+  useEffect(() => { context.current++; setBusy(false); return () => { context.current++; }; }, [dataset?.id, jobId, initialSignals, initialRange]);
   useEffect(() => {
     if (!dataset || jobId) return;
     const ranges = dataset.metadata.suggestedRanges || { baselineRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number], analysisRange: [dataset.metadata.time.start, dataset.metadata.time.end] as [number, number] };
-    setConfig({ datasetId: dataset.id, signals: preferences[dataset.id] ?? dataset.metadata.columns.map(c => c.name), algorithm: "robust-maxz", alpha: .01, variance: .9, ...ranges, ...(initialRange ? { analysisRange: initialRange, baselineRange: [dataset.metadata.time.start, Math.max(dataset.metadata.time.start, Math.min(ranges.baselineRange[1], initialRange[0]-(dataset.metadata.time.typicalInterval || 1)))] as [number, number] } : {}) });
+    setConfig({ datasetId: dataset.id, signals: initialSignals?.length ? initialSignals.filter(name => dataset.metadata.columns.some(c => c.name === name)) : preferences[dataset.id] ?? dataset.metadata.columns.map(c => c.name), algorithm: "robust-maxz", alpha: .01, variance: .9, ...ranges, ...(initialRange ? { analysisRange: initialRange, baselineRange: [dataset.metadata.time.start, Math.max(dataset.metadata.time.start, Math.min(ranges.baselineRange[1], initialRange[0]-(dataset.metadata.time.typicalInterval || 1)))] as [number, number] } : {}) });
     setResult(null); setError("");
-  }, [dataset?.id, jobId, initialRange]);
+  }, [dataset?.id, jobId, initialRange, initialSignals]);
   useEffect(() => {
     if (!jobId || result?.id === jobId) return;
-    const controller = new AbortController(); setLoading(true); setError(""); setResult(null);
-    api<AnalysisResult>(`/analyses/${jobId}`, undefined, "GET", controller.signal).then(data => { setResult(data); setConfig(data.config); setSelected(data.datasetId); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    const controller = new AbortController(); setLoading(true); setError(""); setResult(null); setConfig(null);
+    api<AnalysisResult>(`/analyses/${jobId}`, undefined, "GET", controller.signal).then(data => {
+      if (controller.signal.aborted) return;
+      if (data.workspaceId !== workspaceId) throw new Error("Analysis belongs to another workspace.");
+      setResult(data); setConfig(data.config); setSelected(data.datasetId);
+    }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [jobId]);
   useEffect(() => {
     if (jobId && result?.id === jobId) resultPanel.current?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [jobId, result?.id]);
   async function run(e: FormEvent) {
-    e.preventDefault(); if (!config) return; setBusy(true); setError("");
-    try { const data = await api<AnalysisResult>(`/workspaces/${workspaceId}/analyses`, config); setResult(data); refresh(); go(`workspaces/${workspaceId}/analysis/${data.id}`); }
-    catch (e) { setError(message(e)); } finally { setBusy(false); }
+    e.preventDefault(); if (!config) return; const request = context.current; setBusy(true); setError("");
+    try { const data = await api<AnalysisResult>(`/workspaces/${workspaceId}/analyses`, config); if (request !== context.current) return; setResult(data); refresh(); go(`workspaces/${workspaceId}/analysis/${data.id}`); }
+    catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
   }
   function set<K extends keyof Config>(key: K, value: Config[K]) { setConfig(c => c ? { ...c, [key]: value } : c); }
   if (!dataset) return <Empty title="Import data to start analyzing"><a className="ws-link" href={`#/workspaces/${workspaceId}/datasets`}>Go to datasets →</a></Empty>;
@@ -173,7 +179,7 @@ function AnalysisPage({ workspaceId, datasets, selected, setSelected, preference
   return <>
     <div className="ws-page-title"><div><div className="ws-kicker">02 / ANALYSIS ENGINE</div><h1>Find what changed<span className="ws-accent">.</span></h1><p>Fit a normal baseline, then score a later window of your measurements.</p></div><span className="ws-badge">FULL-RESOLUTION COMPUTATION</span></div>
     {loading ? <p role="status">Opening saved analysis…</p> : config?.training ? <section className="ws-panel"><h2>Saved independent dataset analysis</h2><p>Review the normal training, calibration and test sources with the saved result below.</p><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/${result?.experiment?.experimentId || "new"}`}>Configure independent sources and rerun in Experiments ↗</a></section> : config && <form className="ws-panel ws-analysis-form" onSubmit={run}>
-      <div className="ws-form-grid"><label>Dataset<select value={dataset.id} onChange={e => { setSelected(e.target.value); if (jobId) go(`workspaces/${workspaceId}/analysis`); }}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Analysis name (optional)<input maxLength={160} value={config.name || ""} onChange={e => set("name", e.target.value)} placeholder="e.g. Temperature excursion review" /></label></div>
+      <div className="ws-form-grid"><label>Dataset<select value={dataset.id} onChange={e => { const next = datasets.find(d => d.id === e.target.value)!; setSelected(next.id); go(analysisPath(workspaceId, next.id, preferences[next.id] ?? next.metadata.columns.map(c => c.name))); }}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Analysis name (optional)<input maxLength={160} value={config.name || ""} onChange={e => set("name", e.target.value)} placeholder="e.g. Temperature excursion review" /></label></div>
       <SignalPicker columns={dataset.metadata.columns} selected={config.signals} onChange={signals => setConfig({ ...config, signals, requiredSignals:config.requiredSignals?.filter(s=>signals.includes(s)), stress:{ ...config.stress, missingSignals:config.stress?.missingSignals?.filter(s=>signals.includes(s)) } })} />
       <div className="ws-window-grid">{(["baselineRange", "analysisRange"] as const).map(key => <fieldset key={key}><legend>{key === "baselineRange" ? "Normal baseline · assumed healthy" : "Analysis window · target data"}</legend><div className="ws-form-grid"><label>{key === "baselineRange" ? "Baseline start (s)" : "Analysis start (s)"}<input type="number" step="any" min={dataset.metadata.time.start} max={dataset.metadata.time.end} value={config[key][0]} onChange={e => set(key, [Number(e.target.value), config[key][1]])} required /></label><label>{key === "baselineRange" ? "Baseline end (s)" : "Analysis end (s)"}<input type="number" step="any" min={dataset.metadata.time.start} max={dataset.metadata.time.end} value={config[key][1]} onChange={e => set(key, [config[key][0], Number(e.target.value)])} required /></label></div></fieldset>)}</div>
       <p className="ws-notice">Choose a baseline you believe is normal, ending before the analysis window. Use at least 30 fit and 30 calibration observations; the fit fraction can be configured below.{dataset.metadata.time.origin && ` Times are elapsed seconds from ${timeLabel(dataset.metadata.time, 0)}.`}</p>
@@ -192,11 +198,15 @@ function HistoryPage({ jobs, datasets, workspaceId }: { jobs: Job[]; datasets: D
   </>;
 }
 
-export default function WorkspaceApp({ path }: { path: string[] }) {
+export default function WorkspaceApp({ path, search = "" }: { path: string[]; search?: string }) {
   const workspaceId = path[0] === "workspaces" ? path[1] : undefined, tab = path[2] || "datasets", jobId = path[3];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]), [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]), [jobs, setJobs] = useState<Job[]>([]), [selected, setSelected] = useState("");
-  const [analysisDraft, setAnalysisDraft] = useState<{ datasetId: string; range: [number, number] } | null>(null);
+  const routeContext = useMemo(() => {
+    const query = new URLSearchParams(search), start = query.get("start"), end = query.get("end");
+    const range = start !== null && end !== null && Number.isFinite(Number(start)) && Number.isFinite(Number(end)) && Number(start) <= Number(end) ? [Number(start), Number(end)] as [number, number] : undefined;
+    return { datasetId: query.get("dataset") || undefined, signals: query.getAll("signal"), range };
+  }, [search]);
   const [preferences, setPreferences] = useState<Record<string, string[]>>({}), [error, setError] = useState(""), [loading, setLoading] = useState(true), [revision, setRevision] = useState(0);
   function refresh() { setRevision(v => v + 1); }
   useEffect(() => {
@@ -207,27 +217,33 @@ export default function WorkspaceApp({ path }: { path: string[] }) {
   useEffect(() => { setWorkspace(null); setDatasets([]); setJobs([]); setSelected(""); setLoading(Boolean(workspaceId)); }, [workspaceId]);
   useEffect(() => { if (tab === "datasets" && jobId) setSelected(jobId); }, [tab, jobId]);
   useEffect(() => {
+    if (tab === "analysis" && routeContext.datasetId) {
+      setSelected(routeContext.datasetId);
+      if (routeContext.signals.length) setPreferences(p => ({ ...p, [routeContext.datasetId!]: routeContext.signals }));
+    }
+  }, [tab, routeContext]);
+  useEffect(() => {
     if (!workspaceId) return;
     const controller = new AbortController();
     Promise.all([api<Workspace>(`/workspaces/${workspaceId}`, undefined, "GET", controller.signal), api<{ datasets: Dataset[] }>(`/workspaces/${workspaceId}/datasets`, undefined, "GET", controller.signal), api<{ jobs: Job[] }>(`/workspaces/${workspaceId}/analyses`, undefined, "GET", controller.signal)])
-      .then(([w, d, j]) => { setWorkspace(w); setDatasets(d.datasets); setJobs(j.jobs); })
+      .then(([w, d, j]) => { if (controller.signal.aborted) return; setWorkspace(w); setDatasets(d.datasets); setJobs(j.jobs); })
       .catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [workspaceId, revision]);
+  }, [workspaceId, revision, tab === "history"]);
   const dataMode = tab === "signals" || tab === "quality" || tab === "explorer" ? tab : null;
   const content = loading ? <p role="status">Opening workspace…</p> : !workspace ? null :
-    tab === "experiments" ? <ExperimentWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} experimentId={jobId} initialDatasetId={path[4]} onChanged={refresh} /> :
-    tab === "transformations" ? <TransformationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} definitionId={jobId} initialSignalIds={path[4]} onGenerated={dataset => { setSelected(dataset.id); setAnalysisDraft(null); refresh(); }} /> :
+    tab === "experiments" ? <ExperimentWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} experimentId={jobId} initialDatasetId={path[4]} initialSignals={routeContext.signals} onChanged={refresh} /> :
+    tab === "transformations" ? <TransformationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} definitionId={jobId} initialSignalIds={path[4]} onGenerated={dataset => { setSelected(dataset.id); refresh(); }} /> :
     dataMode ? <SignalWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} jobs={jobs} mode={dataMode} initialSignalIds={jobId} onChanged={refresh} onAnalyze={(datasetId, signals, range) => {
-      setSelected(datasetId); setPreferences(p => ({ ...p, [datasetId]: signals })); setAnalysisDraft({ datasetId, range }); go(`workspaces/${workspaceId}/analysis`);
-    }} /> : tab === "tep" ? <TEPWorkspace workspaceId={workspaceId!} onChanged={refresh} /> : tab === "incidents" ? <IncidentsPage workspaceId={workspaceId!} incidentId={jobId} datasets={datasets} jobs={jobs} /> :
+      setSelected(datasetId); setPreferences(p => ({ ...p, [datasetId]: signals })); go(analysisPath(workspaceId!, datasetId, signals, range));
+    }} /> : tab === "tep" ? <TEPWorkspace workspaceId={workspaceId!} search={search} onChanged={refresh} /> : tab === "incidents" ? <IncidentsPage workspaceId={workspaceId!} incidentId={jobId} datasets={datasets} jobs={jobs} /> :
     (tab === "simulations" || tab === "models") ? <Suspense fallback={<p>Opening process simulator…</p>}><ModelWorkspace key={workspaceId} workspaceId={workspaceId!} simulationId={tab === "simulations" ? jobId : undefined} runId={path[4] === "window" ? undefined : path[4]} initialWindow={path[4] === "window" ? { windowStart: Number(path[5]), asOf: Number(path[6]), hypothesis: path[7] } : undefined} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> :
     tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId!} /> :
-    tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={id => { setSelected(id); setAnalysisDraft(null); }} preferences={preferences} jobId={jobId} initialRange={analysisDraft?.datasetId === selected ? analysisDraft.range : undefined} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
-    <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); setAnalysisDraft(null); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
+    tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} initialDatasetId={routeContext.datasetId} initialSignals={routeContext.signals} initialRange={routeContext.range} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
+    <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   return <div className="ws-shell notranslate" translate="no">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>WORKSPACE</span><small>2.0</small></a><nav aria-label="Application"><a href="#/" className="ws-active">Workspaces</a><a href="#/examples">TripLens examples ↗</a></nav><span className="ws-connection"><i />LOCAL ENGINE</span></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["signals", "02", "Signal catalog", "↗"], ["quality", "03", "Data quality", "↗"], ["explorer", "04", "Signal Explorer", "↗"], ["transformations", "05", "Transformations", "↗"], ["analysis", "06", "Analysis", "↗"], ["experiments", "07", "Experiments", "↗"], ["history", "08", "History", jobs.length], ["models", "09", "Models", "↗"], ["incidents", "10", "事件", "↗"], ["tep", "11", "TEP case study", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key || key === "models" && tab === "simulations" ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}`} aria-current={tab === key || key === "models" && tab === "simulations" ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">← All workspaces</a><span className="ws-kicker">CURRENT PROJECT</span><h2>{workspace?.name || "Opening…"}</h2><nav aria-label="Workspace">{[["datasets", "01", "Datasets", datasets.length], ["signals", "02", "Signal catalog", "↗"], ["quality", "03", "Data quality", "↗"], ["explorer", "04", "Signal Explorer", "↗"], ["transformations", "05", "Transformations", "↗"], ["analysis", "06", "Analysis", "↗"], ["experiments", "07", "Experiments", "↗"], ["history", "08", "History", jobs.length], ["models", "09", "Models", "↗"], ["incidents", "10", "事件", "↗"], ["tep", "11", "TEP case study", "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key || key === "models" && tab === "simulations" ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}${key === "datasets" && selected ? `/${selected}` : ""}`} aria-current={tab === key || key === "models" && tab === "simulations" ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">A durable place for your data and the questions you ask of it.</div></aside>
       <main className="ws-main"><ErrorText error={error} />{content}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>L5 / OPEN INDUSTRIAL ANALYSIS</span><span>DATA → EXPERIMENT → EVIDENCE → INVESTIGATION</span></footer>
