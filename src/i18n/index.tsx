@@ -63,6 +63,10 @@ export function runtimeText(value: string | undefined): string {
   for (const suffix of [" — not observed", " · extreme step", ": unreliable or missing evidence excluded"]) {
     if (value.endsWith(suffix)) return t("{0}" + suffix, {0: runtimeText(value.slice(0, -suffix.length))});
   }
+  const health = value.match(/^(\d+)\/(\d+) samples · age ([\d.e+-]+)s$/);
+  if (health) return t("{0}/{1} samples · age {2}s", {0:health[1],1:health[2],2:health[3]});
+  const brief = value.match(/^Observed (\d+) samples through ([\d.e+-]+)s\. Status: (\w+)\. Leading support: (.+) \(([\d.e+-]+)\/100\)\.$/);
+  if (brief) return t("Observed {0} samples through {1}s. Status: {2}. Leading support: {3} ({4}/100).", {0:brief[1],1:brief[2],2:t(brief[3]),3:t(brief[4]),4:brief[5]});
   return t(value);
 }
 export function LanguageSwitch() {

@@ -1503,3 +1503,83 @@ test('static dictionaries own each key once, provide both languages and retain i
     }
   }
 });
+
+test('fixed local validation and report errors follow both language switches without changing input', async () => {
+  const source = dataset('locale-error');
+  globalThis.fetch = async url => url.endsWith('/labels') ? response({labels: []}) : new Response('', {status: 503});
+  setLocale('zh-CN');
+  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(ExperimentLabels, {dataset: source, onChange(){}})));
+  await setField(inputFor('Label JSON'), '{}');
+  await click(button('Load JSON into editor'));
+  assert.match(container.querySelector('[role="alert"]').textContent, /导入 JSON/);
+  await click(container.querySelector('.language-switch button[lang="en"]'));
+  assert.equal(container.querySelector('[role="alert"]').textContent, 'Import JSON needs timeBasis: dataset-seconds, timeSource, and intervals.');
+  assert.equal(inputFor('Label JSON').value, '{}');
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  assert.match(container.querySelector('[role="alert"]').textContent, /导入 JSON/);
+  const fixture = researchFixture();
+  await act(async () => root.render(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(ExperimentReport, {experiment: fixture.experiment, dirty: false}))));
+  await click(button('Preview experiment report'));
+  assert.equal(container.querySelector('[role="alert"]').textContent, '无法从本地服务生成实验报告。');
+  await click(container.querySelector('.language-switch button[lang="en"]'));
+  assert.equal(container.querySelector('[role="alert"]').textContent, 'Unable to generate experiment report from the local service.');
+});
+
+test('system timeline labels follow locale while user titles and dataset clock names stay verbatim', () => {
+  const {axisLabel, timelineTitle} = require('../src/workspace/types.ts');
+  const source = dataset('raw-user-names'), result = incidentResult();
+  const view = {analyses: [{id: result.id, result}], datasets: [source]};
+  const alarm = {id: 'interval:'+result.id+':0', kind: 'alarm', analysisId: result.id, title: 'Robust Max-Z · 异常区间'};
+  const userNote = {id: 'entry:raw', kind: 'note', title: '状态变更'};
+  setLocale('en');
+  assert.equal(axisLabel({id:'incident:event-one',label:'事件独立时间轴',origin:null}), 'Independent incident time axis');
+  assert.equal(timelineTitle({id:'history:status',kind:'status',title:'状态变更'},view), 'Status change');
+  assert.equal(timelineTitle(alarm,view), 'Robust Max-Z · Anomaly interval');
+  assert.equal(timelineTitle(userNote,view), '状态变更');
+  setLocale('zh-CN');
+  assert.equal(axisLabel({id:'utc',label:'UTC absolute time',origin:'1970-01-01T00:00:00Z'}), 'UTC 绝对时间');
+  assert.equal(axisLabel({id:'dataset:raw',label:'UTC absolute time',origin:null}), 'UTC absolute time');
+  assert.equal(timelineTitle(alarm,view), '稳健最大 Z 分数 · 异常区间');
+});
+
+test('scripted example prose switches with the UI and never rewrites the original brief or scenario', async () => {
+  const {RootCauses, AnalystPanel} = require('../src/components/Investigation.tsx');
+  const {scenario} = require('../src/lib/engine.ts');
+  const brief = {schemaVersion:1,incidentId:scenario.id,provider:'local',prompt:scenario.analyst.prompt,steps:scenario.analyst.steps,summary:scenario.analyst.summary,limitation:scenario.analyst.limitation};
+  const before = JSON.stringify({scenario, brief});
+  setLocale('zh-CN');
+  await mount(React.createElement(React.Fragment,null,
+    React.createElement(RootCauses,{ready:true,selected:scenario.candidates[0].id,onSelect(){},onInspect(){}}),
+    React.createElement(AnalystPanel,{brief,step:0,running:false,error:null,onRun(){},onExport(){},onCompare(){},ready:true})));
+  assert.match(container.textContent,/阀位最先变化/);
+  assert.match(container.textContent,/压力上升是下游表现/);
+  assert.doesNotMatch(container.textContent,/Valve position changes first|The pressure rise is a downstream symptom/);
+  await act(async () => setLocale('en'));
+  assert.match(container.textContent,/The pressure rise is a downstream symptom/);
+  assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
+  assert.equal(JSON.stringify({scenario,brief}),before);
+});
+
+test('model action IDs and deterministic runtime summaries use translated display copy', async () => {
+  const {ModelForecastView} = require('../src/workspace/ModelResults.tsx');
+  const baseline = {times:[0,1],values:{level1:[1,1]},metrics:{peakLevel:1}};
+  const forecast = {format:'model-forecast-v1',mode:'known',observedThrough:0,at:0,horizon:1,
+    baseline,branches:[{...baseline,action:'adjust_pump'}],
+    metricDefinitions:[{key:'peakLevel',label:'Peak physical level',unit:'m'}],
+    signalDefinitions:[{key:'level1',label:'Tank 1 physical level',unit:'m'}],
+    uncertainty:'Known illustrative model; no parameter fitting or predictive uncertainty bounds. Metrics start at the action time.'};
+  const before=JSON.stringify(forecast);
+  setLocale('zh-CN');
+  assert.equal(runtimeText('10/12 samples · age 2s · extreme step'),'10/12 个样本 · 值龄 2s · 极端跳变');
+  assert.equal(runtimeText('Observed 10 samples through 9s. Status: nominal. Leading support: Cooling valve sticking (20/100).'),'已观测 10 个样本，截至 9 秒。状态：正常。首要候选：冷却阀卡涩（20/100）。');
+  assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'事件标题必须是文本，最多 160 个字符。');
+  await mount(React.createElement(ModelForecastView,{forecast}));
+  assert.match(container.textContent,/调整进水泵指令/);
+  assert.match(container.textContent,/实际液位峰值/);
+  assert.doesNotMatch(container.textContent,/adjust_pump|Peak physical level|Known illustrative/);
+  await act(async()=>setLocale('en'));
+  assert.match(container.textContent,/Adjust inlet pump command/);
+  assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
+  assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
+  assert.equal(JSON.stringify(forecast),before);
+});

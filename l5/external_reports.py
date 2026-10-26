@@ -19,7 +19,7 @@ def independent_run(store, run):
         metrics = task['metrics'] or {}
         labelled, behavior = metrics.get('labelled'), metrics.get('behavior')
         sample, event = (labelled['sample'], labelled['event']) if labelled else ({}, {})
-        all_rows.append([e(dataset['name']), e(task['algorithm']), e(report_text(task['status'])) + ('<br>'+e(task['error']) if task['error'] else ''),
+        all_rows.append([e(dataset['name']), e(report_text(task['algorithm'])), e(report_text(task['status'])) + ('<br>'+e(task['error']) if task['error'] else ''),
             e(' / '.join(str(sample.get(k, '—')) for k in ('TP', 'FP', 'TN', 'FN'))),
             e(' / '.join(n(sample.get(k)) for k in ('precision', 'recall', 'f1', 'falseAlarmRate'))),
             e(f"{event.get('detectedEvents', '—')} / {event.get('eligibleEvents', '—')} / {event.get('missedEvents', '—')}"),
@@ -54,9 +54,9 @@ def independent_run(store, run):
         if results:
             parts.append(lanes([dict(result=result, intervals=result['intervals']) for task, result in results], dict(origin=None, label=r('Dataset-native seconds'))))
         for task, result in results:
-            parts.extend([f"<h4>{e(result['algorithmLabel'])} · {e(task['id'])}</h4>",
-                parameters(result['config']), chart(result['algorithmLabel'], result['times'],
-                    [dict(label=result['algorithmLabel'], values=[None if state == 'abstain' else score for state, score in zip(result['states'], result['scores'])])],
+            parts.extend([f"<h4>{e(report_text(result['algorithmLabel']))} · {e(task['id'])}</h4>",
+                parameters(result['config']), chart(report_text(result['algorithmLabel']), result['times'],
+                    [dict(label=report_text(result['algorithmLabel']), values=[None if state == 'abstain' else score for state, score in zip(result['states'], result['scores'])])],
                     threshold=result['threshold'], intervals=result['intervals'], markers=markers, unit=r('Method-specific score')),
                 table([r('Signal'), r('Contribution'), r('Metric')], [[e(c['signal']), n(c['value']), e(result.get('contributionMetric'))] for c in result['signalContributions'][:10]]),
                 r('<details><summary>Saved evaluation and training provenance</summary>')+technical(dict(evaluation=task['metrics'], training={k: v for k, v in result.get('training', {}).items() if k not in ('sources', 'test')}))+ '</details>'])

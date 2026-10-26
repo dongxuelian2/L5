@@ -16,7 +16,7 @@ export function IncidentReport({ incident }: { incident: Incident }) {
     setBusy(true); setError(""); setReady(false);
     try {
       const response = await fetch(url);
-      if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) throw new Error(tr("无法生成报告，请检查本地服务。"));
+      if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) throw new Error("无法生成报告，请检查本地服务。");
       const content = await response.text();
       if (request === generation.current) setHtml(content);
     } catch (e) { if (request === generation.current) setError(message(e)); }

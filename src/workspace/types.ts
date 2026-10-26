@@ -1,5 +1,5 @@
 import type { TransformationLineage } from "./transformationTypes";
-import { getLocale } from "../i18n";
+import { getLocale, t } from "../i18n";
 export type Workspace = { id: string; name: string; created_at: string; updated_at: string; dataset_count?: number; analysis_count?: number };
 export type TimeAxis = { kind: "numeric" | "datetime" | "generated" | "unix"; column: string | null; origin: string | null; start: number; end: number; sampleInterval?: number; sourceUnit?: string; naiveTimezone?: string; typicalInterval?: number | null; gapCount?: number; duplicateCount?: number; invalidTimeCount?: number; irregularCount?: number };
 export type Signal = { name: string; missing: number; min: number | null; max: number | null; id?: string; displayName?: string; unit?: string; description?: string; category?: string; device?: string; tags?: string[]; logicalKey?: string };
@@ -48,6 +48,22 @@ export type ComparisonSegment = { start: number; end: number; kind: "common" | "
 export type IncidentComparisonGroup = { axisId: string; analysisIds: string[]; segments: ComparisonSegment[]; common: ComparisonSegment[]; unique: ComparisonSegment[]; firstDetection: number | null; firstAlarmSpread: number | null };
 export type IncidentView = { incident: Incident; workspace: Workspace; generatedAt: string; axes: IncidentAxis[]; primaryAxisId: string; events: TimelineEvent[]; analyses: IncidentAnalysis[]; comparisons: IncidentComparisonGroup[]; datasets: Dataset[] };
 export type IncidentSelection = { axisId: string; start: number; end: number; at: number; eventId?: string; analysisId?: string; intervalIndex?: number; linkId?: string };
+export function axisLabel(axis: { id: string; label: string; origin: string | null }, datasets: Dataset[] = []) {
+  if (axis.origin || axis.id === "utc") return t("UTC absolute time");
+  if (axis.label === "Transformation source clock" && datasets.some(d => d.metadata.transformation && d.metadata.clock?.axisId === axis.id)) return t("Transformation source clock");
+  return axis.id.startsWith("incident:") ? t("事件独立时间轴") : axis.label;
+}
+export function timelineTitle(event: TimelineEvent, view: IncidentView) {
+  if (event.kind === "alarm") {
+    const analysis = view.analyses.find(a => a.id === event.analysisId);
+    if (analysis) return t("{0} · Anomaly interval", {0: t(analysis.result.algorithmLabel)});
+  }
+  if (event.id.startsWith("truth:")) {
+    const source = view.datasets.find(d => d.id === event.id.slice(6))?.metadata.external;
+    if (source) return t("Published dataset fault {0} · sample {1}", {0: source.faultNumber, 1: source.faultOnsetSample});
+  }
+  return ["status", "conclusion", "experiment", "investigation"].includes(event.kind) ? t(event.title) : event.title;
+}
 export function incidentAxis(axis: IncidentAxis): TimeAxis { return { ...axis, kind: axis.origin ? "datetime" : "numeric", column: null }; }
 export function datasetClock(dataset: Dataset) {
   if (dataset.metadata.clock) return dataset.metadata.clock;

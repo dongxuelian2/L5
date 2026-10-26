@@ -48,7 +48,7 @@ def render_experiment_report(store, identity, run_id=None):
             r('<h3>Dataset provenance</h3>'), technical(dict(sourceCsvSha256=dataset['sourceCsvSha256'],
                 transformation=dataset['metadata'].get('transformation'), model=dataset['metadata'].get('model'))),
             r('<h3>Task results</h3>'), table([r('Method / task'), r('Parameters'), r('Status / result'), r('First alarm / spans / duration'), r('Samples / coverage'), r('Compute / wall ms')], [
-                [e(task['algorithm']) + '<br>' + e(task['id']),
+                [e(report_text(task['algorithm'])) + '<br>' + e(task['id']),
                  e({k: v for k, v in task['config'].items() if k not in ('signals', 'datasetId', 'baselineRange', 'analysisRange')}),
                  e(report_text(task['status'])) + '<br>' + e(task['result_id']) + ('<br>' + e(task['error']) if task['error'] else ''),
                  e(f"{n(task['metrics']['behavior']['firstDetection'])} / {task['metrics']['behavior']['alarmIntervalCount']} / {n(task['metrics']['behavior']['alarmDuration'])} s") if task['metrics'] else '—',
@@ -89,16 +89,16 @@ def render_experiment_report(store, identity, run_id=None):
             comparison = store.experiments.comparison(identity, dict(taskIds=[task['id'] for task in successful[:12]]))
             for group in comparison['groups']:
                 parts.extend([r('<h3>Common / unique alarm spans</h3>'),
-                    f"{r('<p>Matching windows: ')}{e(group['matchingWindows'])}{r('; matching observation spans: ')}{e(group['matchingCoverage'])}{r('; matching inputs / baseline: ')}{e(group['matchingInputs'])}{r('; matching truth versions: ')}{e(group['matchingLabelSets'])}{r('. Detailed comparison includes up to 12 tasks.</p>')}",
+                    f"{r('<p>Matching windows: ')}{e(report_text(str(group['matchingWindows'])))}{r('; matching observation spans: ')}{e(report_text(str(group['matchingCoverage'])))}{r('; matching inputs / baseline: ')}{e(report_text(str(group['matchingInputs'])))}{r('; matching truth versions: ')}{e(report_text(str(group['matchingLabelSets'])))}{r('. Detailed comparison includes up to 12 tasks.</p>')}",
                     table([r('Classification'), r('Start / end (clock seconds)'), r('Task IDs')], [
-                        [e(segment['kind']), e(f"{n(segment['start'])} / {n(segment['end'])}"), e(', '.join(segment['analysisIds']))] for segment in group['segments']]),
+                        [e(report_text({'common':'全部共同检出','unique':'独有检出','partial':'部分共同检出','uncompared':'缺少共同观测，未比较'}[segment['kind']])), e(f"{n(segment['start'])} / {n(segment['end'])}"), e(', '.join(segment['analysisIds']))] for segment in group['segments']]),
                     r('<h3>Agreement on exact shared, evaluated timestamps</h3>'), technical(group['agreement'])])
         if snapshot['labels']:
             labels = snapshot['labels']
             parts.extend([r('<h3>Truth label version</h3>'), technical(labels),
                 r('<h3>Sample evaluation</h3>'), table([r('Task'), 'TP / FP / TN / FN', r('Precision / recall / F1'), r('False alarm rate'), r('Evaluated / unknown / labelled abstain')], [
                     [e(task['id']), e(' / '.join(str(task['metrics']['labelled']['sample'][k]) for k in ('TP', 'FP', 'TN', 'FN'))),
-                     e(' / '.join(n(task['metrics']['labelled']['sample'][k]) if task['metrics']['labelled']['sample'][k] is not None else 'undefined' for k in ('precision', 'recall', 'f1'))),
+                     e(' / '.join(n(task['metrics']['labelled']['sample'][k]) if task['metrics']['labelled']['sample'][k] is not None else r('undefined') for k in ('precision', 'recall', 'f1'))),
                      e(task['metrics']['labelled']['sample']['falseAlarmRate']),
                      e(' / '.join(str(task['metrics']['labelled']['sample'][k]) for k in ('evaluatedSamples', 'unlabelledSamples', 'labelledAbstainedSamples')))] for task in successful]),
                 r('<h3>Event evaluation · separate from sample confusion counts</h3>'),
@@ -108,8 +108,8 @@ def render_experiment_report(store, identity, run_id=None):
         for task in successful:
             result = results[task['id']]
             values = [None if state == 'abstain' else score for state, score in zip(result['states'], result['scores'])]
-            parts.extend([f"<h3>{e(result['algorithmLabel'])} · {e(task['id'])}</h3>",
-                parameters(result['config']), chart(result['name'], result['times'], [dict(label=result['algorithmLabel'], values=values)],
+            parts.extend([f"<h3>{e(report_text(result['algorithmLabel']))} · {e(task['id'])}</h3>",
+                parameters(result['config']), chart(result['name'], result['times'], [dict(label=report_text(result['algorithmLabel']), values=values)],
                     threshold=result['threshold'], intervals=task['metrics']['behavior']['alarmSpans'], unit=r('Method-specific detection score')),
                 r('<h4>Key variable contributions · method-specific units</h4>'),
                 table([r('Signal'), r('Contribution'), r('Metric')], [[e(c['signal']), e(n(c['value'])), e(result.get('contributionMetric'))] for c in result.get('signalContributions', [])]),

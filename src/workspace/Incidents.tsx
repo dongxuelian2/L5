@@ -71,7 +71,7 @@ function IncidentPage({ workspaceId, incidentId, datasets, jobs }: { workspaceId
   useEffect(() => {
     const controller = new AbortController();
     api<Incident>(`/incidents/${incidentId}`, undefined, "GET", controller.signal).then(data => {
-      if (data.workspace_id !== workspaceId) throw new Error(tr("此事件属于另一个 Workspace。"));
+      if (data.workspace_id !== workspaceId) throw new Error("此事件属于另一个 Workspace。");
       setIncident(data);
     }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();

@@ -30,7 +30,7 @@ export function ExperimentLabels({ dataset, value, onChange }: { dataset: Datase
     setError("");
     try {
       const data = JSON.parse(text);
-      if (!data || data.timeBasis !== "dataset-seconds" || !Array.isArray(data.intervals) || typeof data.timeSource !== "string") throw new Error(tr("Import JSON needs timeBasis: dataset-seconds, timeSource, and intervals."));
+      if (!data || data.timeBasis !== "dataset-seconds" || !Array.isArray(data.intervals) || typeof data.timeSource !== "string") throw new Error("Import JSON needs timeBasis: dataset-seconds, timeSource, and intervals.");
       setIntervals(data.intervals); setSource(data.timeSource); if (typeof data.name === "string") setName(data.name);
     } catch (e) { setError(message(e)); }
   }

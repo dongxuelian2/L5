@@ -34,9 +34,9 @@ export function RootCauses({
           >
             <span className="candidate-index">0{index + 1}</span>
             <div className="candidate-body">
-              <span className="candidate-name">{c.name}</span>
+              <span className="candidate-name">{tr(c.name)}</span>
               <span className="candidate-meta">
-                {c.tag} <span>·</span> {ready ? c.status : tr("Awaiting evidence")}
+                {c.tag} <span>·</span> {ready ? tr(c.status) : tr("Awaiting evidence")}
               </span>
               <BlockBar
                 value={ready ? c.score / 100 : 0}
@@ -68,7 +68,7 @@ export function RootCauses({
           </div>
           <p>
             {ready
-              ? candidate.support
+              ? tr(candidate.support)
               : tr("Baseline signals are stable. Ranking begins after the propagation path becomes observable.")}
           </p>
           <button className="text-button" onClick={onInspect} disabled={!ready}>
@@ -116,7 +116,7 @@ export function AnalystPanel({
       <div className="analyst-content">
         <div className="analyst-prompt">
           <span className="text-mint">❯</span>
-          <span>{scenario.analyst.prompt}</span>
+          <span>{tr(scenario.analyst.prompt)}</span>
           <span className="prompt-return">↵</span>
         </div>
         {!brief && !running && (
@@ -153,9 +153,9 @@ export function AnalystPanel({
                 <span>{i < step ? "✓" : i === step ? "◈" : "·"}</span>
                 <span>
                   {i === step ? (
-                    <ScrambleText text={item.action} />
+                    <ScrambleText text={!brief || brief.provider === "local" ? tr(item.action) : item.action} />
                   ) : (
-                    item.action
+                    !brief || brief.provider === "local" ? tr(item.action) : item.action
                   )}
                 </span>
                 <span className="step-tool">
@@ -172,7 +172,7 @@ export function AnalystPanel({
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="eyebrow text-mint">{tr("✓ EVIDENCE CONNECTED")}</div>
-            <p>{brief.summary}</p>
+            <p>{brief.provider === "local" ? tr(brief.summary) : brief.summary}</p>
             <details className="analyst-evidence-trail">
               <summary>
                 <span>{tr("Read the evidence trail")}</span>
@@ -185,14 +185,14 @@ export function AnalystPanel({
                   <div className="trail-step" key={item.tool}>
                     <span className="trail-step-index">0{i + 1}</span>
                     <div>
-                      <strong>{item.action}</strong>
-                      <p>{item.result}</p>
+                      <strong>{brief.provider === "local" ? tr(item.action) : item.action}</strong>
+                      <p>{brief.provider === "local" ? tr(item.result) : item.result}</p>
                     </div>
                   </div>
                 ))}
                 <div className="trail-limit">
                   <span className="text-amber">◇</span>
-                  <p>{brief.limitation}</p>
+                  <p>{brief.provider === "local" ? tr(brief.limitation) : brief.limitation}</p>
                 </div>
               </div>
             </details>

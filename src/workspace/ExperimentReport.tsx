@@ -15,7 +15,7 @@ export function ExperimentReport({ experiment, dirty }: { experiment: Experiment
     const request = ++generation.current; setBusy(true); setError(""); setReady(false);
     try {
       const response = await fetch(url);
-      if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) throw new Error(tr("Unable to generate experiment report from the local service."));
+      if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) throw new Error("Unable to generate experiment report from the local service.");
       const content = await response.text(); if (request === generation.current) setHtml(content);
     } catch (e) { if (request === generation.current) setError(message(e)); }
     finally { if (request === generation.current) setBusy(false); }

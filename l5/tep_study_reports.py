@@ -35,9 +35,9 @@ def training_summary(study):
 @localized_report
 def render_study_report(store, study):
     summary = training_summary(study)
-    parts = [f"""{r('<!doctype html><html lang="en"><meta charset="utf-8"><title>')}{e(study['protocol']['name'])}</title><style>{CSS}</style>""",
+    parts = [f"""{r('<!doctype html><html lang="en"><meta charset="utf-8"><title>')}{e(report_text(study['protocol']['name']))}</title><style>{CSS}</style>""",
         r('<body><div class="toolbar"><button onclick="window.print()">Print / Save A4 PDF</button><span>Offline saved TEP study</span></div><main>'),
-        f"""{r('<div class="brand">L5 / TEP RESEARCH</div><h1>')}{e(study['protocol']['name'])}</h1>""",
+        f"""{r('<div class="brand">L5 / TEP RESEARCH</div><h1>')}{e(report_text(study['protocol']['name']))}</h1>""",
         f"{r('<p>Study ')}{e(study['id'])}{r(' · protocol SHA-256 ')}{e(study['protocolHash'])}{r('. Status counts: ')}{e(study['statusCounts'])}</p>",
         r('<p>Every declared event is retained in the early/eventual denominator. Missed and unobserved events have undefined delay. Failed tasks are unresolved outcomes. Eventual detection is a nominal alarm inside the fault interval; it does not establish fault-specific discrimination.</p>'),
         r('<h2>Normal-training configurations and fixed parameters</h2>'), parameters(study['protocol']['configurations']),
@@ -45,7 +45,7 @@ def render_study_report(store, study):
     rows = []
     for record in summary:
         normal = record['normal'] or {}
-        rows.append([e(record['configuration']), e(record['algorithm']), n(record['thresholds']['median']),
+        rows.append([e(record['configuration']), e(report_text(record['algorithm'])), n(record['thresholds']['median']),
             e(f"{normal.get('alarmSamples', 0)}/{normal.get('observedSamples', 0)}"), e(normal.get('alarmEvents',0)), n(normal.get('alarmDuration')),
             *[e(f"{record['detection'][key]['detectedEvents']}/{record['detection'][key]['totalEvents']}") for key in ('1800','3600','14400','eventual')],
             e(record['rankByEarlyDetection'])])
@@ -53,7 +53,7 @@ def render_study_report(store, study):
     parts.append(r('<h2>Fault × method, with every batch pooled within its configuration</h2>'))
     rows = []
     for c in study['cells']:
-        rows.append([e(c['configuration']), e(c['faultNumber']), e(c['algorithm']), e(f"{c['succeeded']}/{c['plannedRuns']}"), e(c['failed']),
+        rows.append([e(c['configuration']), e(c['faultNumber']), e(report_text(c['algorithm'])), e(f"{c['succeeded']}/{c['plannedRuns']}"), e(c['failed']),
             *[e(f"{c['windows'][key]['detectedEvents']}/{c['windows'][key]['totalEvents']}") for key in ('1800','3600','14400','eventual')],
             n(c['sample']['recall']), n(c['delay']['median']), e(c['delayDistribution']['missed']), n(c['burden']['postInjection']['alarmFraction']),
             e(c['burden']['preInjection']['alarmSamples'])])
@@ -61,7 +61,7 @@ def render_study_report(store, study):
     parts.append(r('<h2>Fault 3: normal-background control</h2>'))
     for simulation_run in (1,2,3):
         control = store.tep_studies.fault3(study['workspaceId'], study['id'], simulation_run)
-        parts.extend([f"{r('<h3>Testing run ')}{simulation_run}{r(' · shared elapsed seconds</h3>')}", f"<p>{e(control['interpretation'])}</p>", technical(control['diagnostics'])])
+        parts.extend([f"{r('<h3>Testing run ')}{simulation_run}{r(' · shared elapsed seconds</h3>')}", f"<p>{e(report_text(control['interpretation']))}</p>", technical(control['diagnostics'])])
         for pair in control['configurations']:
             parts.extend([f"{r('<h4>Configuration ')}{e(pair['configuration'])} · DPCA-Q</h4>",
                 chart(r('Normal and fault 3 · DPCA-Q'), pair['normal']['times'],
@@ -80,5 +80,5 @@ def render_study_report(store, study):
         r('<details><summary>All execution attempts (latest full run plus explicit retry ancestry supplies the matrix)</summary>')+technical(study['attempts'])+'</details>',
         r('<details><summary>Complete predeclared protocol</summary>')+technical(study['protocol'])+'</details>',
         r('<p>Alarm duration sums last minus first sampled times in each contiguous span. One-point alarms have zero duration; this does not estimate continuous physical alarm occupation between samples.</p>'),
-        '<ul>'+''.join('<li>'+e(v)+'</li>' for v in study['protocol']['limitations'])+'</ul>', '</main></body></html>'])
+        '<ul>'+''.join('<li>'+e(report_text(v))+'</li>' for v in study['protocol']['limitations'])+'</ul>', '</main></body></html>'])
     return ''.join(parts)

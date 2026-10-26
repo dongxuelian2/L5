@@ -47,7 +47,7 @@ export function TEPBenchmark({ data, datasets = [], onSelect }: { data: Experime
   const cells = summary.cells.filter(c => c.runId === batchId);
   const tasks = data.tasks.filter(t => t.run_id === batchId && t.external);
   const trajectories = [...new Map(tasks.map(t => [t.datasetId, t])).values()];
-  return <section id="experiment-benchmark" className="ws-panel tep-benchmark" aria-label={tr("TEP benchmark dashboard")}><div className="ws-section-heading"><h2>{tr("TEP / Fault × algorithm")}</h2><span className="ws-kicker">{tr("INDEPENDENT RUNS")}</span></div><p>{summary.rules}</p>
+  return <section id="experiment-benchmark" className="ws-panel tep-benchmark" aria-label={tr("TEP benchmark dashboard")}><div className="ws-section-heading"><h2>{tr("TEP / Fault × algorithm")}</h2><span className="ws-kicker">{tr("INDEPENDENT RUNS")}</span></div><p>{tr(summary.rules)}</p>
     <p><a className="ws-link" href={`#/workspaces/${data.experiment.workspace_id}/tep`}>{tr("Open protocol and training-configuration dashboard ↗")}</a></p>
     <div className="ws-form-grid"><label>{tr("Benchmark batch")}<select value={batchId} onChange={e => { setBatch(e.target.value); setRun(""); }}>{data.experiment.runs.map(r => <option key={r.id} value={r.id}>{r.id.slice(0,8)} · {tr(r.status)}</option>)}</select></label><MatrixMetric metric={metric} setMetric={setMetric} /></div>
     <FaultMatrix cells={cells} metric={metric} onCell={c => setRun(tasks.find(t => c.taskIds.includes(t.id))?.datasetId || "")} />

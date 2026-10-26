@@ -56,6 +56,17 @@ def fragment(value):
     return ''.join(parts)
 
 
+def local_brief_summary(value):
+    """The deterministic assistant's numeric summary; never parse user/model prose."""
+    match = re.fullmatch(r'Observed (\d+) samples through ([\d.e+-]+)s\. Status: (\w+)\. Leading support: (.+) \(([\d.e+-]+)/100\)\.', value)
+    if not match or _locale.get() is None:
+        return value
+    parts = list(match.groups())
+    parts[2], parts[3] = text(parts[2]), text(parts[3])
+    template = text('Observed {0} samples through {1}s. Status: {2}. Leading support: {3} ({4}/100).')
+    return template.format(*parts)
+
+
 def localized_report(function):
     """An omitted locale preserves legacy output; a request scopes its own locale."""
     @wraps(function)

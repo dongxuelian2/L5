@@ -1,7 +1,12 @@
 import { t as tr, useLocale } from "../i18n";
 import type { Config } from "./types";
 
-export const algorithms: Record<string,string> = { "robust-maxz":"Robust Max-Z", "pca-q":"PCA-Q", "pca-t2":"PCA-T²", ewma:"EWMA", cusum:"Page CUSUM", "window-cusum":"Finite-window CUSUM", "dpca-q":"Dynamic PCA-Q", "dpca-t2":"Dynamic PCA-T²", get "adaptive-maxz"() { return tr("Adaptive Max-Z · Experimental"); } };
+export const algorithms: Record<string,string> = {
+  get "robust-maxz"() { return tr("Robust Max-Z"); }, "pca-q":"PCA-Q", "pca-t2":"PCA-T²", ewma:"EWMA",
+  get cusum() { return tr("Page CUSUM"); }, get "window-cusum"() { return tr("Finite-window CUSUM"); },
+  get "dpca-q"() { return tr("Dynamic PCA-Q"); }, get "dpca-t2"() { return tr("Dynamic PCA-T²"); },
+  get "adaptive-maxz"() { return tr("Adaptive Max-Z · Experimental"); },
+};
 const parameters: Record<string, [keyof Config, string, number, number, number, number][]> = {
   ewma:[["smoothing","EWMA smoothing λ",.25,.00001,1,.01]],
   cusum:[["reference","CUSUM reference drift k",.5,.00001,100,.05]],

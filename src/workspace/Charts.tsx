@@ -91,7 +91,7 @@ export function SignalPlots({ dataset, signals, range, intervals, selectedTime, 
   const preview = signals.map(name => cache.signals.get(name)).find(data => data && data.displayRows < data.sourceRows);
   return <div className="ws-signal-plots">{signals.map(name => {
     const data = cache.signals.get(name), error = cache.errors.get(name);
-    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={namedSignal(dataset, name)} axis={dataset.metadata.time} markers={dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: "Published fault onset" }]} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
+    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={namedSignal(dataset, name)} axis={dataset.metadata.time} markers={dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: tr("Published fault onset") }]} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
       <figure className="ws-plot ws-plot-pending" key={name}><figcaption>{name}</figcaption><div className="ws-plot-placeholder">
         {error ? <div role="alert"><p>{errorMessage(error)}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>{tr("Retry signal")}</button></div> : <span role="status">{tr("Loading")}{" "}{name}…</span>}
       </div></figure>;
