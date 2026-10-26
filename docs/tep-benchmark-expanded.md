@@ -202,7 +202,11 @@ TEP 页面可切换原 PR22、扩展和 A/B/C 协议。故障矩阵支持早期�
 
 与 PR22 重叠的 72 项任务，其样本／事件指标、72 个分数 SHA-256 及阈值在本机全部完全一致；原 PR22 的协议和结果文件未改写。正式 GitHub 外部工作流重新校验三份官方原文件并运行本轮全部 2,340 项任务，结果链接与数值对照保存在验收文件中。
 
-GitHub [官方扩展验收](https://github.com/dongxuelian2/L5/actions/runs/40195240042) 在实现 commit `e24e883` 成功完成，产物 [l5-tep-expanded-robustness](https://github.com/dongxuelian2/L5/actions/runs/40195240042/artifacts/12599731161) 已下载比对：全部 2,340 项的样本、事件、早期窗口、未观测和报警负担数值与本机一致（计算耗时除外）；阈值最大绝对差为 `1.2079226507921703e-13`。分数逐字节哈希受浮点数末位影响，扩展 325/585、稳定性 975/1755 完全相同；没有把浮点字节差异写成检测状态差异。GitHub 也完成原 72 项基线及重启恢复。Ubuntu／Windows 产品检查、三套既有外部研究验证全部通过；最终回执保留对应 head 和工作流链接。
+最终 head `0eb7a099eedfff69e9d7cfb30b4dba5548e8153b` 的 GitHub [官方扩展验收](https://github.com/dongxuelian2/L5/actions/runs/40197012552)成功完成。[最终完整产物](https://github.com/dongxuelian2/L5/actions/runs/40197012552/artifacts/12599833163)已在原验收中下载比对：585＋1,755 项检测指标全部与本机一致，扩展阈值最大绝对差为 `8.526512829121202e-14`，稳定性为 `1.2789769243681803e-13`。分数浮点末位的字节差异与检测状态分开记录。
+
+同一最终提交的[Ubuntu／Windows Check](https://github.com/dongxuelian2/L5/actions/runs/40197012539)、[原始 72 项案例](https://github.com/dongxuelian2/L5/actions/runs/40197012560)、[reference](https://github.com/dongxuelian2/L5/actions/runs/40197012607)、[独立正常](https://github.com/dongxuelian2/L5/actions/runs/40197012502)和[六工况](https://github.com/dongxuelian2/L5/actions/runs/40197012521)均成功。阶段整理时重新读取了这些运行与产物的 GitHub 元数据；数值对照沿用正式验收保存的回执。
+
+初始实现 `e24e883` 的验收、产物和数值对照继续保存在[结构化回执](verification/tep-expanded-2026-10-25.json)的 `github.initialAcceptance`，最终结果位于 `github`。完整 artifact 保留至 2026-11-24；之后可按[固定协议与复现指南](../examples/tep/README.md)重新生成，Git 中的精简结果持续保留。
 
 ## 适用条件与后续问题
 

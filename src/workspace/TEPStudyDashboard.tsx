@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, message } from "./api";
+import { api, go, message } from "./api";
 import { algorithms } from "./AlgorithmControls";
 import { Plot } from "./Charts";
 import { FaultMatrix, MatrixMetric, type StudyCell } from "./TEPBenchmark";
@@ -7,7 +7,7 @@ import { number, type Interval } from "./types";
 import type { DetectionMetrics, Experiment } from "./experimentTypes";
 import "./experiments.css";
 
-const protocols = { original: "PR #22 · original fixed protocol", "rieth-expanded-nine-v1": "PR #23 · expanded faults 1–20", "rieth-robustness-nine-v1": "PR #23 · normal training A / B / C" };
+const protocols = { original: "Original case study · 72 tasks", "rieth-expanded-nine-v1": "Expanded benchmark · faults 1–20", "rieth-robustness-nine-v1": "Normal training robustness · A / B / C" };
 type StudyIndex = { id: string; protocolId: string };
 type StudyTask = { id: string; algorithm: string; experimentId: string; datasetId: string; datasetName: string; status: string; error: string | null; result_id: string | null; benchmark: { configuration: string; batch: number }; external: { faultNumber: number; simulationRun: number }; metrics: null | { detection: DetectionMetrics; training: { threshold: number }; sample: { recall: number | null } } };
 type Study = { id: string; workspaceId: string; protocolHash: string; protocol: { id: string; name: string; configurations: Record<string,unknown> }; tasks: StudyTask[]; cells: StudyCell[]; statusCounts: Record<string,number>; batches: { experimentId: string; name: string; status: string }[] };
@@ -16,14 +16,20 @@ type Control = { onset: number; targetTime: number; interpretation: string; diag
 const show = (v: number | null | undefined) => v == null ? "—" : number(v);
 const axis = { kind: "numeric" as const, column: "sample", origin: null, start: 0, end: 172620, sourceUnit: "seconds" };
 
-export function TEPStudyDashboard({ workspaceId, onChanged }: { workspaceId: string; onChanged: () => void }) {
+export function TEPStudyDashboard({ workspaceId, search = "", onChanged }: { workspaceId: string; search?: string; onChanged: () => void }) {
   const [protocol, setProtocol] = useState("rieth-expanded-nine-v1"), [studies, setStudies] = useState<StudyIndex[]>([]), [selected, setSelected] = useState("");
   const [study, setStudy] = useState<Study | null>(null), [configuration,setConfiguration] = useState("A"), [metric,setMetric] = useState("1800");
   const [cell,setCell] = useState<StudyCell | null>(null), [error,setError] = useState(""), [busy,setBusy] = useState(false), [refresh,setRefresh] = useState(0);
   const [originals,setOriginals] = useState<Experiment[]>([]);
   const path = `/workspaces/${workspaceId}/external/tep/studies`;
   useEffect(() => {
-    const controller = new AbortController(); setStudies([]); setOriginals([]); setSelected(""); setStudy(null); setCell(null); setError(""); setBusy(false);
+    const query = new URLSearchParams(search), requested = query.get("protocol");
+    setProtocol(requested && requested in protocols ? requested : "rieth-expanded-nine-v1");
+    setSelected(query.get("study") || ""); setConfiguration(query.get("training") || "A");
+    setMetric(query.get("metric") || "1800"); setCell(null);
+  }, [search]);
+  useEffect(() => {
+    const controller = new AbortController(); setStudies([]); setOriginals([]); setStudy(null); setCell(null); setError(""); setBusy(false);
     Promise.all([api<{studies:StudyIndex[]}>(path,undefined,"GET",controller.signal),api<{experiments:Experiment[]}>(`/workspaces/${workspaceId}/experiments`,undefined,"GET",controller.signal)]).then(([s,e]) => {
       if (!controller.signal.aborted) { setStudies(s.studies); setOriginals(e.experiments.filter(e => e.description.includes("rieth-mode1-independent-nine-v1"))); }
     }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
@@ -31,6 +37,10 @@ export function TEPStudyDashboard({ workspaceId, onChanged }: { workspaceId: str
   },[workspaceId,path]);
   const matching = studies.filter(s => s.protocolId === protocol);
   const studyId = matching.some(s => s.id === selected) ? selected : matching[0]?.id || "";
+  function navigate(changes: Record<string, string>) {
+    const query = new URLSearchParams({ protocol, study: studyId, training: configuration, metric, ...changes });
+    go(`workspaces/${workspaceId}/tep?${query}`);
+  }
   useEffect(() => {
     const controller = new AbortController(); setStudy(null); setCell(null); setError("");
     if (studyId) api<Study>(`${path}/${studyId}`,undefined,"GET",controller.signal).then(s => { if (!controller.signal.aborted) setStudy(s); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
@@ -43,23 +53,27 @@ export function TEPStudyDashboard({ workspaceId, onChanged }: { workspaceId: str
   },[study]);
   async function create() {
     setBusy(true); setError("");
-    try { const created = await api<Study>(path,{protocolId:protocol}); setStudies(v => [{id:created.id,protocolId:protocol},...v]); setSelected(created.id); setStudy(created); onChanged(); }
+    try { const created = await api<Study>(path,{protocolId:protocol}); setStudies(v => [{id:created.id,protocolId:protocol},...v]); setSelected(created.id); setStudy(created); navigate({ study: created.id }); onChanged(); }
     catch(e) { setError(message(e)); } finally { setBusy(false); }
   }
   const cells = study?.cells.filter(c => c.configuration === configuration) || [];
+  useEffect(() => {
+    const query = new URLSearchParams(search), fault = query.get("fault"), algorithm = query.get("algorithm");
+    if (fault !== null && algorithm) setCell(study?.cells.find(c => c.configuration === configuration && c.faultNumber === Number(fault) && c.algorithm === algorithm) || null);
+  }, [search, study, configuration]);
   const chosenTasks = cell ? study?.tasks.filter(t => cell.taskIds.includes(t.id)) || [] : [];
   return <section className="ws-panel tep-study" aria-label="TEP protocol dashboard"><div className="ws-section-heading"><h2>03 / Expanded benchmark and training robustness</h2><span className="ws-kicker">SAVED RESEARCH</span></div>
-    <label>Experiment protocol<select disabled={busy} value={protocol} onChange={e => { setProtocol(e.target.value); setSelected(""); setCell(null); setConfiguration("A"); }}>{Object.entries(protocols).map(([id,label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+    <label>Experiment protocol<select disabled={busy} value={protocol} onChange={e => { setProtocol(e.target.value); setSelected(""); setCell(null); setConfiguration("A"); navigate({ protocol: e.target.value, study: "", training: "A" }); }}>{Object.entries(protocols).map(([id,label]) => <option key={id} value={id}>{label}</option>)}</select></label>
     {protocol === "original" ? <><p>The original eight test trajectories and 72 tasks keep their own experiment and evaluation reference.</p>{originals.length ? originals.map(e => <p key={e.id}><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/${e.id}`}>{e.name} ↗</a></p>) : <p>Create the original fixed experiment above to inspect this protocol.</p>}</> : <>
       <p>Faults 1–20 × Testing runs 1–3, plus normal Testing runs 1–5. {protocol.includes("robustness") ? "A: fit/calibration 1/2; B: 3/4; C: 5/6. All three use the same 65 tests and fixed method parameters; 1,755 tasks." : "Fit/calibration: normal Training runs 1/2; 585 tasks."}</p>
       <div className="ws-inline"><button disabled={busy} onClick={() => void create()}>Create declared study experiments</button><button onClick={() => setRefresh(v => v+1)}>Refresh saved results</button></div>
       <p className="ws-muted">The prepared cache must contain every declared input. Each saved batch can be reviewed and executed in Experiment; completed, failed and unrun tasks remain visible.</p>
-      {matching.length > 0 && <label>Saved study<select value={studyId} onChange={e => setSelected(e.target.value)}>{matching.map(s => <option key={s.id} value={s.id}>{protocols[protocol as keyof typeof protocols]} · {s.id.slice(0,8)}</option>)}</select></label>}
+      {matching.length > 0 && <label>Saved study<select value={studyId} onChange={e => { setSelected(e.target.value); navigate({ study: e.target.value }); }}>{matching.map(s => <option key={s.id} value={s.id}>{protocols[protocol as keyof typeof protocols]} · {s.id.slice(0,8)}</option>)}</select></label>}
       {study && <><p>Protocol SHA-256 <code>{study.protocolHash}</code></p><p role="status">{Object.entries(study.statusCounts).map(([s,n]) => `${n} ${s}`).join(" · ")}</p>
         <details><summary>Saved batches and execution status</summary>{study.batches.map(b => <p key={b.experimentId}><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/${b.experimentId}`}>{b.name} ↗</a> · {b.status}</p>)}</details>
-        <div className="ws-form-grid"><label>Normal training configuration<select value={configuration} onChange={e => { setConfiguration(e.target.value); setCell(null); }}>{Object.keys(study.protocol.configurations).map(c => <option key={c}>{c}</option>)}</select></label><MatrixMetric metric={metric} setMetric={setMetric} /></div>
+        <div className="ws-form-grid"><label>Normal training configuration<select value={configuration} onChange={e => { setConfiguration(e.target.value); setCell(null); navigate({ training: e.target.value }); }}>{Object.keys(study.protocol.configurations).map(c => <option key={c}>{c}</option>)}</select></label><MatrixMetric metric={metric} setMetric={value => { setMetric(value); navigate({ metric: value }); }} /></div>
         <p>All declared fault events enter each early/eventual denominator. Unobserved, truncated and unresolved outcomes are shown separately. Delay distributions describe detected events only. Normal burden in fault rows describes the pre-injection interval.</p>
-        <FaultMatrix cells={cells} metric={metric} onCell={setCell} />
+        <FaultMatrix cells={cells} metric={metric} onCell={value => { setCell(value); navigate({ fault: String(value.faultNumber), algorithm: value.algorithm }); }} />
         {cell && <section aria-label="Selected matrix cell"><h3>Fault {cell.faultNumber} · {algorithms[cell.algorithm]} · configuration {configuration}</h3><div className="ws-table-scroll"><table><thead><tr><th>Testing run</th><th>Status / error</th><th>Event denominator</th><th>Delay (s)</th><th>Recall</th><th>Saved evidence</th></tr></thead><tbody>{chosenTasks.map(t => <tr key={t.id}><td>{t.external.simulationRun}</td><td>{t.status}{t.error && <p role="alert">{t.error}</p>}</td><td>{t.metrics?.detection.windows?.eventual.totalEvents ?? "unresolved"}</td><td>{show(t.metrics?.detection.events[0]?.delay)}</td><td>{show(t.metrics?.sample?.recall)}</td><td><a href={`#/workspaces/${workspaceId}/datasets/${t.datasetId}`}>Dataset ↗</a> · <a href={`#/workspaces/${workspaceId}/experiments/${t.experimentId}`}>Experiment / algorithms / timeline ↗</a></td></tr>)}</tbody></table></div></section>}
         <TrainingComparison study={study} />
         <Fault3View path={`${path}/${study.id}/fault3`} />

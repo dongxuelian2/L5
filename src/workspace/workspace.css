@@ -105,7 +105,7 @@
 .ws-modal>.ws-inline { justify-content:flex-end; margin-top:24px; flex-wrap:wrap; }
 .ws-modal p { font-size:12px; line-height:1.9; }
 .ws-layout { display:grid; grid-template-columns:228px minmax(0,1fr); min-height:calc(100vh - 123px); }
-.ws-sidebar { border-right:1px solid #30392d; padding:28px 20px; position:relative; }
+.ws-sidebar { border-right:1px solid #30392d; padding:28px 20px; position:sticky; top:0; align-self:start; max-height:100dvh; overflow-y:auto; }
 .ws-back { font-size:10px; color:#a9b4a1; display:block; margin-bottom:36px; }
 .ws-sidebar>.ws-kicker { font-size:8px; }
 .ws-sidebar h2 { font-size:17px; margin:12px 0 30px; overflow-wrap:anywhere; }
@@ -220,7 +220,7 @@
   .ws-header nav a { font-size:9px; }
   .ws-main { padding:28px 18px 40px; }
   .ws-layout { display:block; }
-  .ws-sidebar { border-right:0; border-bottom:1px solid #30392d; padding:16px 18px; }
+  .ws-sidebar { position:relative; max-height:none; overflow-y:visible; border-right:0; border-bottom:1px solid #30392d; padding:16px 18px; }
   .ws-sidebar h2 { margin:0 0 14px; font-size:16px; }
   .ws-sidebar>.ws-kicker, .ws-sidebar-note { display:none; }
   .ws-back { margin-bottom:12px; }
