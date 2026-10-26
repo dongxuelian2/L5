@@ -728,6 +728,12 @@ test('explorer restores saved windows, groups only compatible units and reads fu
   assert.equal(save.body.windows.utc.at, 1006);
   assert.equal(save.body.displayMode, 'overlay');
   assert.match(container.textContent, /Saved: Saved motor review/);
+  const requestCount = api.requests.length, nameInput = container.querySelector('input[value="Saved motor review"]');
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.querySelector('.ws-saved').textContent, /已保存：Saved motor review/);
+  assert.equal(container.querySelector('input[value="Saved motor review"]'), nameInput);
+  assert.equal(api.requests.length, requestCount, 'language does not reload explorer data');
+  await act(async () => setLocale('en'));
   await click(button('Configure analysis for this window'));
   assert.deepEqual(analyses[0], ['temperature', ['temp'], [2, 8]]);
   const paths = container.querySelector('.explorer-lane svg').querySelectorAll('path');

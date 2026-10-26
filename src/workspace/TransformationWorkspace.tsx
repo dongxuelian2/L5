@@ -44,7 +44,7 @@ export function TransformationWorkspace({ workspaceId, datasets, definitionId, i
     restored.current = key;
     if (definitionId && definitionId !== "new") {
       const definition = definitions.find(d => d.id === definitionId);
-      if (definition) restore(definition); else setError(tr("Saved transformation was not found in this workspace."));
+      if (definition) restore(definition); else setError("Saved transformation was not found in this workspace.");
     } else if (initialSignalIds) {
       const selected = initialSignalIds.split(",").map(id => catalog.find(s => s.id === id)).filter((s): s is CatalogSignal => !!s);
       setConfig({ ...blank(), sources: selected.map(sourceFor) }); setSaved(null);

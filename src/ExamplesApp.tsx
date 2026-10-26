@@ -164,7 +164,7 @@ export default function ExamplesApp() {
           stepTimer.current = setTimeout(reveal, 720);
         else {
           setAnalysisRunning(false);
-          setToast(tr("Investigation complete. The evidence is connected."));
+          setToast("Investigation complete. The evidence is connected.");
         }
       };
       stepTimer.current = setTimeout(reveal, 720);
@@ -261,7 +261,7 @@ export default function ExamplesApp() {
       briefMarkdown(brief),
       "text/markdown",
     );
-    setToast(tr("Incident brief exported."));
+    setToast("Incident brief exported.");
   }
   function changeView(next: View) {
     setView(next);

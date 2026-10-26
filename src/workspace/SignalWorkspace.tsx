@@ -1,5 +1,5 @@
 import { errorMessage } from "../i18n/errors";
-import { t as tr, useLocale } from "../i18n";
+import { t as tr, useLocale, type Message } from "../i18n";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, go, message } from "./api";
 import { Plot } from "./Charts";
@@ -20,14 +20,14 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
   const [catalog, setCatalog] = useState<CatalogSignal[]>([]), [views, setViews] = useState<ExplorerView[]>([]);
   const [selected, setSelected] = useState<string[]>(initialSignalIds?.split(",").filter(Boolean) || []);
   const [windows, setWindows] = useState<Record<string, ExplorerWindow>>({}), [displayMode, setDisplayMode] = useState<"separate" | "overlay">("separate");
-  const [viewId, setViewId] = useState(""), [name, setName] = useState(tr("Signal review")), [saved, setSaved] = useState("");
+  const [viewId, setViewId] = useState(""), [name, setName] = useState(tr("Signal review")), [saved, setSaved] = useState<Message | null>(null);
   const [error, setError] = useState(""), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<CatalogSignal | null>(null), [qualityId, setQualityId] = useState(datasets[0]?.id || "");
   const [data, setData] = useState<ExplorerData>({ axes: [], series: [] }), [plotting, setPlotting] = useState(false);
   const restored = useRef(false);
   const [filters, setFilters] = useState({ search: "", dataset: "", device: "", category: "", tag: "" });
   const prefix = `/workspaces/${workspaceId}`;
-  function restore(view: ExplorerView) { setSelected(view.signalIds); setWindows(view.windows); setDisplayMode(view.displayMode); setName(view.name); setViewId(view.id); setSaved(tr("Opened saved view: {0}", {0: view.name})); }
+  function restore(view: ExplorerView) { setSelected(view.signalIds); setWindows(view.windows); setDisplayMode(view.displayMode); setName(view.name); setViewId(view.id); setSaved(["Opened saved view: {0}", {0: view.name}]); }
   useEffect(() => {
     const controller = new AbortController(); setLoading(true); setError("");
     Promise.all([api<{ signals: CatalogSignal[] }>(`${prefix}/signals`, undefined, "GET", controller.signal), api<{ views: ExplorerView[] }>(`${prefix}/views`, undefined, "GET", controller.signal)])
@@ -38,7 +38,7 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
       }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [workspaceId, datasets, revision]);
-  useEffect(() => { if (initialSignalIds) { setSelected(initialSignalIds.split(",").filter(Boolean)); setWindows({}); setViewId(""); setSaved(""); } }, [initialSignalIds]);
+  useEffect(() => { if (initialSignalIds) { setSelected(initialSignalIds.split(",").filter(Boolean)); setWindows({}); setViewId(""); setSaved(null); } }, [initialSignalIds]);
   const rangeKey = JSON.stringify(Object.fromEntries(Object.entries(windows).map(([id, w]) => [id, { start: w.start, end: w.end }])));
   const signalKey = JSON.stringify(selected);
   useEffect(() => {
@@ -48,10 +48,10 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
       .then(d => { if (!controller.signal.aborted) setData(d); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setPlotting(false); });
     return () => controller.abort();
   }, [mode, signalKey, rangeKey, loading, catalog]);
-  function changed() { setRevision(v => v + 1); onChanged(); setSaved(""); }
-  function toggle(id: string) { setSelected(previous => previous.includes(id) ? previous.filter(s => s !== id) : [...previous, id]); setSaved(""); }
+  function changed() { setRevision(v => v + 1); onChanged(); setSaved(null); }
+  function toggle(id: string) { setSelected(previous => previous.includes(id) ? previous.filter(s => s !== id) : [...previous, id]); setSaved(null); }
   function open(signals: string[], dataset?: Dataset, start?: number, end?: number) {
-    setSelected(signals); setViewId(""); setSaved("");
+    setSelected(signals); setViewId(""); setSaved(null);
     if (dataset && start !== undefined && end !== undefined) {
       const clock = datasetClock(dataset), padding = Math.max((end-start) * .2, (dataset.metadata.time.typicalInterval || 1) * 2);
       setWindows({ [clock.axisId]: { start: start + clock.offset - padding, end: end + clock.offset + padding, at: start + clock.offset } });
@@ -63,7 +63,7 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
     try {
       const activeWindows = Object.fromEntries(data.axes.map(a => [a.id, windows[a.id] || a.window]));
       const view = await api<ExplorerView>(`${prefix}/views${viewId && !asNew ? `/${viewId}` : ""}`, { name, signalIds: selected, windows: activeWindows, displayMode }, viewId && !asNew ? "PATCH" : "POST");
-      setViewId(view.id); setViews(previous => [view, ...previous.filter(v => v.id !== view.id)]); setSaved(tr("Saved: {0}", {0: view.name}));
+      setViewId(view.id); setViews(previous => [view, ...previous.filter(v => v.id !== view.id)]); setSaved(["Saved: {0}", {0: view.name}]);
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   const filtered = catalog.filter(s => (!filters.dataset || s.datasetId === filters.dataset) &&
@@ -99,15 +99,15 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
       <TimeReferenceEditor key={qualityDataset.id + JSON.stringify(qualityDataset.metadata.clock)} dataset={qualityDataset} datasets={datasets} onSaved={changed} />
     </>}
     {mode === "explorer" && <>
-      <section className="ws-panel explorer-saved"><div className="ws-form-grid"><label>{tr("Saved browsing view")}<select aria-label={tr("Saved browsing view")} value={viewId} onChange={e => { const view = views.find(v => v.id === e.target.value); if (view) restore(view); else { setViewId(""); setSaved(""); } }}><option value="">{tr("Unsaved view")}</option>{views.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label><label>{tr("View name")}<input maxLength={160} required value={name} onChange={e => { setName(e.target.value); setSaved(""); }} /></label><label>{tr("Curve layout")}<select value={displayMode} onChange={e => { setDisplayMode(e.target.value as typeof displayMode); setSaved(""); }}><option value="separate">{tr("Separate signals / shared time")}</option><option value="overlay">{tr("Overlay matching units and categories")}</option></select></label></div>
-        <div className="ws-inline"><button className="ws-primary" disabled={busy || plotting || !selected.length || !name.trim()} onClick={() => void save()}>{tr("Save browsing view")}</button>{viewId && <button onClick={() => void save(true)} disabled={busy || plotting}>{tr("Save as new view")}</button>}<span role="status" className="ws-saved">{saved}</span></div>
+      <section className="ws-panel explorer-saved"><div className="ws-form-grid"><label>{tr("Saved browsing view")}<select aria-label={tr("Saved browsing view")} value={viewId} onChange={e => { const view = views.find(v => v.id === e.target.value); if (view) restore(view); else { setViewId(""); setSaved(null); } }}><option value="">{tr("Unsaved view")}</option>{views.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label><label>{tr("View name")}<input maxLength={160} required value={name} onChange={e => { setName(e.target.value); setSaved(null); }} /></label><label>{tr("Curve layout")}<select value={displayMode} onChange={e => { setDisplayMode(e.target.value as typeof displayMode); setSaved(null); }}><option value="separate">{tr("Separate signals / shared time")}</option><option value="overlay">{tr("Overlay matching units and categories")}</option></select></label></div>
+        <div className="ws-inline"><button className="ws-primary" disabled={busy || plotting || !selected.length || !name.trim()} onClick={() => void save()}>{tr("Save browsing view")}</button>{viewId && <button onClick={() => void save(true)} disabled={busy || plotting}>{tr("Save as new view")}</button>}<span role="status" className="ws-saved">{saved && tr(...saved)}</span></div>
       </section>
-      <details className="ws-panel" open={!selected.length}><summary>{tr("Choose signals ·")}{" "}{selected.length}{" "}{tr("selected")}</summary><div className="explorer-signal-pool">{datasets.map(d => <fieldset key={d.id}><legend>{d.name}</legend>{catalog.filter(s => s.datasetId === d.id).map(s => <label key={s.id}><input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggle(s.id)} />{signalLabel(s)}<small>{s.category || tr("Unclassified")}</small></label>)}</fieldset>)}</div><button onClick={() => { setSelected([]); setSaved(""); }}>{tr("Clear selection")}</button></details>
+      <details className="ws-panel" open={!selected.length}><summary>{tr("Choose signals ·")}{" "}{selected.length}{" "}{tr("selected")}</summary><div className="explorer-signal-pool">{datasets.map(d => <fieldset key={d.id}><legend>{d.name}</legend>{catalog.filter(s => s.datasetId === d.id).map(s => <label key={s.id}><input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggle(s.id)} />{signalLabel(s)}<small>{s.category || tr("Unclassified")}</small></label>)}</fieldset>)}</div><button onClick={() => { setSelected([]); setSaved(null); }}>{tr("Clear selection")}</button></details>
       {datasets.length > 0 && <details className="ws-panel"><summary>{tr("Time relationships · review or configure source clocks")}</summary><p className="ws-muted">{tr("Absolute sources share UTC. Relative sources stay on independent axes until you save a reference. Offset means source time + offset = reference time. Original timestamps remain unchanged.")}</p>{datasets.map(d => <TimeReferenceEditor key={d.id + JSON.stringify(d.metadata.clock)} dataset={d} datasets={datasets} onSaved={changed} />)}</details>}
       {plotting && <p role="status">{tr("Loading observation windows…")}</p>}
       {!selected.length && <p className="ws-notice">{tr("Choose measurements above or select them in the signal catalog.")}</p>}
       {!plotting && data.axes.length > 1 && <p className="ws-notice">{data.axes.length}{" "}{tr("independent clocks. Configure time relationships to synchronize these sources.")}</p>}
-      {!plotting && data.axes.map(axis => <ExplorerGroup key={axis.id} workspaceId={workspaceId} axis={axis} series={data.series.filter(s => s.signal.clock.axisId === axis.id)} datasets={datasets} jobs={jobs} window={windows[axis.id] || axis.window} displayMode={displayMode} onWindow={w => { setWindows(previous => ({ ...previous, [axis.id]: w })); setSaved(""); }} onAnalyze={onAnalyze} />)}
+      {!plotting && data.axes.map(axis => <ExplorerGroup key={axis.id} workspaceId={workspaceId} axis={axis} series={data.series.filter(s => s.signal.clock.axisId === axis.id)} datasets={datasets} jobs={jobs} window={windows[axis.id] || axis.window} displayMode={displayMode} onWindow={w => { setWindows(previous => ({ ...previous, [axis.id]: w })); setSaved(null); }} onAnalyze={onAnalyze} />)}
     </>}
     {editing && <SignalEditor signal={editing} catalog={catalog} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); changed(); }} />}
   </>;
