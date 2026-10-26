@@ -30,7 +30,7 @@ Baseline and target windows use seconds and must be disjoint in chronological or
 
 Main endpoints: `GET/POST /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id`, `GET/POST /api/workspaces/:id/datasets`, `POST /api/datasets/preview`, `GET /api/datasets/:id/series`, `GET/POST /api/workspaces/:id/analyses`, and `GET /api/analyses/:id`. Import and analysis accept JSON; the browser reads a chosen CSV and sends its text with the import options. Completed analyses save automatically; rerunning creates another history entry.
 
-`npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes product/example tests and the production build. Research tests and numerical regeneration remain separately available through `npm run test:research` and `npm run verify:artifacts`.
+`npm run test:workspace` exercises storage, CSV import, known anomalies, threshold independence and the HTTP workflow across a service restart. `npm run check` includes the existing product/example tests and production build; optional research tests remain available locally through `npm run test:research`.
 
 ### Navigation and workflow context
 
@@ -181,7 +181,7 @@ The workstation and external monitoring studies share evidence contracts while r
 | Diagnosis Engine | `simulation/platform.py::diagnose` | Observations only; no simulator Config/fault label argument; support, contradiction and unavailable evidence remain separate |
 | Decision & Counterfactual Engine | `fit_hypothesis`, `simulate`, `interventions` | Configurable duration and stable 0.05–1s cadence, explicit observation window and selectable hypothesis; on-demand recovery grid; physical pressure determines trip status |
 | Investigation Workstation | `src/components/Investigation.tsx`, `src/workspace/RuntimeWorkbench.tsx`, `src/lib/platform.ts`, `server.py` | Shared ProcessEvidence components and RuntimeWorkbench; arbitrary time-matched prefixes, user-selected tools and intervention parameters |
-| Benchmark & Verification | `benchmarks/run_suite.py`, `verify_reports.py`, `simulation/verify_artifacts.py`, `tests/`, Actions | Pinned sources, frozen protocols, separate software/numerical regressions and external research reports |
+| Benchmark & Research | `benchmarks/run_suite.py`, `benchmarks/test_*.py`, `tests/` | Manual research runs, frozen protocols and focused regression tests; no committed execution-report inventory |
 
 ## Signal spaces
 
@@ -254,6 +254,6 @@ Experiment 单 worker 维护最多 36 个已拟合模型的 LRU。键包含完�
 
 ## Verification and operation
 
-`npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete numerical regeneration is available separately through `npm run verify:artifacts`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI checks Linux and Windows. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.
+`npm run check` runs workspace/example Python tests, frontend export tests and TypeScript/Vite. Complete example regeneration is available locally through `npm run generate`. The Python runner chooses `.venv` when present and forces UTF-8 across platforms. CI only builds the frontend on main; full tests are run locally when needed. The separate external-data workflows run on relevant source/protocol changes or manual dispatch, cache fixed inputs, revalidate hashes and cancel obsolete runs; ordinary UI/docs changes do not trigger all external downloads.
 
 The reference suite preserves all eleven study configurations and their logs. Numerical snapshots capture audited thresholds, workload, coverage, fold/seed summaries and negative outcomes with float tolerance. They check software drift; repeatedly consulted simulator data provide no new independent evidence. Raw third-party datasets remain outside Git and report artifacts.
