@@ -19,9 +19,9 @@ class StreamlitDemoTests(unittest.TestCase):
         self.assertTrue(first.equals(second))
 
     def test_uploaded_csv_limits(self):
-        self.assertEqual(load_uploaded_csv(b"a,b\\n" + b"1,2\\n" * 300).shape, (300, 2))
+        self.assertEqual(load_uploaded_csv(b"a,b\n" + b"1,2\n" * 300).shape, (300, 2))
         with self.assertRaisesRegex(ValueError, "300"):
-            load_uploaded_csv(b"a,b\\n1,2\\n")
+            load_uploaded_csv(b"a,b\n1,2\n")
         with self.assertRaises(ValueError):
             validated_frame(example_data(900).iloc[:50])
 
