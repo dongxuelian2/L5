@@ -1,9 +1,11 @@
+import { t as tr, useLocale } from "./i18n";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import WorkspaceApp from "./workspace/WorkspaceApp";
 
 const ExamplesApp = lazy(() => import("./ExamplesApp"));
 
 export default function App() {
+  useLocale();
   const [hash, setHash] = useState(window.location.hash);
   const previousRoute = useRef(window.location.hash.split("?")[0]);
   useEffect(() => {
@@ -18,6 +20,6 @@ export default function App() {
   }, []);
   const [route, search = ""] = hash.replace(/^#\/?/, "").split("?");
   const path = route.split("/").filter(Boolean);
-  if (path[0] === "examples") return <><div className="ws-example-banner"><a href="#/">← L5 Workspaces</a><span>TRIPLENS / PROCESS MODELS & EXAMPLES</span></div><Suspense fallback={<p className="ws-main">Loading TripLens examples…</p>}><ExamplesApp /></Suspense></>;
+  if (path[0] === "examples") return <><div className="ws-example-banner"><a href="#/">{tr("← L5 Workspaces")}</a><span>{tr("TRIPLENS / PROCESS MODELS & EXAMPLES")}</span></div><Suspense fallback={<p className="ws-main">{tr("Loading TripLens examples…")}</p>}><ExamplesApp /></Suspense></>;
   return <WorkspaceApp path={path} search={search} />;
 }

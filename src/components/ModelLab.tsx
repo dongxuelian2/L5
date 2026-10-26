@@ -1,8 +1,10 @@
+import { t as tr, useLocale } from "../i18n";
 import { useState } from "react";
 import { downloadFile, scenario } from "../lib/engine";
 import { BlockBar, Panel, Reveal } from "./Primitives";
 
 export function ModelLab() {
+  useLocale();
   const [selected, setSelected] = useState("valve");
   const [inspectCell, setInspectCell] = useState<[number, number]>([1, 2]);
   const ranking = scenario.diagnostics.ranking[selected];
@@ -17,15 +19,12 @@ export function ModelLab() {
         <div className="view-heading">
           <div>
             <div className="eyebrow text-mint">
-              COMPUTATION / TRANSPARENT BY DESIGN
-            </div>
+              {" "}{tr("COMPUTATION / TRANSPARENT BY DESIGN")}{" "}</div>
             <h1>
-              See the work behind the answer<span className="text-mint">.</span>
+              {" "}{tr("See the work behind the answer")}<span className="text-mint">.</span>
             </h1>
             <p>
-              Signal statistics, physical paths, and reproducible checks. Every
-              number has a source.
-            </p>
+              {" "}{tr("Signal statistics, physical paths, and reproducible checks. Every number has a source.")}{" "}</p>
           </div>
           <button
             className="subtle-button bordered"
@@ -36,44 +35,41 @@ export function ModelLab() {
               )
             }
           >
-            Export calculations ↓
-          </button>
+            {" "}{tr("Export calculations ↓")}{" "}</button>
         </div>
       </Reveal>
       <div className="lab-summary">
         <div>
-          <span className="eyebrow">SIGNALS ANALYZED</span>
+          <span className="eyebrow">{tr("SIGNALS ANALYZED")}</span>
           <strong>
             {String(scenario.tags.length).padStart(2, "0")}
-            <span> / {scenario.points.length} samples each</span>
+            <span> / {scenario.points.length}{" "}{tr("samples each")}</span>
           </strong>
         </div>
         <div>
-          <span className="eyebrow">ORDERED PATHS</span>
+          <span className="eyebrow">{tr("ORDERED PATHS")}</span>
           <strong>
             {String(orderedPaths).padStart(2, "0")}
             <span>
               {" "}
-              / {String(scenario.edges.length).padStart(2, "0")} topology edges
-            </span>
+              / {String(scenario.edges.length).padStart(2, "0")}{" "}{tr("topology edges")}{" "}</span>
           </strong>
         </div>
         <div>
-          <span className="eyebrow">REPRODUCIBILITY</span>
+          <span className="eyebrow">{tr("REPRODUCIBILITY")}</span>
           <strong className="text-mint">
             {String(passedChecks).padStart(2, "0")}
             <span>
               {" "}
-              / {String(scenario.checks.length).padStart(2, "0")} checks passed
-            </span>
+              / {String(scenario.checks.length).padStart(2, "0")}{" "}{tr("checks passed")}{" "}</span>
           </strong>
         </div>
       </div>
       <div className="lab-grid">
         <Panel
           code="Σ"
-          title="Signal correlation matrix"
-          action={<span className="panel-meta">Pearson r · full incident</span>}
+          title={tr("Signal correlation matrix")}
+          action={<span className="panel-meta">{tr("Pearson r · full incident")}</span>}
         >
           <div className="matrix-wrap">
             <div className="correlation-matrix">
@@ -91,7 +87,7 @@ export function ModelLab() {
                     return (
                       <button
                         key={u.key}
-                        aria-label={`${t.name} and ${u.name}: correlation ${value}`}
+                        aria-label={tr("{0} and {1}: correlation {2}", {0: t.name, 1: u.name, 2: value})}
                         className={a === i && b === j ? "selected" : ""}
                         style={{
                           background:
@@ -110,9 +106,9 @@ export function ModelLab() {
               ))}
             </div>
             <div className="matrix-key">
-              <span className="text-violet">−1.0 inverse</span>
-              <span>0 unrelated</span>
-              <span className="text-mint">+1.0 aligned</span>
+              <span className="text-violet">{tr("−1.0 inverse")}</span>
+              <span>{tr("0 unrelated")}</span>
+              <span className="text-mint">{tr("+1.0 aligned")}</span>
             </div>
           </div>
           <div className="matrix-detail">
@@ -122,15 +118,13 @@ export function ModelLab() {
             </span>
             <strong>{scenario.diagnostics.matrix[a][b].toFixed(4)}</strong>
             <p>
-              Correlation describes co-movement. The diagnosis also requires
-              connected process topology and temporal precedence.
-            </p>
+              {" "}{tr("Correlation describes co-movement. The diagnosis also requires connected process topology and temporal precedence.")}{" "}</p>
           </div>
         </Panel>
         <Panel
           code="ƒ"
-          title="Root-cause score decomposition"
-          action={<span className="panel-meta">explicit rules</span>}
+          title={tr("Root-cause score decomposition")}
+          action={<span className="panel-meta">{tr("explicit rules")}</span>}
         >
           <div className="score-body">
             <div className="filter-tabs score-tabs">
@@ -146,11 +140,11 @@ export function ModelLab() {
             </div>
             <div className="score-formula">S(c) = D + C + T − U − M</div>
             {[
-              ["Signal direction", "direction", 40],
-              ["Topology coverage", "coverage", 35],
-              ["Ordered paths", "temporal", 25],
-              ["Unexplained signals", "unexplainedPenalty", 40],
-              ["Missing command feedback", "missingFeedbackPenalty", 6],
+              [tr("Signal direction"), "direction", 40],
+              [tr("Topology coverage"), "coverage", 35],
+              [tr("Ordered paths"), "temporal", 25],
+              [tr("Unexplained signals"), "unexplainedPenalty", 40],
+              [tr("Missing command feedback"), "missingFeedbackPenalty", 6],
             ].map(([name, key, max], i) => (
               <div className="score-row" key={key}>
                 <span>{name}</span>
@@ -166,30 +160,27 @@ export function ModelLab() {
               </div>
             ))}
             <div className="score-total">
-              <span>Resulting evidence score</span>
+              <span>{tr("Resulting evidence score")}</span>
               <strong>
                 {ranking.score}
                 <small> / 100</small>
               </strong>
             </div>
             <p className="muted small-copy">
-              {ranking.explained}/6 signals explained · {ranking.paths}/5
-              supported paths. Scores are clamped to 0–100. Hypothesis
-              signatures and weights are explicit engineering choices.
-            </p>
+              {ranking.explained}{tr("/6 signals explained ·")}{" "}{ranking.paths}{tr("/5 supported paths. Scores are clamped to 0–100. Hypothesis signatures and weights are explicit engineering choices.")}{" "}</p>
           </div>
         </Panel>
         <Panel
           code="Δ"
-          title="Propagation evidence"
-          action={<span className="panel-meta">topology constrained</span>}
+          title={tr("Propagation evidence")}
+          action={<span className="panel-meta">{tr("topology constrained")}</span>}
         >
           <div className="propagation-table">
             <div className="propagation-head">
-              <span>DIRECTED EDGE</span>
-              <span>ONSET LAG</span>
-              <span>LAGGED r</span>
-              <span>ORDER</span>
+              <span>{tr("DIRECTED EDGE")}</span>
+              <span>{tr("ONSET LAG")}</span>
+              <span>{tr("LAGGED r")}</span>
+              <span>{tr("ORDER")}</span>
             </div>
             {scenario.diagnostics.paths.map((p) => (
               <div key={p.source}>
@@ -209,18 +200,16 @@ export function ModelLab() {
             ))}
           </div>
           <div className="lab-note">
-            Lag is the difference in confirmed detection times. Correlation uses
-            that shift and does not estimate an independent causal effect.
-          </div>
+            {" "}{tr("Lag is the difference in confirmed detection times. Correlation uses that shift and does not estimate an independent causal effect.")}{" "}</div>
         </Panel>
         <Panel
           code="✓"
-          title="Reproducibility checks"
+          title={tr("Reproducibility checks")}
           action={
             <span className="panel-meta text-mint">
               {passedChecks === scenario.checks.length
-                ? "all passed"
-                : "review needed"}
+                ? tr("all passed")
+                : tr("review needed")}
             </span>
           }
         >
@@ -233,7 +222,7 @@ export function ModelLab() {
                   <p>{check.detail}</p>
                 </div>
                 <span className="check-pass">
-                  {check.passed ? "PASS" : "FAIL"}
+                  {check.passed ? tr("PASS") : tr("FAIL")}
                 </span>
               </div>
             ))}
@@ -243,13 +232,9 @@ export function ModelLab() {
       <div className="lab-source">
         <span className="text-mint">⌘</span>
         <div>
-          <strong>Calculation provenance</strong>
+          <strong>{tr("Calculation provenance")}</strong>
           <p>
-            Native Python · reduced-order process model · 1 s Euler integration
-            · median/MAD detection · JSON artifacts. These checks cover this
-            single scenario and its three branches; they are not a benchmark
-            accuracy claim.
-          </p>
+            {" "}{tr("Native Python · reduced-order process model · 1 s Euler integration · median/MAD detection · JSON artifacts. These checks cover this single scenario and its three branches; they are not a benchmark accuracy claim.")}{" "}</p>
         </div>
         <span className="source-file">simulation/generate.py</span>
       </div>

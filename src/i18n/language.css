@@ -1,0 +1,5 @@
+.language-switch { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; margin-left: auto; flex-shrink: 0; font-size: 12px; }
+.language-switch button { color: var(--muted, #a3aba5); padding: 6px 9px; border: 1px solid transparent; background: transparent; border-radius: 4px; cursor: pointer; font: inherit; }
+.language-switch button[aria-pressed="true"] { color: #b5ed9a; border-color: #b5ed9a66; background: #b5ed9a0d; }
+.language-switch button:focus-visible { outline: 2px solid #b5ed9a; outline-offset: 2px; }
+@media (max-width: 620px) { .language-switch button { padding: 5px; } }

@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { detectedAt, formatValue, pointAt, scenario } from "../lib/engine";
@@ -43,6 +44,7 @@ export function ProcessMap({
   onSelect: (key: SignalKey) => void;
   selected: SignalKey | null;
 }) {
+  useLocale();
   const [trace, setTrace] = useState<SignalKey | null>(null);
   const point = pointAt(time);
   const active = time >= scenario.detections.valve.time;
@@ -70,28 +72,25 @@ export function ProcessMap({
   return (
     <Panel
       code="01"
-      title="Process topology"
+      title={tr("Process topology")}
       className="process-panel"
       action={
         <span className="panel-meta">
-          <StatusDot pulse /> 6 signals connected
-        </span>
+          <StatusDot pulse />{" "}{tr("6 signals connected")}{" "}</span>
       }
     >
       <div className="map-caption">
         <span>
-          <span className="text-mint">──</span> Material flow
-        </span>
+          <span className="text-mint">──</span>{" "}{tr("Material flow")}{" "}</span>
         <span>
-          <span className="text-amber">┄┄</span> Causal propagation
-        </span>
-        <span className="map-caption-right">Δ DETECTION LAG</span>
+          <span className="text-amber">┄┄</span>{" "}{tr("Causal propagation")}{" "}</span>
+        <span className="map-caption-right">{tr("Δ DETECTION LAG")}</span>
       </div>
       <div className={`process-map ${trace ? "is-tracing" : ""}`}>
         <svg
           viewBox="0 0 680 294"
           role="group"
-          aria-label="Process topology: cooling valve to flow, reactor temperature and pressure, separator, then product purity"
+          aria-label={tr("Process topology: cooling valve to flow, reactor temperature and pressure, separator, then product purity")}
         >
           <defs>
             <pattern
@@ -121,18 +120,14 @@ export function ProcessMap({
             markerEnd="url(#flow-arrow)"
           />
           <text x="23" y="67" className="map-small">
-            COOLING LOOP
-          </text>
+            {" "}{tr("COOLING LOOP")}{" "}</text>
           <text x="358" y="40" className="map-small">
-            REACTION
-          </text>
+            {" "}{tr("REACTION")}{" "}</text>
           <text x="528" y="40" className="map-small">
-            SEPARATION
-          </text>
+            {" "}{tr("SEPARATION")}{" "}</text>
           <path d="M351 52 H473 V266 H351" className="unit-boundary" />
           <text x="412" y="284" textAnchor="middle" className="map-small">
-            R-101 / REACTOR
-          </text>
+            {" "}{tr("R-101 / REACTOR")}{" "}</text>
           {signalPaths.map((path, i) => {
             const key = orderedSignals[i + 1];
             const detected = detectedAt(key, time);
@@ -184,7 +179,7 @@ export function ProcessMap({
                 className={`process-node node-${tag.color} ${detected ? "detected" : ""} ${selected === tag.key ? "selected" : ""} ${orderedSignals.indexOf(tag.key) <= traceIndex ? "in-trace" : ""} ${detected && time < scenario.detections[tag.key].time + 8 ? "just-detected" : ""}`}
                 role="button"
                 tabIndex={0}
-                aria-label={`Inspect ${tag.name}`}
+                aria-label={tr("Inspect {0}", {0: tag.name})}
                 onClick={() => onSelect(tag.key)}
                 onPointerEnter={() => setTrace(tag.key)}
                 onPointerLeave={() => setTrace(null)}
@@ -221,16 +216,16 @@ export function ProcessMap({
                 </text>
                 <text x={x + 10} y={y + 56} className="node-name">
                   {tag.key === "temperature"
-                    ? "temperature"
+                    ? tr("temperature")
                     : tag.key === "separator"
-                      ? "separator"
+                      ? tr("separator")
                       : tag.key === "purity"
-                        ? "product"
+                        ? tr("product")
                         : tag.key === "valve"
-                          ? "cooling valve"
+                          ? tr("cooling valve")
                           : tag.key === "flow"
-                            ? "water flow"
-                            : "pressure"}
+                            ? tr("water flow")
+                            : tr("pressure")}
                 </text>
                 <path
                   d={`M${x + 9} ${y + 75}H${x + 95}`}
@@ -241,7 +236,7 @@ export function ProcessMap({
             );
           })}
           <text x="54" y="253" className="map-small">
-            {active ? "╰─ FIRST DEVIATION" : "╰─ BASELINE STABLE"}
+            {active ? tr("╰─ FIRST DEVIATION") : tr("╰─ BASELINE STABLE")}
           </text>
           {active && (
             <motion.text
@@ -255,26 +250,24 @@ export function ProcessMap({
             </motion.text>
           )}
           <text x="23" y="226" className="map-small">
-            FEED
-          </text>
+            {" "}{tr("FEED")}{" "}</text>
           <text x="635" y="103" className="map-small">
-            OUT
-          </text>
+            {" "}{tr("OUT")}{" "}</text>
         </svg>
       </div>
       <div className="map-bottom">
         <span>
           <span className="text-mint">↳</span>{" "}
           {trace
-            ? `TRACE / ${orderedSignals
+            ? tr("TRACE / {0}", {0: orderedSignals
                 .slice(0, traceIndex + 1)
                 .map((key) => scenario.tags.find((tag) => tag.key === key)!.tag)
-                .join(" → ")}`
+                .join(" → ")})
             : active
-              ? "The first deviation is upstream of the first pressure alarm."
-              : "Monitoring baseline. Cooling loop and downstream units are stable."}
+              ? tr("The first deviation is upstream of the first pressure alarm.")
+              : tr("Monitoring baseline. Cooling loop and downstream units are stable.")}
         </span>
-        <span className="muted">hover to trace · click to inspect ↗</span>
+        <span className="muted">{tr("hover to trace · click to inspect ↗")}</span>
       </div>
     </Panel>
   );

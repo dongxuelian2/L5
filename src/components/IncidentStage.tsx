@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { motion, AnimatePresence } from "motion/react";
 import { clock, scenario } from "../lib/engine";
 import { ScrambleText } from "./Primitives";
@@ -5,48 +6,44 @@ import { ScrambleText } from "./Primitives";
 export const chapters = [
   {
     time: 0,
-    label: "Baseline",
-    title: "A process in balance.",
-    detail: "Six signals are holding within their operating baseline.",
+    get label() { return tr("Baseline"); },
+    get title() { return tr("A process in balance."); },
+    get detail() { return tr("Six signals are holding within their operating baseline."); },
     tone: "mint",
   },
   {
     time: scenario.faultTime,
-    label: "Disturbance",
-    title: "One valve changes the story.",
-    detail:
-      "Cooling-valve position changes. Waiting for confirmed signal deviation.",
+    get label() { return tr("Disturbance"); },
+    get title() { return tr("One valve changes the story."); },
+    get detail() { return tr("Cooling-valve position changes. Waiting for confirmed signal deviation."); },
     tone: "amber",
   },
   {
     time: scenario.detections.valve.time,
-    label: "Detection",
-    title: "The first signal breaks away.",
-    detail: "CV-101 deviates first. Follow the cooling loop downstream.",
+    get label() { return tr("Detection"); },
+    get title() { return tr("The first signal breaks away."); },
+    get detail() { return tr("CV-101 deviates first. Follow the cooling loop downstream."); },
     tone: "mint",
   },
   {
     time: scenario.detections.purity.time,
-    label: "Evidence",
-    title: "The cascade has an origin.",
-    detail:
-      "All six signals have deviated. Five ordered paths connect the evidence.",
+    get label() { return tr("Evidence"); },
+    get title() { return tr("The cascade has an origin."); },
+    get detail() { return tr("All six signals have deviated. Five ordered paths connect the evidence."); },
     tone: "amber",
   },
   {
     time: scenario.tripTime,
-    label: "Threshold",
-    title: "Pressure crosses the trip limit.",
-    detail:
-      "3,050 kPa exceeded. Compare an earlier intervention to change the trajectory.",
+    get label() { return tr("Threshold"); },
+    get title() { return tr("Pressure crosses the trip limit."); },
+    get detail() { return tr("3,050 kPa exceeded. Compare an earlier intervention to change the trajectory."); },
     tone: "coral",
   },
   {
     time: scenario.duration,
-    label: "Complete",
-    title: "Now change one moment.",
-    detail:
-      "The observed sequence is complete. Test when the cooling bypass changes the outcome.",
+    get label() { return tr("Complete"); },
+    get title() { return tr("Now change one moment."); },
+    get detail() { return tr("The observed sequence is complete. Test when the cooling bypass changes the outcome."); },
     tone: "violet",
   },
 ] as const;
@@ -58,6 +55,7 @@ export function IncidentStage({
   time: number;
   onSeek: (time: number) => void;
 }) {
+  useLocale();
   const index = chapters.reduce(
     (last, chapter, i) => (time >= chapter.time ? i : last),
     0,
@@ -66,10 +64,10 @@ export function IncidentStage({
   return (
     <section
       className={`incident-stage stage-${stage.tone}`}
-      aria-label="Incident chapter"
+      aria-label={tr("Incident chapter")}
     >
       <div className="stage-index">
-        <span>CHAPTER</span>
+        <span>{tr("CHAPTER")}</span>
         <strong>
           {String(index + 1).padStart(2, "0")}
           <small>/06</small>
@@ -90,12 +88,12 @@ export function IncidentStage({
           <p>{stage.detail}</p>
         </motion.div>
       </AnimatePresence>
-      <div className="chapter-navigation" aria-label="Jump to chapter">
+      <div className="chapter-navigation" aria-label={tr("Jump to chapter")}>
         {chapters.map((chapter, i) => (
           <button
             key={chapter.label}
             onClick={() => onSeek(chapter.time)}
-            aria-label={`Jump to ${chapter.label}, ${clock(chapter.time)}`}
+            aria-label={tr("Jump to {0}, {1}", {0: chapter.label, 1: clock(chapter.time)})}
             aria-current={index === i ? "step" : undefined}
             className={`${i === index ? "current" : ""} ${i <= index ? "reached" : ""}`}
             title={`${chapter.label} · +${clock(chapter.time)}`}

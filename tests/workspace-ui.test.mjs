@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 for (const extension of ['.ts', '.tsx']) {
   require.extensions[extension] = (module, filename) => {
     const { outputText } = ts.transpileModule(readFileSync(filename, 'utf8'), {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
       fileName: filename,
     });
     module._compile(outputText, filename);
@@ -54,6 +54,9 @@ const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
+const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
+const copy = require('../src/i18n/messages.json');
+const { errorMessage } = require('../src/i18n/errors.ts');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -73,7 +76,7 @@ async function mount(element) {
   root = createRoot(container);
   await act(async () => root.render(element));
 }
-afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); root = null; });
+afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); root = null; setLocale('en'); });
 function curve(name) { return [...container.querySelectorAll('svg')].find(svg => svg.getAttribute('aria-label')?.startsWith(name + ' time series')); }
 async function click(node) { assert.ok(node, 'control exists'); await act(async () => node.click()); }
 function Controls({ data }) {
@@ -205,7 +208,7 @@ function observed(request, leader = request.body.asOf > 200 ? 'cooling_valve' : 
 async function resolveAnalysis(request, leader) { assert.ok(request, 'analysis request exists'); await act(async()=>request.resolve(response(observed(request,leader)))); }
 async function debounceAnalysis() { await act(async()=>new Promise(resolve=>setTimeout(resolve,210))); }
 function field(label) { const node=[...container.querySelectorAll('label')].find(node=>node.textContent.startsWith(label)); assert.ok(node, `field ${label} exists`); return node.querySelector('input,select'); }
-function button(text) { return [...container.querySelectorAll('button')].find(node=>node.textContent.startsWith(text)); }
+function button(text) { return [...container.querySelectorAll('button')].find(node=>node.textContent.startsWith(t(text))); }
 async function setField(node,value) {
   assert.ok(node);
   await act(async()=>{
@@ -345,12 +348,15 @@ function incidentResult(id = 'incident-result') {
 const emptyIncident = () => ({ id: 'event-one', workspace_id: 'test', title: '反应器事件', description: '持续调查', status: 'open', start_time: 330, end_time: 560, time_origin: null, conclusion: '', created_at: '2026-10-24T00:00:00Z', updated_at: '2026-10-24T00:00:00Z', entries: [], links: [] });
 function dialogField(label) {
   const dialog = container.querySelector('dialog[open]'); assert.ok(dialog, 'modal is open');
-  const element = [...dialog.querySelectorAll('label')].find(n => n.textContent.startsWith(label));
+  const element = [...dialog.querySelectorAll('label')].find(n => matchesLabel(n.textContent, label));
   assert.ok(element, `dialog field ${label} exists`); return element.querySelector('input,textarea,select');
 }
 function inputFor(label, within = container) {
-  const element = [...within.querySelectorAll('label')].find(n => n.textContent.startsWith(label));
+  const element = [...within.querySelectorAll('label')].find(n => matchesLabel(n.textContent, label));
   assert.ok(element, `field ${label} exists`); return element.querySelector('input,textarea,select');
+}
+function matchesLabel(content, source) {
+  return content.startsWith(t(source)) || Object.keys(copy).some(key => key.startsWith(source) && content.startsWith(t(key)));
 }
 
 test('result interval cards and complete record create or join a persistent incident with editable event fields', async () => {
@@ -363,7 +369,7 @@ test('result interval cards and complete record create or join a persistent inci
   await mount(React.createElement(ResultView, { result, dataset: dataset('incident-data'), signalPicker: () => null }));
   const card = container.querySelector('.ws-finding');
   const cardStart = Number(card.querySelector('button[aria-label]').getAttribute('aria-label').match(/interval (\d+)/)[1]);
-  await click([...card.querySelectorAll('button')].find(n => n.textContent === '创建事件'));
+  await click([...card.querySelectorAll('button')].find(n => n.textContent === t('创建事件')));
   assert.equal(dialogField('开始时间').value, String(cardStart));
   await setField(dialogField('事件标题'), '用户确认的事件');
   await setField(dialogField('开始时间'), 320);
@@ -376,7 +382,7 @@ test('result interval cards and complete record create or join a persistent inci
   assert.deepEqual(writes[0].body.source, { kind: 'interval', analysisId: result.id, datasetId: 'incident-data', intervalIndex: result.intervals.findIndex(i => i.start === cardStart) });
   assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
   const row = container.querySelector('tbody tr');
-  await click([...row.querySelectorAll('button')].find(n => n.textContent === '添加到已有事件'));
+  await click([...row.querySelectorAll('button')].find(n => n.textContent === t('添加到已有事件')));
   assert.equal(dialogField('选择事件').value, saved.id);
   await click(button('添加并打开事件'));
   assert.equal(writes[1].url, '/api/incidents/event-one/links');
@@ -404,7 +410,7 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   };
   await mount(React.createElement(IncidentDetail, { initial: structuredClone(saved), datasets: [data], jobs: [] }));
   assert.ok(curve(names[0]), 'linked interval plots the raw dataset');
-  assert.match([...container.querySelectorAll('a')].find(a => a.textContent === '打开原始分析 ↗').getAttribute('href'), /incident-detail-analysis\/0$/);
+  assert.match([...container.querySelectorAll('a')].find(a => a.textContent === t('打开原始分析 ↗')).getAttribute('href'), /incident-detail-analysis\/0$/);
   await click(button('＋ 添加候选解释'));
   await setField(dialogField('记录标题'), '冷却侧变化');
   await setField(dialogField('记录内容'), '先核对冷却回路');
@@ -423,7 +429,7 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   await setField(dialogField('记录标题'), '现场复核'); await setField(dialogField('记录内容'), '已检查交接记录。');
   await click(button('保存调查记录'));
   const noteCard = [...container.querySelectorAll('article')].find(a => a.textContent.includes('现场复核'));
-  await click([...noteCard.querySelectorAll('button')].find(b => b.textContent === '编辑'));
+  await click([...noteCard.querySelectorAll('button')].find(b => b.textContent === t('编辑')));
   await setField(dialogField('记录内容'), '已检查交接记录，等待冷却水记录。');
   await click(button('保存调查记录'));
   await setField(inputFor('事件标题'), '反应器持续调查');
@@ -437,7 +443,7 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   assert.equal(inputFor('事件标题').value, '反应器持续调查');
   assert.equal(inputFor('调查结论').value, saved.conclusion);
   assert.match(container.textContent, /等待冷却水记录/);
-  assert.match(container.textContent, /支持：冷却侧变化/);
+  assert.match(container.textContent, /Supports：冷却侧变化/);
   assert.ok(curve(names[0]));
 });
 
@@ -446,7 +452,7 @@ test('incident list filters by status, title and time using the workspace API', 
   globalThis.fetch = async url => { requests.push(url); return response({ incidents: [incident] }); };
   await mount(React.createElement(IncidentsPage, { workspaceId: 'test', datasets: [], jobs: [] }));
   await act(async () => new Promise(resolve => setTimeout(resolve, 220)));
-  assert.match(container.textContent, /2 个分析 · 3 个区间/);
+  assert.match(container.textContent, /2 analyses · 3 intervals/);
   await setField(inputFor('调查状态'), 'investigating');
   await setField(inputFor('查找事件'), '反应器');
   await setField(inputFor('相交区间起点'), 300);
@@ -478,7 +484,7 @@ test('saved runtime experiment reopens its observation and intervention paramete
   assert.equal(field('Prediction ends at').value, '400'); assert.equal(field('Bypass cooling flow').value, '63');
   assert.ok(container.querySelector('.runtime-forecast'), 'stored forecast opens without recomputation');
   await click(button('关联最近一次已完成结果'));
-  await click([...container.querySelectorAll('dialog button')].find(b => b.textContent === '添加到已有事件'));
+  await click([...container.querySelectorAll('dialog button')].find(b => b.textContent === t('添加到已有事件')));
   await click(button('添加并打开事件'));
   assert.deepEqual(writes[0], { kind: 'run', simulationId: 'A', runId: 'saved-trial', hypothesis: 'cooling_valve' });
   assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
@@ -541,7 +547,7 @@ test('incident timeline filters, navigates alarms and evidence, and shares curso
   assert.ok(container.querySelector('.incident-preview svg [data-selected-time="530"]'));
   assert.ok(container.querySelector('.incident-comparison-scores svg [data-selected-time="530"]'));
   await act(async () => new Promise(resolve => setTimeout(resolve, 130)));
-  assert.match(container.querySelector('[aria-label="同一时刻的多变量观测"]').textContent, /30/);
+  assert.match(container.querySelector("[aria-label=\"" + t("同一时刻的多变量观测") + "\"]").textContent, /30/);
   assert.ok(samples.some(url => url.includes('at=530')));
   await click(comparison.querySelector('.ws-option-grid input'));
   assert.match(queries.at(-1), /analysis=timeline-pca/);
@@ -557,7 +563,7 @@ test('professional report preview/export uses current saved content and invalida
   const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
   let saved = emptyIncident(), reports = 0;
   globalThis.fetch = async url => {
-    assert.match(url, /report\.html$/); reports++;
+    assert.match(url, /report\.html\?lang=en$/); reports++;
     return { ok: true, headers: { get: () => 'text/html; charset=utf-8' }, text: async () => `<!doctype html><html><body><h1>真实事件报告</h1><p>${saved.conclusion || '尚未形成结论'}</p><svg><path d="M0 0 L1 2"/></svg></body></html>` };
   };
   await mount(React.createElement(IncidentReport, { incident: saved }));
@@ -1347,4 +1353,130 @@ test('new experiments retain dataset signal selection and start single-signal da
   const config=newExperimentConfig({...source,metadata:{...source.metadata,columns:[source.metadata.columns[6]]}});
   assert.deepEqual(config.algorithms.map(a=>a.algorithm),['robust-maxz']);
   assert.deepEqual(newExperimentConfig(source,[names[6]]).signals,[names[6]]);
+});
+
+test('locale selection respects the primary browser language, saved choice and blocked storage', () => {
+  assert.equal(preferredLocale(undefined, ['zh-TW', 'en-US']), 'zh-CN');
+  assert.equal(preferredLocale(undefined, ['en-GB', 'zh-CN']), 'en');
+  assert.equal(preferredLocale({ getItem: () => 'en' }, ['zh-CN']), 'en');
+  assert.equal(preferredLocale({ getItem: () => 'zh-CN' }, ['en']), 'zh-CN');
+  assert.equal(preferredLocale({ getItem: () => 'invalid' }, ['zh-CN']), 'zh-CN');
+  assert.equal(preferredLocale({ getItem() { throw new Error('Storage blocked'); } }, ['en']), 'en');
+});
+
+test('the global switch changes real home copy, persists and retains an unsaved project name', async () => {
+  window.location.hash = '#/';
+  globalThis.fetch = async () => response({ workspaces: [] });
+  await mount(React.createElement(App));
+  const name = container.querySelector('#workspace-name');
+  await setField(name, 'Analysis · 现场项目');
+  const route = window.location.hash;
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  assert.equal(document.documentElement.lang, 'zh-CN');
+  assert.equal(window.localStorage.getItem('l5.locale'), 'zh-CN');
+  assert.match(container.querySelector('h1').textContent, /工作区/);
+  assert.ok(button('Create workspace ↗'));
+  assert.equal(container.querySelector('#workspace-name'), name, 'form stays mounted');
+  assert.equal(name.value, 'Analysis · 现场项目', 'user text is never translated');
+  assert.equal(window.location.hash, route);
+  await act(async () => { root.unmount(); }); container.remove(); root = null;
+  await mount(React.createElement(App));
+  assert.equal(getLocale(), 'zh-CN');
+  assert.match(container.querySelector('h1').textContent, /工作区/);
+  await click(container.querySelector('.language-switch button[lang="en"]'));
+  assert.equal(document.documentElement.lang, 'en');
+  assert.match(container.querySelector('h1').textContent, /Workspaces/);
+});
+
+test('switching language keeps an analysis request, its raw inputs and current route', async () => {
+  const source = dataset('incident-data');
+  source.metadata.suggestedRanges = { baselineRange: [0,199], analysisRange: [200,899] };
+  let pending, requestSignal, requests = 0;
+  globalThis.fetch = (url, options = {}) => {
+    if (url.includes('/series?')) return Promise.resolve(response(seriesFor(url)));
+    requests++; requestSignal = options.signal;
+    return new Promise(resolve => pending = resolve);
+  };
+  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(AnalysisPage, {
+    workspaceId: 'test', datasets: [source], selected: source.id, setSelected() {}, preferences: {}, refresh() {},
+  })));
+  const start = inputFor('Analysis start (s)'), name = inputFor('Analysis name (optional)');
+  await setField(start, 300); await setField(name, '状态 / original name');
+  await click(button('Run analysis and save'));
+  const route = window.location.hash;
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  assert.equal(container.querySelector('input[value="状态 / original name"]'), name);
+  assert.equal(inputFor('Analysis start (s)'), start);
+  assert.equal(start.value, '300');
+  assert.equal(name.value, '状态 / original name');
+  assert.notEqual(requestSignal?.aborted, true);
+  assert.equal(requests, 1);
+  assert.equal(window.location.hash, route);
+  await act(async () => pending(response({ ...incidentResult('bilingual-analysis'), datasetId: source.id })));
+  assert.match(container.textContent, /主要发现/);
+});
+
+test('shared locale survives workspace navigation and TripLens, retaining simulation edits', async () => {
+  window.location.hash = '#/workspaces/test/history';
+  globalThis.fetch = async url => response(url === '/api/workspaces' ? { workspaces: [{ id:'test', name:'User workspace' }] } : url.endsWith('/datasets') ? { datasets: [] } : url.endsWith('/analyses') ? { jobs: [] } : { id:'test', name:'User workspace' });
+  await mount(React.createElement(App));
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  assert.match(container.querySelector('h1').textContent, /保留每次运行/);
+  const delegate = runtimeAPI();
+  await act(async () => { window.location.hash = '#/examples'; window.dispatchEvent(new window.HashChangeEvent('hashchange')); });
+  assert.ok(container.querySelector('.topbar .language-switch'), 'TripLens has the shared control');
+  assert.match(container.querySelector('.ws-example-banner').textContent, /L5 工作区/);
+  const field = inputFor('Scenario name');
+  await setField(field, '我的场景 / draft');
+  const before = delegate.analyses.length;
+  await click(container.querySelector('.language-switch button[lang="en"]'));
+  assert.equal(inputFor('Scenario name'), field);
+  assert.equal(field.value, '我的场景 / draft');
+  assert.equal(delegate.analyses.length, before, 'language does not restart analysis');
+  assert.equal(window.location.hash, '#/examples');
+  assert.match(container.querySelector('.ws-example-banner').textContent, /L5 Workspaces/);
+});
+
+test('known API errors localize at display time and unknown diagnostics remain intact', () => {
+  setLocale('zh-CN');
+  assert.equal(errorMessage('Choose a nonempty CSV file.'), '请选择非空 CSV 文件。');
+  assert.equal(errorMessage("'Dataset not found.'"), '未找到数据集。');
+  assert.equal(errorMessage('alpha must be a finite number.'), 'alpha 必须为有限数值。');
+  assert.equal(errorMessage('Request failed (503).'), '请求失败（503）。');
+  assert.equal(t('Saved: {0}', {0: 'Status'}), '已保存：Status', 'parameters retain user text even when it matches a UI key');
+  assert.equal(t('Saved: Status'), '已保存：Status');
+  assert.equal(runtimeText('Cooling flow falls — not observed'), '冷却流量下降 — 未观测到');
+  const diagnostic = '用户数据 / Original diagnostic #42';
+  assert.equal(errorMessage(diagnostic), diagnostic);
+  setLocale('en');
+  assert.equal(errorMessage('请选择有限的观察时间。'), 'Choose a finite observation time.');
+});
+
+test('report generation uses the selected locale and discards responses from an earlier language', async () => {
+  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+  const requests = [];
+  globalThis.fetch = url => new Promise(resolve => requests.push({url,resolve}));
+  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(IncidentReport, { incident: emptyIncident() })));
+  await click(button('生成报告'));
+  assert.match(requests[0].url, /lang=en/);
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  await click(button('生成报告'));
+  assert.match(requests[1].url, /lang=zh-CN/);
+  const report = html => ({ok:true,headers:{get:()=> 'text/html'},text:async()=> html});
+  await act(async () => requests[1].resolve(report('<html lang="zh-CN"><body>新报告</body></html>')));
+  await act(async () => requests[0].resolve(report('<html lang="en"><body>Old report</body></html>')));
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /新报告/);
+  assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Old report/);
+});
+
+test('all static dictionaries provide both languages and retain interpolation parameters', () => {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+    for (const [key, pair] of Object.entries(require(`../src/i18n/${file}.json`))) {
+      assert.equal(pair.length, 2, key);
+      assert.ok(pair.every(value => typeof value === 'string' && value.length), key);
+      assert.doesNotMatch(pair[1], /[\u3400-\u9fff]/, `English copy: ${key}`);
+      const tokens = value => [...value.matchAll(/\{\d+\}/g)].map(m => m[0]).sort();
+      assert.deepEqual(tokens(pair[0]), tokens(pair[1]), key);
+    }
+  }
 });

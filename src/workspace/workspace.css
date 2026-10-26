@@ -51,7 +51,7 @@
 .ws-brand b { font-size:28px; letter-spacing:-3px; color:#b5ed9a; }
 .ws-brand span { letter-spacing:2px; font-size:11px; }
 .ws-brand small { color:#84907f; border:1px solid #394333; padding:1px 5px; font-size:9px; }
-.ws-header nav { display:flex; gap:26px; margin-left:auto; }
+.ws-header nav { display:flex; flex-direction:row; width:auto; gap:26px; margin-left:auto; }
 .ws-header nav a { font-size:11px; color:#84907f; }
 .ws-header nav a:hover, .ws-link, .ws-header nav .ws-active { color:#b5ed9a; }
 .ws-connection { font-size:9px; letter-spacing:1px; display:flex; align-items:center; gap:8px; color:#929e8b; }
@@ -214,9 +214,10 @@
   .ws-contributions li { grid-template-columns:16px minmax(80px,1fr) 65px; gap:8px; }
   .ws-contribution-bar { display:none; }
   .ws-plot-placeholder { min-height:130px; }
-  .ws-header { height:auto; min-height:72px; flex-wrap:wrap; padding:14px 18px; gap:14px; }
+  .ws-header { height:auto; min-height:72px; display:grid; grid-template-columns:1fr auto; padding:14px 18px; gap:14px; }
   .ws-brand span { font-size:9px; }
-  .ws-header nav { gap:16px; }
+  .ws-header nav { grid-column:1 / -1; grid-row:2; gap:16px; margin-left:0; }
+  .ws-header .language-switch { grid-column:2; grid-row:1; }
   .ws-header nav a { font-size:9px; }
   .ws-main { padding:28px 18px 40px; }
   .ws-layout { display:block; }
@@ -225,7 +226,7 @@
   .ws-sidebar>.ws-kicker, .ws-sidebar-note { display:none; }
   .ws-back { margin-bottom:12px; }
   .ws-sidebar nav { flex-direction:row; overflow-x:auto; }
-  .ws-sidebar nav a { flex:1; padding:8px 9px; border-left:0; border-bottom:2px solid transparent; gap:7px; }
+  .ws-sidebar nav a { flex:0 0 auto; white-space:nowrap; padding:8px 9px; border-left:0; border-bottom:2px solid transparent; gap:7px; }
   .ws-sidebar nav a.ws-active { border-bottom-color:#b5ed9a; }
   .ws-sidebar nav a>small { margin-left:0; }
   .ws-projects { grid-template-columns:1fr; }

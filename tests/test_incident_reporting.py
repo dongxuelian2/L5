@@ -27,9 +27,14 @@ class ReportMarkup(HTMLParser):
 
 
 class IncidentReportingHTTPTests(IncidentHTTPFixture):
-    def report(self, base, download=False):
+    def report(self, base, download=False, locale=None):
+        params = []
+        if download:
+            params.append('download=1')
+        if locale:
+            params.append('lang=' + locale)
         with build_opener(ProxyHandler({})).open(
-                f'http://127.0.0.1:{self.service.server_port}/api{base}/report.html' + ('?download=1' if download else '')) as response:
+                f'http://127.0.0.1:{self.service.server_port}/api{base}/report.html' + ('?' + '&'.join(params) if params else '')) as response:
             self.assertEqual(response.status, 200)
             self.assertIn('text/html', response.headers['Content-Type'])
             if download:
@@ -45,6 +50,24 @@ class IncidentReportingHTTPTests(IncidentHTTPFixture):
         base = f'/incidents/{event["id"]}'
         self.request(base + '/links', dict(kind='analysis', analysisId=results[1]['id']), expected=201)
         return wid, dataset, results, base
+
+    def test_report_language_localizes_template_without_translating_saved_evidence(self):
+        _, _, _, base = self.csv_event()
+        # These deliberately match template translation keys.
+        self.request(base, dict(title='事件调查报告', conclusion='状态'), method='PATCH')
+        before = self.request(base)
+        english = self.report(base, locale='en', download=True)
+        chinese = self.report(base, locale='zh-CN')
+        self.assertIn('<html lang="en">', english)
+        self.assertIn('Incident investigation report', english)
+        self.assertIn('Data, parameters and linked records', english)
+        self.assertIn('事件调查报告', english)  # Saved title remains verbatim.
+        self.assertIn('状态', english)  # Saved conclusion remains verbatim.
+        self.assertIn('<html lang="zh-CN">', chinese)
+        self.assertIn('附录. 数据、参数与关联记录', chinese)
+        self.assertEqual(english.count('<svg'), chinese.count('<svg'))
+        self.assertFalse(ReportMarkup(english).external)
+        self.assertEqual(before, self.request(base))
 
     def test_csv_timeline_comparison_report_sources_and_service_restart(self):
         wid, dataset, results, base = self.csv_event()

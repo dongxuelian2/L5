@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { useState } from "react";
 import { clock, scenario } from "../lib/engine";
 import { Glyph } from "./Primitives";
@@ -19,6 +20,7 @@ export function Timeline({
   onSpeed: () => void;
   onReset: () => void;
 }) {
+  useLocale();
   const [hover, setHover] = useState<number | null>(null);
   const buckets = Array.from(
     { length: 60 },
@@ -30,34 +32,34 @@ export function Timeline({
   );
   const peak = Math.max(1, ...buckets);
   const milestones = [
-    { t: 0, name: "Baseline", color: "muted" },
-    { t: scenario.faultTime, name: "Fault", color: "mint" },
+    { t: 0, name: tr("Baseline"), color: "muted" },
+    { t: scenario.faultTime, name: tr("Fault"), color: "mint" },
     {
       t: scenario.detections.pressure.time,
-      name: "Propagation",
+      name: tr("Propagation"),
       color: "amber",
     },
-    { t: scenario.tripTime, name: "Trip threshold", color: "coral" },
-    { t: 300, name: "End", color: "muted" },
+    { t: scenario.tripTime, name: tr("Trip threshold"), color: "coral" },
+    { t: 300, name: tr("End"), color: "muted" },
   ];
   return (
     <section
       className="timeline-panel"
-      aria-label="Incident playback"
+      aria-label={tr("Incident playback")}
       data-playing={playing}
     >
       <div className="timeline-top">
         <div className="timeline-controls">
           <button
             className="play-button"
-            aria-label={playing ? "Pause playback" : "Play incident"}
+            aria-label={playing ? tr("Pause playback") : tr("Play incident")}
             onClick={onToggle}
           >
             <Glyph>{playing ? "Ⅱ" : "▶"}</Glyph>
           </button>
           <button
             className="reset-button"
-            aria-label="Reset incident"
+            aria-label={tr("Reset incident")}
             onClick={onReset}
           >
             ↺
@@ -68,15 +70,15 @@ export function Timeline({
           <button
             className="speed-button"
             onClick={onSpeed}
-            aria-label={`Playback speed ${speed}x, change speed`}
+            aria-label={tr("Playback speed {0}x, change speed", {0: speed})}
           >
             {speed}×
           </button>
         </div>
         <span className="timeline-label">
-          <span className="timeline-density-label">ALARM DENSITY / 5s</span>{" "}
-          <kbd>SPACE</kbd>
-          <span className="desktop-only"> to {playing ? "pause" : "play"}</span>
+          <span className="timeline-density-label">{tr("ALARM DENSITY / 5s")}</span>{" "}
+          <kbd>{tr("SPACE")}</kbd>
+          <span className="desktop-only">{" "}{tr("to")}{" "}{playing ? tr("pause") : tr("play")}</span>
         </span>
       </div>
       <div className="timeline-track">
@@ -109,8 +111,8 @@ export function Timeline({
           step="1"
           value={Math.floor(time)}
           onChange={(event) => onSeek(Number(event.target.value))}
-          aria-label="Incident time in seconds"
-          aria-valuetext={`${clock(time)} of 05:00`}
+          aria-label={tr("Incident time in seconds")}
+          aria-valuetext={tr("{0} of 05:00", {0: clock(time)})}
           onPointerMove={(event) => {
             const rect = event.currentTarget.getBoundingClientRect();
             setHover(

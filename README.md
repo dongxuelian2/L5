@@ -100,6 +100,8 @@ npm run serve
 
 打开 **http://127.0.0.1:8787**，创建 Workspace 并导入 CSV。可从仓库中的 [三份信号示例](examples/data-foundation/README.md) 开始。程序在本机运行，默认使用本地计算引擎；TEP 官方数据按[复现指南](examples/tep/README.md)单独准备。
 
+右上角 **中文 / EN** 可即时切换界面语言，选择保存在当前浏览器；切换时保留路由、表单和正在运行的分析。重新生成的离线报告遵循当前语言，用户文本及原始研究材料保留原文。源码与研究产物的维护规则见[开发约定](docs/development.md)。
+
 开发时在两个终端分别运行 `npm run serve` 与 `npm run dev`。Vite 将 `/api` 代理到 8787。Python 脚本优先使用项目 `.venv`，也可通过 `PYTHON` 指定解释器。
 
 项目默认保存在 `data/`：SQLite 保存元数据和调查记录，CSV、NumPy 数组和结果文件保存数值证据。使用同一目录重启即可继续工作；可通过 `L5_DATA_DIR` 或以下命令指定保存位置：

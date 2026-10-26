@@ -1,4 +1,5 @@
 import type { TransformationLineage } from "./transformationTypes";
+import { getLocale } from "../i18n";
 export type Workspace = { id: string; name: string; created_at: string; updated_at: string; dataset_count?: number; analysis_count?: number };
 export type TimeAxis = { kind: "numeric" | "datetime" | "generated" | "unix"; column: string | null; origin: string | null; start: number; end: number; sampleInterval?: number; sourceUnit?: string; naiveTimezone?: string; typicalInterval?: number | null; gapCount?: number; duplicateCount?: number; invalidTimeCount?: number; irregularCount?: number };
 export type Signal = { name: string; missing: number; min: number | null; max: number | null; id?: string; displayName?: string; unit?: string; description?: string; category?: string; device?: string; tags?: string[]; logicalKey?: string };
@@ -62,10 +63,10 @@ export function datasetTimeLabel(dataset: Dataset, value: number) {
 }
 
 export function number(value: number) {
-  return value === 0 ? "0" : Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(2) : Number(value.toPrecision(5)).toLocaleString();
+  return value === 0 ? "0" : Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(2) : Number(value.toPrecision(5)).toLocaleString(getLocale());
 }
 export function timeLabel(axis: TimeAxis, value: number) {
   if (axis.origin) return new Date(new Date(axis.origin).getTime() + value * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
   return `${number(value)} s`;
 }
-export function dateLabel(value: string) { return new Date(value).toLocaleString(); }
+export function dateLabel(value: string) { return new Date(value).toLocaleString(getLocale()); }

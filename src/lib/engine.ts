@@ -1,4 +1,5 @@
 import rawScenario from "../data/scenario.json";
+import { t } from "../i18n";
 import type {
   Alarm,
   IncidentBrief,
@@ -88,6 +89,6 @@ export function briefMarkdown(brief: IncidentBrief): string {
     brief.steps
       .map((step) => `### ${step.action}\n\n${step.result}\n`)
       .join("\n") +
-    `\n## Evidence boundary\n\n${brief.limitation}\n\nSource: ${scenario.provenance.model}. Analyst: ${brief.provider}.\n`
+    `\n## ${t("Evidence boundary")}\n\n${brief.limitation}\n\n${t("Source")}: ${scenario.provenance.model}. ${t("Analyst")}: ${brief.provider}.\n`
   );
 }

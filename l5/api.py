@@ -52,7 +52,7 @@ def dispatch(handler, method: str) -> bool:
                 result = store.tep_studies.fault3(parts[2], parts[6], int(query.get('run', ['1'])[0]))
             elif len(parts) == 8 and parts[7] == 'report.html' and method == 'GET':
                 from .tep_study_reports import render_study_report
-                payload = render_study_report(store, store.tep_studies.get(parts[2], parts[6])).encode('utf-8')
+                payload = render_study_report(store, store.tep_studies.get(parts[2], parts[6]), locale=parse_qs(url.query).get('lang', [None])[0]).encode('utf-8')
                 handler.send_response(200)
                 handler.send_header('Content-Type', 'text/html; charset=utf-8')
                 handler.send_header('Content-Length', str(len(payload)))
@@ -122,7 +122,7 @@ def dispatch(handler, method: str) -> bool:
                     result = investigation(store, parts[2], [v for v in query['analysis'] if v] if 'analysis' in query else None)
                 elif parts[3] == 'report.html' and method == 'GET':
                     from .reports import render_report
-                    payload = render_report(store, parts[2]).encode('utf-8')
+                    payload = render_report(store, parts[2], locale=parse_qs(url.query).get('lang', [None])[0]).encode('utf-8')
                     handler.send_response(200)
                     handler.send_header('Content-Type', 'text/html; charset=utf-8')
                     handler.send_header('Content-Length', str(len(payload)))

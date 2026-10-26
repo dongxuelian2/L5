@@ -1,3 +1,4 @@
+import { t as tr, useLocale } from "../i18n";
 import { useId, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { clock, formatValue, scenario } from "../lib/engine";
@@ -31,6 +32,7 @@ export function TrendChart({
   onSeek?: (time: number) => void;
   animateComparison?: boolean;
 }) {
+  useLocale();
   const [hover, setHover] = useState<number | null>(null);
   const reducedMotion = useReducedMotion();
   const id = useId().replaceAll(":", "");
@@ -86,10 +88,10 @@ export function TrendChart({
         role="img"
         aria-label={
           compare
-            ? "Observed and intervention pressure trajectories over five minutes"
+            ? tr("Observed and intervention pressure trajectories over five minutes")
             : keys.length === 1
-              ? `${scenario.tags.find((tag) => tag.key === keys[0])?.name} over five minutes`
-              : "Normalized process signal trends over five minutes"
+              ? tr("{0} over five minutes", {0: scenario.tags.find((tag) => tag.key === keys[0])?.name})
+              : tr("Normalized process signal trends over five minutes")
         }
         onPointerMove={(event) => {
           const rect = event.currentTarget.getBoundingClientRect();
@@ -187,8 +189,7 @@ export function TrendChart({
               textAnchor="end"
               style={{ fill: "#e9927d", fontSize: 8 }}
             >
-              TRIP LIMIT / 3,050
-            </text>
+              {" "}{tr("TRIP LIMIT / 3,050")}{" "}</text>
           </g>
         )}
         {keys.length === 1 && (
@@ -241,7 +242,7 @@ export function TrendChart({
               y={top + 9}
               className="intervention-label"
             >
-              BYPASS +{intervention}s
+              {" "}{tr("BYPASS +")}{intervention}s
             </text>
           </g>
         )}
@@ -297,7 +298,7 @@ export function TrendChart({
           ))}
           {compare && (
             <span className="text-mint">
-              BYPASS {Math.round(compare[at.t][keys[0]])}
+              {" "}{tr("BYPASS")}{" "}{Math.round(compare[at.t][keys[0]])}
             </span>
           )}
         </div>
