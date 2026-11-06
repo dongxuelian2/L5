@@ -16,6 +16,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 
 | Module | What you can do |
 |---|---|
+| **Guided Investigation Demo** | Investigate a simulated inlet pump fault, compare two live detectors, open a linked incident and export an offline report using a built-in case. |
 | **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
 | **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
 | **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
@@ -96,7 +97,9 @@ npm run build
 npm run serve
 ```
 
-Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). The default engine runs locally; prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
+Open **http://127.0.0.1:8787** and select **Guided Investigation Demo** from Workspaces. Load the built-in coupled-tank scenario, run both detectors, then create the linked incident and generate a report. The demo uses the local engine and needs no dataset download. [Walk through the case](docs/user-guide.md#guided-investigation-demo).
+
+To work with your own data, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). Prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
 
 The interface supports English and Chinese, with a language switch in the top-right corner. Your selection also applies to newly generated offline reports.
 

@@ -1,4 +1,7 @@
 {
+  "Load the guided scenario first.": ["请先加载引导场景。","Load the guided scenario first."],
+  "Complete the detector run before opening the investigation.": ["请完成检测任务后再打开调查。","Complete the detector run before opening the investigation."],
+  "The guided experiment was edited. Run the edited version from Experiments.": ["引导演示实验已被编辑。请在实验工作区运行编辑后的版本。","The guided experiment was edited. Run the edited version from Experiments."],
   "Select one or more unique numeric signals from this dataset.": ["请选择此数据集中至少一个不重复的数值信号。", "Select one or more unique numeric signals from this dataset."],
   "Choose an available detection algorithm.": ["请选择可用的检测算法。", "Choose an available detection algorithm."],
   "Choose measured observations or explicitly include processed values.": ["请选择原始观测，或明确包含处理值。", "Choose measured observations or explicitly include processed values."],

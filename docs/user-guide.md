@@ -1,6 +1,18 @@
 # L5 操作指南
 
-[中文首页](../README.md) · [English overview](../README.en.md) · [架构](architecture.md) · [第一阶段成果](stage-one-summary.md)
+[Project overview](../README.md) · [架构](architecture.md)
+
+## Guided Investigation Demo
+
+1. Start L5 and choose **Guided Investigation Demo** from Workspaces, then **Load the scenario**. L5 saves a seeded coupled-tank simulation and its measurements to a dedicated local workspace. No external dataset is needed.
+2. Compare the two tank levels with **Inlet flow and pump command**. The blue marker shows when the simulation reduces pump efficiency at 120 s. The inlet flow drops while the command stays fixed.
+3. Select **Run both detectors**. Robust Max-Z and EWMA use the same two level signals, fit and calibrate on 0–79.8 s, and score 80–240 s. Both require three consecutive threshold exceedances. EWMA uses a smoothing factor of 0.08. Compare first alarms, delay from injected onset, and alarm intervals in the labelled pre-fault window. Select an interval to inspect its peak contributions and align them with the raw levels.
+4. Select **Create linked incident** and **Open incident workspace**. The incident links the dataset, model session and saved detector results. Use the timeline to inspect alarms, record evidence and save a conclusion.
+5. In the incident or the guide, select **Generate report** to preview and export standalone HTML, or print to PDF. Report sections follow the current interface language. Return through **Guided demo** to resume the same local case after a refresh or service restart. Deleting its workspace clears the guided case and allows a fresh start.
+
+The results describe one simulated pump fault. The injection time comes from model truth, and each detector has its own score scale and calibrated threshold.
+
+在工作区选择 **引导调查演示** → **加载场景**。切换查看液位、入口流量和泵指令，蓝线标记 120 秒的模拟故障。点击 **运行两种检测算法**，比较首次报警、故障后延迟和故障前报警区间，再查看选中区间的峰值贡献及原始液位。点击 **创建关联事件** → **打开事件工作台**，可继续记录假设、证据和结论。通过 **生成报告** 预览并导出离线 HTML，或打印为 PDF。返回顶部 **引导演示** 可继续同一案例。
 
 ## 数据与信号
 
