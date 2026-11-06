@@ -132,22 +132,24 @@ class IncidentService:
         db.execute('UPDATE incidents SET updated_at=? WHERE id=?', (stamp, identity))
         db.execute('UPDATE workspaces SET updated_at=? WHERE id=?', (stamp, workspace_id))
 
-    def create(self, workspace_id, body):
+    def create(self, workspace_id, body, *, identity=None, sources=()):
         self.store.workspace(workspace_id)
         source = body.get('source')
-        prepared = self.prepare_link(workspace_id, source) if source is not None else None
+        if source is not None:
+            sources = (source, *sources)
+        prepared = [self.prepare_link(workspace_id, source) for source in sources]
         values = self.fields(body)
         if prepared and not values['time_axis_key']:
-            values['time_axis_key'] = self.prepared_axis(prepared)
+            values['time_axis_key'] = self.prepared_axis(prepared[0])
         self.validate_axis(workspace_id, values['time_axis_key'])
-        identity, stamp = uuid4().hex, now()
+        identity, stamp = identity or uuid4().hex, now()
         with self.store.connect() as db:
             db.execute('''INSERT INTO incidents
                 (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
                 (identity, workspace_id, *values.values(), stamp, stamp))
-            if prepared:
-                self.insert_link(db, identity, prepared)
+            for link in prepared:
+                self.insert_link(db, identity, link)
             self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
             self.touch(db, identity, workspace_id)
         return self.get(identity)

@@ -11,6 +11,7 @@ import { SignalWorkspace } from "./SignalWorkspace";
 import { TransformationWorkspace, TransformationLineage } from "./TransformationWorkspace";
 import { TEPWorkspace, ExternalProvenance } from "./TEPWorkspace";
 import { ExperimentWorkspace } from "./ExperimentWorkspace";
+const GuidedDemo = lazy(() => import("./GuidedDemo"));
 const ModelWorkspace = lazy(() => import("./ModelWorkspace").then(m => ({ default: m.ModelWorkspace })));
 import { dateLabel, number, signalLabel, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
@@ -49,6 +50,7 @@ function WorkspaceHome({ workspaces, refresh }: { workspaces: Workspace[]; refre
   }
   return <main className="ws-main ws-home">
     <div className="ws-page-title"><div><div className="ws-kicker">{tr("YOUR DATA / YOUR INVESTIGATION")}</div><h1>{tr("Workspaces")}<span className="ws-accent">.</span></h1><p>{tr("Import process data. Establish normal. Find what changed.")}</p></div><span className="ws-badge">{tr("LOCAL · PERSISTENT")}</span></div>
+    <a className="ws-examples-card ws-guided-entry" href="#/guided-demo"><div><span className="ws-kicker">{tr("BUILT-IN CASE · NO DATA DOWNLOAD")}</span><h2>{tr("Guided Investigation Demo")}</h2><p>{tr("Investigate a loss of inlet flow, compare two detectors and export an incident report.")}</p></div><span>{tr("Open guided demo ↗")}</span></a>
     <form className="ws-create" onSubmit={create}><label htmlFor="workspace-name">{tr("Start an analysis project")}</label><div className="ws-inline"><input id="workspace-name" placeholder={tr("e.g. Reactor 02 · October campaign")} maxLength={160} value={name} onChange={e => setName(e.target.value)} required /><button className="ws-primary" disabled={busy || !name.trim()}>{tr("Create workspace ↗")}</button></div></form>
     <ErrorText error={error} />
     <div className="ws-section-heading"><h2>{tr("Your projects")}</h2><span className="ws-muted">{tr(workspaces.length === 1 ? "{0} workspace" : "{0} workspaces", {0: workspaces.length})}</span></div>
@@ -212,6 +214,7 @@ function HistoryPage({ jobs, datasets, workspaceId }: { jobs: Job[]; datasets: D
 export default function WorkspaceApp({ path, search = "" }: { path: string[]; search?: string }) {
   useLocale();
   const workspaceId = path[0] === "workspaces" ? path[1] : undefined, tab = path[2] || "datasets", jobId = path[3];
+  const guided = path[0] === "guided-demo";
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]), [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]), [jobs, setJobs] = useState<Job[]>([]), [selected, setSelected] = useState("");
   const routeContext = useMemo(() => {
@@ -254,10 +257,11 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
     tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} initialDatasetId={routeContext.datasetId} initialSignals={routeContext.signals} initialRange={routeContext.range} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
     <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   return <div className="ws-shell notranslate" translate="no">
-    <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>{tr("WORKSPACE")}</span><small>2.0</small></a><nav aria-label={tr("Application")}><a href="#/" className="ws-active">{tr("Workspaces")}</a><a href="#/examples">{tr("TripLens examples ↗")}</a></nav><span className="ws-connection"><i />{tr("LOCAL ENGINE")}</span><LanguageSwitch /></header>
+    <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>{tr("WORKSPACE")}</span><small>2.0</small></a><nav aria-label={tr("Application")}><a href="#/" className={guided ? "" : "ws-active"}>{tr("Workspaces")}</a><a href="#/guided-demo" aria-current={guided ? "page" : undefined} className={guided ? "ws-active" : ""}>{tr("Guided demo")}</a><a href="#/examples">{tr("TripLens examples ↗")}</a></nav><span className="ws-connection"><i />{tr("LOCAL ENGINE")}</span><LanguageSwitch /></header>
     {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">{tr("← All workspaces")}</a><span className="ws-kicker">{tr("CURRENT PROJECT")}</span><h2>{workspace?.name || tr("Opening…")}</h2><nav aria-label={tr("Workspace")}>{[["datasets", "01", tr("Datasets"), datasets.length], ["signals", "02", tr("Signal catalog"), "↗"], ["quality", "03", tr("Data quality"), "↗"], ["explorer", "04", tr("Signal Explorer"), "↗"], ["transformations", "05", tr("Transformations"), "↗"], ["analysis", "06", tr("Analysis"), "↗"], ["experiments", "07", tr("Experiments"), "↗"], ["history", "08", tr("History"), jobs.length], ["models", "09", tr("Models"), "↗"], ["incidents", "10", tr("事件"), "↗"], ["tep", "11", tr("TEP case study"), "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key || key === "models" && tab === "simulations" ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}${key === "datasets" && selected ? `/${selected}` : ""}`} aria-current={tab === key || key === "models" && tab === "simulations" ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">{tr("A durable place for your data and the questions you ask of it.")}</div></aside>
       <main className="ws-main"><ErrorText error={error} />{content}</main>
-    </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>{tr("Reconnect")}</button>}</div>{loading ? <main className="ws-main" role="status">{tr("Loading workspaces…")}</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
+    </div> : guided ? <Suspense fallback={<main className="ws-main" role="status">{tr("Loading guided demo…")}</main>}><GuidedDemo onPrepared={refresh} /></Suspense> :
+      <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>{tr("Reconnect")}</button>}</div>{loading ? <main className="ws-main" role="status">{tr("Loading workspaces…")}</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>{tr("L5 / OPEN INDUSTRIAL ANALYSIS")}</span><span>{tr("DATA → EXPERIMENT → EVIDENCE → INVESTIGATION")}</span></footer>
   </div>;
 }

@@ -395,7 +395,7 @@ class ExperimentService:
         return {**dict(row), 'snapshot': json.loads(row['snapshot']), 'tasks': tasks,
                 'task_count': len(tasks), 'completed': sum(t['status'] in ('succeeded', 'failed', 'interrupted') for t in tasks)}
 
-    def execute(self, identity, body):
+    def execute(self, identity, body, *, expected_revision=None):
         experiment = self.get(identity)
         retry_id = body.get('retryRunId')
         if retry_id:
@@ -407,6 +407,8 @@ class ExperimentService:
             if not tasks:
                 raise ValueError('This run has no unfinished tasks.')
         else:
+            if expected_revision is not None and experiment['revision'] != expected_revision:
+                raise ValueError('The guided experiment was edited. Run the edited version from Experiments.')
             config, tasks = self.validate(experiment['workspace_id'], experiment['config'])
             dataset = self.store.dataset(config['datasetId'])
             folder = self.store.root / dataset['workspace_id'] / 'datasets' / dataset['id']
