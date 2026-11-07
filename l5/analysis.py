@@ -43,11 +43,10 @@ def contribution_matrix(monitor, target):
         projected, residual = monitor._decompose(target)
         weights = residual ** 2 if monitor.mode == 'q' else np.abs((projected / np.sqrt(monitor.eigenvalues)) @ monitor.components)
         return weights.reshape(len(target), monitor.lags + 1, monitor.features).sum(axis=1)
-    z = (target - monitor.center) / monitor.scale
     if isinstance(monitor, MaxZMonitor):
-        return np.abs(z)
-    projected = z @ monitor.components.T
-    return (z - projected @ monitor.components) ** 2 if monitor.mode == 'q' else np.abs((projected / np.sqrt(monitor.eigenvalues)) @ monitor.components)
+        return np.abs((target - monitor.center) / monitor.scale)
+    _, projected, residual = monitor._decompose(target)
+    return residual ** 2 if monitor.mode == 'q' else np.abs((projected / np.sqrt(monitor.eigenvalues)) @ monitor.components)
 
 
 
@@ -186,9 +185,6 @@ def score_analysis(monitor, threshold, target, original_mask, target_times, sign
     """Shared saved AnalysisResult projection for single- and cross-dataset paths."""
     from benchmarks.coverage import decide, score_with_observation_resets
     started = perf_counter() if started is None else started
-    algorithm = config['algorithm']
-    alpha, variance, fit_fraction = config.get('alpha', .01), config.get('variance', .9), config.get('fitFraction', .7)
-    required = list(policy.required_channels)
     persistence = config.get('persistence', 1)
     scores = score_with_observation_resets(monitor, target, original_mask, policy)
     states = decide(scores, original_mask, threshold=threshold, consecutive=persistence, policy=policy)
@@ -205,9 +201,24 @@ def score_analysis(monitor, threshold, target, original_mask, target_times, sign
             end += 1
         weights[begin:end] = contribution_matrix(monitor, target[begin:end])
         begin = end
+    return project_analysis(monitor, threshold, scores, states, weights, original_mask, target_times, signals,
+        config, policy, medians, fit_samples=fit_samples, calibration_samples=calibration_samples,
+        baseline_samples=baseline_samples, imputed=imputed, processed_count=processed_count,
+        observation_policy=observation_policy, observed=observed, started=started)
+
+
+def project_analysis(monitor, threshold, scores, states, weights, original_mask, target_times, signals,
+                     config, policy, medians, *, fit_samples, calibration_samples, baseline_samples, imputed,
+                     processed_count=0, observation_policy='measured', observed=False, started=None):
+    """Build a saved analysis from already-calculated scores and decisions."""
+    started = perf_counter() if started is None else started
+    algorithm = config['algorithm']
+    alpha, variance, fit_fraction = config.get('alpha', .01), config.get('variance', .9), config.get('fitFraction', .7)
+    required = list(policy.required_channels)
+    persistence = config.get('persistence', 1)
+    valid = np.array([state != 'abstain' for state in states])
     def contributions_at(index):
-        order = sorted(range(len(signals)), key=lambda i: (-float(weights[index,i]), i))
-        return [dict(signal=signals[i], value=float(weights[index,i])) for i in order]
+        return ranked_contributions(weights[index], signals)
 
     if not np.isfinite(scores).all():
         raise ValueError('Signal magnitudes produced nonfinite scores; check the selected measurements.')
@@ -226,22 +237,32 @@ def score_analysis(monitor, threshold, target, original_mask, target_times, sign
     peak_index = int(np.argmax(np.where(valid, scores, -np.inf))) if valid.any() else 0
     contributions = contributions_at(peak_index)
     config = {**config, 'algorithm': algorithm, 'alpha': alpha, 'variance': variance,
-              'missingValues': 'fit-partition median', 'fitFraction': fit_fraction, 'minCoverage': policy.min_observed_fraction, 'requiredSignals': required, 'persistence': persistence}
+              'missingValues': 'fit-partition median' if medians is not None else 'abstain',
+              'fitFraction': fit_fraction, 'minCoverage': policy.min_observed_fraction, 'requiredSignals': required, 'persistence': persistence}
     return {'config': config, 'algorithmLabel': ALGORITHMS[algorithm], 'times': target_times.tolist(),
             'scores': scores.tolist(), 'states': list(states), 'observedFraction': original_mask.mean(axis=1).tolist(), 'threshold': threshold, 'intervals': intervals,
             'relatedSignals': [item['signal'] for item in contributions[:10]],
             'signalContributions': contributions, 'peakTime': float(target_times[peak_index]),
             'contributionMetric': {'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
                                    'pca-t2': 'model-leverage', 'dpca-q': 'squared-residual', 'dpca-t2': 'model-leverage'}.get(algorithm, 'history-contribution'),
-            'summary': {'analysisSamples': len(target), 'baselineSamples': baseline_samples,
+            'summary': {'analysisSamples': len(target_times), 'baselineSamples': baseline_samples,
                         'fitSamples': fit_samples, 'calibrationSamples': calibration_samples,
                         'flaggedSamples': int(flags.sum()), 'peakScore': float(scores[peak_index]),
                         'firstDetection': float(target_times[starts[0]]) if len(starts) else None,
                         'imputedValues': imputed, 'abstainedSamples': int(sum(s == 'abstain' for s in states)), 'coverageFraction': float(valid.mean()),
                         **({'processedInputValues': processed_count, 'observationPolicy': observation_policy} if observed else {})},
-            'model': {**monitor.metadata(), 'center': monitor.center.tolist(), 'scale': monitor.scale.tolist(),
-                      'imputationMedians': medians.tolist(),
-                      **({'loadings': monitor.components.tolist(), 'eigenvalues': monitor.eigenvalues.tolist()}
-                         if hasattr(monitor, 'components') else {}),
-                      **({'lagPaddingCenter': monitor.pad_center.tolist()} if hasattr(monitor, 'pad_center') else {})},
+            'model': {**model_parameters(monitor),
+                      **({'imputationMedians': medians.tolist()} if medians is not None else {})},
             'completedAt': datetime.now(timezone.utc).isoformat(), 'durationMs': round((perf_counter() - started) * 1000, 2)}
+
+
+def ranked_contributions(weights, signals):
+    order = sorted(range(len(signals)), key=lambda i: (-float(weights[i]), i))
+    return [dict(signal=signals[i], value=float(weights[i])) for i in order]
+
+
+def model_parameters(monitor):
+    return {**monitor.metadata(), 'center': monitor.center.tolist(), 'scale': monitor.scale.tolist(),
+            **({'loadings': monitor.components.tolist(), 'eigenvalues': monitor.eigenvalues.tolist()}
+               if hasattr(monitor, 'components') else {}),
+            **({'lagPaddingCenter': monitor.pad_center.tolist()} if hasattr(monitor, 'pad_center') else {})}

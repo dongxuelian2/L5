@@ -22,7 +22,7 @@ function plotIndexes(values: (number | null)[]) {
 
 type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
 export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Pick<Interval, "start" | "end">[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);

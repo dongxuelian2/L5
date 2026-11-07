@@ -321,5 +321,18 @@
   "Saved study {0} differs from its fixed protocol.": ["已保存研究的 {0} 与固定协议不同。","Saved study {0} differs from its fixed protocol."],
   "No explicit conversion from {0} to {1}. Custom units can only be preserved.": ["没有从 {0} 到 {1} 的明确换算关系，自定义单位只能保持原样。","No explicit conversion from {0} to {1}. Custom units can only be preserved."],
   "{0} must be between {1} and {2} {3}.": ["{0} 必须在 {1} 至 {2} {3} 之间。","{0} must be between {1} and {2} {3}."],
-  "{0}必须是文本，最多 {1} 个字符。": ["{0}必须是文本，最多 {1} 个字符。","{0} must be text of at most {1} characters."]
+  "{0}必须是文本，最多 {1} 个字符。": ["{0}必须是文本，最多 {1} 个字符。","{0} must be text of at most {1} characters."],
+  "Replay requires an original dataset or a saved simulation. Derived values can use future measurements.": ["回放需要原始数据集或已保存的模拟结果。派生值可能使用未来的测量数据。","Replay requires an original dataset or a saved simulation. Derived values can use future measurements."],
+  "Select 1–12 unique replay signals from the dataset.": ["请从数据集中选择 1 至 12 个互不重复的回放信号。","Select 1–12 unique replay signals from the dataset."],
+  "Choose a replay detector.": ["请选择回放检测器。","Choose a replay detector."],
+  "Alarm persistence must be a positive whole number.": ["报警所需的连续超阈值次数必须为正整数。","Alarm persistence must be a positive whole number."],
+  "Detector parameters must be finite numbers.": ["检测器参数必须是有限数值。","Detector parameters must be finite numbers."],
+  "Select a replay window with 1–100,000 observations.": ["请选择包含 1 至 100,000 条观测的回放窗口。","Select a replay window with 1–100,000 observations."],
+  "The normal training window needs complete measurements for every selected signal.": ["正常训练窗口内的所有已选信号都需要完整的测量数据。","The normal training window needs complete measurements for every selected signal."],
+  "Replay needs a finite playhead and a valid alarm page.": ["回放需要有限的时间值和有效的报警页码。","Replay needs a finite playhead and a valid alarm page."],
+  "Seek within the replay time range.": ["请跳转到回放时间范围内。","Seek within the replay time range."],
+  "Select an observed replay position.": ["请选择已观测的回放位置。","Select an observed replay position."],
+  "Select an alarm observed at the current replay position.": ["请选择截至当前回放位置已观测到的报警。","Select an alarm observed at the current replay position."],
+  "Playback speed must be positive and finite.": ["回放速度必须是有限正数。","Playback speed must be positive and finite."],
+  "Replay session is unavailable. Prepare a new replay.": ["回放会话已不可用。请准备新的回放。","Replay session is unavailable. Prepare a new replay."]
 }
