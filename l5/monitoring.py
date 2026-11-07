@@ -109,8 +109,9 @@ class PCAMonitor:
 
     def _decompose(self, samples: np.ndarray):
         z = (as_matrix(samples, features=self.features) - self.center) / self.scale
-        projected = z @ self.components.T
-        residual = z - projected @ self.components
+        # Use the same per-row reductions for one observation and a batch.
+        projected = np.einsum("ij,kj->ik", z, self.components)
+        residual = z - np.einsum("ik,kj->ij", projected, self.components)
         return z, projected, residual
 
     def score(self, samples: np.ndarray) -> np.ndarray:

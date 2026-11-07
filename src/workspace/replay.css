@@ -1,0 +1,33 @@
+.replay-source { max-width: 38rem; }
+.replay-range-note { color: #aab5a3; font-size: .85rem; overflow-wrap: anywhere; }
+.replay-setup .replay-confirm { flex-direction: row; align-items: center; margin: 1.2rem 0; }
+.replay-heading { display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 1rem; }
+.replay-heading h2 { margin: 0; overflow-wrap: anywhere; }
+.ws-shell .replay-heading p { margin: .35rem 0; }
+.replay-controls { flex-wrap: wrap; }
+.replay-controls label { white-space: nowrap; }
+.replay-export { margin-inline-start: auto; }
+.replay-scrubber { display: flex; gap: .75rem; align-items: end; margin-block: 1rem; }
+.ws-shell .replay-scrubber label { flex: 1; display: grid; grid-template-columns: 1fr auto; }
+.ws-shell .replay-scrubber input[type="range"] { grid-column: 1 / -1; padding: 0; accent-color: #b5ed9a; }
+.replay-scrubber output { color: #d8e3d2; font-variant-numeric: tabular-nums; }
+.replay-state { border: 1px solid #56624e; border-radius: 1rem; padding: .3rem .75rem; font-size: .8rem; }
+.replay-state-normal { color: #b5ed9a; border-color: #6b895a; }
+.replay-state-alarm { color: #ffb09e; border-color: #c27d6e; background: #30201c; }
+.replay-state-abstain { color: #e2bc75; border-color: #9b8054; }
+.replay-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .65rem; }
+.replay-metrics > * { min-width: 0; background: #111611; border: 1px solid #30392d; padding: .65rem .8rem; text-align: start; }
+.replay-metrics span { display: block; color: #aab5a3; font-size: .75rem; overflow-wrap: anywhere; }
+.replay-metrics strong { display: block; margin-top: .3rem; font-size: 1rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.replay-readings { margin-bottom: 1rem; }
+.replay-readings button[aria-pressed="true"], .replay-table button[aria-pressed="true"] { border-color: #b5ed9a; color: #b5ed9a; }
+.replay-table { width: 100%; }
+.replay-table td { vertical-align: middle; }
+.replay-pagination { margin-top: .75rem; }
+.replay-evidence { border-inline-start: 3px solid #e2bc75; }
+
+@media (max-width: 600px) {
+  .replay-heading { flex-wrap: wrap; }
+  .replay-export { margin-inline-start: 0; }
+  .replay-metrics { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+}

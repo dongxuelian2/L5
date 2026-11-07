@@ -188,7 +188,9 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'model-research' and method == 'GET':
+            if parts[3] == 'replays' and method == 'POST':
+                result, status = store.replays.create(parts[2], body), 201
+            elif parts[3] == 'model-research' and method == 'GET':
                 from .model_research import research
                 result = research(store, parts[2])
             elif parts[3] == 'scenarios':
@@ -235,6 +237,9 @@ def dispatch(handler, method: str) -> bool:
                     result = {'jobs': store.jobs(parts[2])}
                 elif method == 'POST':
                     result, status = store.analyze(parts[2], body), 201
+        elif len(parts) == 6 and parts[1] == 'workspaces' and parts[3] == 'replays' and method == 'POST':
+            if parts[5] in ('frame', 'evidence', 'export', 'incident'):
+                result = store.replays.operate(parts[2], parts[4], parts[5], body)
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['experiments', 'preview'] and method == 'POST':
             result = store.experiments.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['external', 'tep'] and method == 'POST':

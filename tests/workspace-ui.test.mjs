@@ -54,6 +54,7 @@ const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
+const { ReplayWorkspace } = require('../src/workspace/ReplayWorkspace.tsx');
 const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
 const copy = require('../src/i18n/messages.json');
 const { errorMessage } = require('../src/i18n/errors.ts');
@@ -217,6 +218,63 @@ async function setField(node,value) {
     node.dispatchEvent(new dom.window.Event(node.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true}));
   });
 }
+
+test('monitoring prepares explicitly, replays, seeks to an alarm and opens saved evidence in either language', async () => {
+  const source = dataset('monitoring-source');
+  source.metadata.suggestedRanges = { baselineRange: [0, 99], analysisRange: [100, 899] };
+  const signals = names.slice(0, 3);
+  const calls = [];
+  const alarm = { id: 1, start: 125, end: 125, peakTime: 125, peakIndex: 1, peakScore: 8, samples: 1,
+    signals: [signals[0]], status: 'active', durationSeconds: 0, transitionTime: null, contributions: [{ signal: signals[0], value: 8 }] };
+  function series(through) {
+    return { first: 0, times: [100, 125, 125.1].slice(0, through), states: ['normal', 'alarm', 'normal'].slice(0, through),
+      scores: [1, 8, 1].slice(0, through), scoreSegments: [1, 1, 1].slice(0, through),
+      values: Object.fromEntries(signals.map(signal => [signal, [1, 8, 1].slice(0, through)])),
+      signalSegments: Object.fromEntries(signals.map(signal => [signal, [1, 1, 1].slice(0, through)])) };
+  }
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push([url.split('/').at(-1), body]);
+    if (url.endsWith('/replays')) return response({ id: 'replay-a', config: body, threshold: 3, start: 100, end: 125.1,
+      sampleCount: 3, fitSamples: 70, calibrationSamples: 30, alarmPageSize: 20 });
+    if (url.endsWith('/frame')) {
+      const through = body.at < 125 ? 1 : body.at < 125.1 ? 2 : 3;
+      return response({ through, series: series(through), nextTime: [125, 125.1, null][through - 1],
+        alarmCount: through === 1 ? 0 : 1, alarms: through === 1 ? [] : [alarm] });
+    }
+    if (url.endsWith('/evidence')) return response({ alarm, series: series(body.through) });
+    if (url.endsWith('/incident')) return response({ id: 'incident-a' });
+    throw new Error(`Unexpected replay request ${url}`);
+  };
+  await mount(React.createElement(ReplayWorkspace, { workspaceId: 'test', datasets: [source] }));
+  assert.ok(button('Prepare replay').disabled);
+  await click(container.querySelector('.replay-confirm input'));
+  await click(button('Prepare replay'));
+  assert.deepEqual(calls[0][1].baselineRange, [0, 99]);
+  assert.match(container.textContent, /0 \/ 3 observations/);
+  await click(button('Start'));
+  assert.match(container.textContent, /1 \/ 3 observations/);
+  await click(button('Pause'));
+  assert.ok(button('Resume'));
+  const slider = container.querySelector('input[type="range"]');
+  await setField(slider, 125);
+  await click(button('Seek'));
+  assert.match(container.textContent, /2 \/ 3 observations/);
+  assert.match(container.textContent, /Alarm active/);
+  await click(button('Inspect'));
+  assert.deepEqual(calls.at(-1), ['evidence', { alarmId: 1, through: 2 }]);
+  await click(button('Save alarm as incident'));
+  assert.equal(container.querySelector('.replay-evidence a').getAttribute('href'), '#/workspaces/test/incidents/incident-a');
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.textContent, /过程回放与监测/);
+  assert.match(container.textContent, /峰值时的贡献/);
+  await setField(slider, 100);
+  await click(button('Seek'));
+  assert.doesNotMatch(container.textContent, /打开已保存的事件/);
+  await click(button('Restart'));
+  assert.match(container.textContent, /0 \/ 3 条观测/);
+});
+
 function isMasked(node) { return Boolean(node?.closest('[aria-hidden="true"][inert]')); }
 async function openRuntime(api, asOf = 300, tab = 'evidence') {
   await mount(React.createElement(RuntimeWorkbench,{simulationId:'A',initialTab:tab}));

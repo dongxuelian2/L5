@@ -55,6 +55,8 @@ class WorkspaceStore:
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
         self.tep_studies = TEPStudyService(self)
+        from .replay import ReplayService
+        self.replays = ReplayService(self)
 
     @contextmanager
     def connect(self):
@@ -240,11 +242,14 @@ class WorkspaceStore:
             times, values = self.load_data(dataset)
             result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
                                   observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
+        return self.save_analysis(workspace_id, dataset, result, body.get('name'), experiment=experiment)
+
+    def save_analysis(self, workspace_id, dataset, result, name=None, *, experiment=None):
         if dataset['metadata'].get('transformation'):
             lineage = dataset['metadata']['transformation']
             result['transformation'] = {k: lineage[k] for k in ('definitionId', 'revision', 'executionId', 'createdAt')}
         identity, stamp = uuid4().hex, now()
-        name = self.name(body.get('name') or f"{result['algorithmLabel']} · {dataset['name']}")
+        name = self.name(name or f"{result['algorithmLabel']} · {dataset['name']}")
         result.update({'id': identity, 'workspaceId': workspace_id, 'datasetId': dataset['id'], 'name': name, 'createdAt': stamp})
         if experiment is not None:
             result['experiment'] = experiment
