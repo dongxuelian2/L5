@@ -1,0 +1,31 @@
+.health-workspace { display: grid; gap: 24px; }
+.health-workspace .ws-panel { margin: 0; }
+.health-workspace form, .health-result { display: grid; gap: 20px; }
+.health-workspace label { display: grid; gap: 7px; }
+.health-workspace summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.health-workspace fieldset { min-width: 0; border: 1px solid #384133; padding: 16px; }
+.health-workspace legend { padding: 0 6px; color: #b5ed9a; }
+.health-signals { display: flex; flex-wrap: wrap; gap: 16px; }
+.health-workspace .health-signals label, .health-workspace .health-confirm { display: flex; gap: 8px; align-items: center; }
+.health-workspace input[type=checkbox] { width: auto; }
+.health-workspace .ws-form-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.health-links { flex-wrap: wrap; }
+.health-links label { min-width: 250px; }
+.health-model { padding: 12px; background: #171e17; }
+.health-relationship { flex-wrap: wrap; margin-bottom: 12px; }
+.health-result .ws-panel { overflow: hidden; }
+.health-episodes { display: flex; flex-wrap: wrap; gap: 10px; }
+.health-episodes button[aria-pressed=true] { border-color: #b5ed9a; color: #b5ed9a; }
+.health-table { overflow-x: auto; }
+.health-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.health-table td, .health-table th { padding: 12px; border-bottom: 1px solid #384133; vertical-align: top; }
+.health-evidence { display: grid; gap: 6px; font-size: .85rem; }
+.health-evidence div { display: flex; flex-wrap: wrap; gap: 8px; }
+.health-evidence dt { color: #aab3a3; }
+.health-evidence dd { margin: 0; overflow-wrap: anywhere; }
+.health-legend { color: #b5ed9a; display: flex; gap: 18px; }
+.health-legend span { color: #8cbfe8; }
+.health-readout { flex-wrap: wrap; font-family: 'IBM Plex Mono', monospace; font-size: .85rem; }
+.health-digest { overflow-wrap: anywhere; }
+.health-workspace pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .health-workspace .ws-stats { grid-template-columns: 1fr 1fr; } .health-workspace .ws-form-grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,17 @@
+export type TankDiagnosticModel = { kind: "coupled-tanks"; mapping: Record<string, string>; parameters: Record<string, number> };
+export type SensorRelationship = { kind: "agreement" | "linear"; target: string; predictor: string };
+export type HealthConfig = { signals: string[]; baselineRange: [number, number]; analysisRange: [number, number]; window: number; persistence: number; z: number; relationships: SensorRelationship[]; model?: TankDiagnosticModel };
+export type HealthSpan = { start: number; end: number; samples: number; peakTime: number; detectedAt: number; severity: number; evidenceValue: number };
+export type HealthIndicator = { id: string; kind: string; signals: string[]; threshold: number; scores: (number | null)[]; intervals: HealthSpan[]; evidence: Record<string, unknown> };
+export type HealthCandidate = { key: string; category: string; fitError: number; penalizedError: number; improvement: number; parameters: Record<string, number>; constraints: string[] };
+export type HealthEpisode = { start: number; end: number; detectedAt: number; samples: number; severity: number; indicatorIds: string[]; signals: string[]; assessment: string; candidates: HealthCandidate[]; evidenceCoverage?: number };
+export type HealthResult = { id: string; workspaceId: string; datasetId: string; name: string; version: string; createdAt: string; sourceDigest: string; config: HealthConfig; times: number[]; gaps: { start: number; end: number }[];
+  signals: Record<string, { referenceMedian: number; referenceScale: number; measuredFraction: number; observed: (number | null)[]; segmentIds: number[] }>;
+  indicators: HealthIndicator[]; episodes: HealthEpisode[]; warnings: { code: string; signals: string[] }[]; limitations: string[];
+  reference: { times: number[]; values: Record<string, (number | null)[]>; fitSamples: number; calibrationSamples: number };
+  relationships: (SensorRelationship & { expected: (number | null)[]; residual: (number | null)[]; scale: number })[];
+  physical: null | { kind: string; mapping: Record<string, string>; parameters: Record<string, number>; expected: Record<string, (number | null)[]>; segmentIds: Record<string, number[]>; measuredCoverage: number; states: string[]; assumptions: string[]; residuals: { key: string; unit: string; values: (number | null)[]; scale: number; threshold: number }[] };
+  datasetSnapshot: { name: string; time: import("./types").TimeAxis; createdAt: string };
+  summary: { samples: number; flaggedSamples: number; episodes: number; firstDetection: number | null };
+};
+export type HealthHistory = { id: string; name: string; dataset_id: string; created_at: string; summary: HealthResult["summary"] };

@@ -137,6 +137,13 @@ def investigation(store, identity, selected=None):
         clock = add_clock(source_clock(store, link))
         detail = link['details']
         dataset_id = detail.get('datasetId')
+        if detail.get('diagnosticId'):
+            diagnostic = store.sensor_health.get(detail['diagnosticId'])
+            episodes = [(detail['episodeIndex'], detail['episode'])] if 'episodeIndex' in detail else list(enumerate(diagnostic['episodes']))
+            for index, episode in episodes:
+                event(f'sensor-health:{diagnostic["id"]}:{index}', 'investigation', 'Sensor health', clock,
+                    episode['start'], episode['end'], linkId=link['id'], recordedAt=diagnostic['createdAt'],
+                    signals=episode['signals'], diagnosticAssessment=episode['assessment'], diagnosticSeverity=episode['severity'], target='source')
         external = datasets.get(dataset_id, {}).get('metadata', {}).get('external')
         if external and dataset_id not in truth_datasets and external.get('faultOnsetSeconds') is not None:
             truth_datasets.add(dataset_id)

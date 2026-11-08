@@ -21,7 +21,7 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
   useLocale();
   const [savedView, setView] = useState<IncidentView | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(true);
   const view = savedView && { ...savedView, axes: savedView.axes.map(a => ({ ...a, label: axisLabel(a, savedView.datasets) })),
-    events: savedView.events.map(event => ({ ...event, title: timelineTitle(event, savedView), content: event.kind === "truth" ? tr(event.content) : event.content })) };
+    events: savedView.events.map(event => ({ ...event, title: timelineTitle(event, savedView), content: event.diagnosticAssessment ? tr("{0} · severity {1}", {0: tr(event.diagnosticAssessment), 1: number(event.diagnosticSeverity!)}) : event.kind === "truth" ? tr(event.content) : event.content })) };
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [axisId, setAxisId] = useState(""), [kind, setKind] = useState(""), [analysisId, setAnalysisId] = useState("");
   const [start, setStart] = useState(""), [end, setEnd] = useState("");

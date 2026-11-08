@@ -1,0 +1,686 @@
+{
+  "Sensor health": [
+    "传感器健康",
+    "Sensor health"
+  ],
+  "MEASUREMENT / PROCESS / EVIDENCE": [
+    "测量 / 过程 / 证据",
+    "MEASUREMENT / PROCESS / EVIDENCE"
+  ],
+  "Investigate sensor integrity and compare physical fault explanations.": [
+    "检查测量完整性，比较基于物理约束的故障解释。",
+    "Investigate sensor integrity and compare physical fault explanations."
+  ],
+  "Reference-based diagnostics": [
+    "基于正常参考的诊断",
+    "Reference-based diagnostics"
+  ],
+  "Open process simulator ↗": [
+    "打开过程模拟器 ↗",
+    "Open process simulator ↗"
+  ],
+  "Diagnostic configuration": [
+    "诊断配置",
+    "Diagnostic configuration"
+  ],
+  "Import a dataset or save a simulation to begin.": [
+    "导入数据集或保存模拟后开始。",
+    "Import a dataset or save a simulation to begin."
+  ],
+  "Normal reference interval (seconds)": [
+    "正常参考区间（秒）",
+    "Normal reference interval (seconds)"
+  ],
+  "Analysis interval (seconds)": [
+    "诊断区间（秒）",
+    "Analysis interval (seconds)"
+  ],
+  "I declare this reference interval to be normal operation.": [
+    "我声明此参考区间为正常运行。",
+    "I declare this reference interval to be normal operation."
+  ],
+  "The reference needs at least max(90, 3 × window) samples. Thresholds use a chronological 70% fit / 30% calibration split.": [
+    "参考区间至少需要 max(90, 3 × 窗口) 个样本。按时间顺序使用前 70% 拟合、后 30% 校准阈值。",
+    "The reference needs at least max(90, 3 × window) samples. Thresholds use a chronological 70% fit / 30% calibration split."
+  ],
+  "Window samples": [
+    "窗口样本数",
+    "Window samples"
+  ],
+  "Consecutive exceedances": [
+    "连续超限次数",
+    "Consecutive exceedances"
+  ],
+  "Threshold multiplier": [
+    "阈值倍数",
+    "Threshold multiplier"
+  ],
+  "Physical reference": [
+    "物理参考模型",
+    "Physical reference"
+  ],
+  "Integrity and declared relationships only": [
+    "仅完整性与显式信号关系",
+    "Integrity and declared relationships only"
+  ],
+  "Coupled-tank constraints": [
+    "耦合水箱约束",
+    "Coupled-tank constraints"
+  ],
+  "Signal mapping and nominal physical parameters": [
+    "信号映射与标称物理参数",
+    "Signal mapping and nominal physical parameters"
+  ],
+  "Use independent flow measurements and known geometry. Simulator fault labels, onset and severity are excluded.": [
+    "使用独立流量测量与已知几何参数。诊断不使用模拟器的故障标签、起点和强度。",
+    "Use independent flow measurements and known geometry. Simulator fault labels, onset and severity are excluded."
+  ],
+  "Choose signal": [
+    "选择信号",
+    "Choose signal"
+  ],
+  "Computing diagnostics…": [
+    "正在计算诊断…",
+    "Computing diagnostics…"
+  ],
+  "Run and save diagnostics": [
+    "运行并保存诊断",
+    "Run and save diagnostics"
+  ],
+  "Saved diagnostics": [
+    "已保存的诊断",
+    "Saved diagnostics"
+  ],
+  "fault intervals": [
+    "个故障指示区间",
+    "fault intervals"
+  ],
+  "Fault intervals": [
+    "故障指示区间",
+    "Fault intervals"
+  ],
+  "No saved sensor diagnostics yet.": [
+    "尚无已保存的传感器诊断。",
+    "No saved sensor diagnostics yet."
+  ],
+  "Use existing simulation": [
+    "使用已有模拟",
+    "Use existing simulation"
+  ],
+  "Select simulation to save as dataset": [
+    "选择模拟并保存为数据集",
+    "Select simulation to save as dataset"
+  ],
+  "Declared cross-signal relationships": [
+    "显式跨信号关系",
+    "Declared cross-signal relationships"
+  ],
+  "Agreement compares redundant measurements after normal offset calibration. Linear prediction is fitted on the reference. Neither identifies the faulty channel alone.": [
+    "一致性检查先用正常数据校准冗余测量的偏置，线性预测使用参考区间拟合。仅凭关系违背无法确定哪个通道故障。",
+    "Agreement compares redundant measurements after normal offset calibration. Linear prediction is fitted on the reference. Neither identifies the faulty channel alone."
+  ],
+  "Relationship method": [
+    "关系检查方法",
+    "Relationship method"
+  ],
+  "Redundant agreement": [
+    "冗余测量一致性",
+    "Redundant agreement"
+  ],
+  "Baseline linear prediction": [
+    "正常参考线性预测",
+    "Baseline linear prediction"
+  ],
+  "Add relationship": [
+    "添加信号关系",
+    "Add relationship"
+  ],
+  "target": [
+    "目标信号",
+    "Target signal"
+  ],
+  "predictor": [
+    "预测信号",
+    "Predictor signal"
+  ],
+  "Sensor diagnostic results": [
+    "传感器诊断结果",
+    "Sensor diagnostic results"
+  ],
+  "Continue in Incident": [
+    "在事件中继续调查",
+    "Continue in Incident"
+  ],
+  "samples with evidence": [
+    "个样本存在超限证据",
+    "samples with evidence"
+  ],
+  "complete model evidence": [
+    "完整物理证据覆盖率",
+    "complete model evidence"
+  ],
+  "first confirmed detection": [
+    "首次确认检出",
+    "first confirmed detection"
+  ],
+  "Observed and expected measurements": [
+    "观测与预期测量",
+    "Observed and expected measurements"
+  ],
+  "Reference median": [
+    "参考中位数",
+    "Reference median"
+  ],
+  "Reference scale": [
+    "参考尺度",
+    "Reference scale"
+  ],
+  "Measured coverage": [
+    "实测覆盖率",
+    "Measured coverage"
+  ],
+  "Expected from related measurements": [
+    "由相关测量推算的预期值",
+    "Expected from related measurements"
+  ],
+  "Expected": [
+    "预期值",
+    "Expected"
+  ],
+  "Severity is statistic / threshold; values above 1 indicate an exceedance.": [
+    "严重度为统计量 / 阈值，大于 1 表示超限。",
+    "Severity is statistic / threshold; values above 1 indicate an exceedance."
+  ],
+  "Physical constraint residuals": [
+    "物理约束残差",
+    "Physical constraint residuals"
+  ],
+  "Positive residual limit": [
+    "正向残差限值",
+    "Positive residual limit"
+  ],
+  "Negative residual limit": [
+    "负向残差限值",
+    "Negative residual limit"
+  ],
+  "Relationship residual": [
+    "信号关系残差",
+    "Relationship residual"
+  ],
+  "Fault timeline and competing explanations": [
+    "故障时间线与竞争解释",
+    "Fault timeline and competing explanations"
+  ],
+  "Peak severity": [
+    "峰值严重度",
+    "Peak severity"
+  ],
+  "Evidence coverage": [
+    "证据覆盖率",
+    "Evidence coverage"
+  ],
+  "Rankings compare residual corrections under a single-fault assumption. Fit scores are not causal probabilities.": [
+    "排序比较单故障假设下的残差修正效果。拟合分数不是因果概率。",
+    "Rankings compare residual corrections under a single-fault assumption. Fit scores are not causal probabilities."
+  ],
+  "Candidate explanation": [
+    "候选解释",
+    "Candidate explanation"
+  ],
+  "Residual fit error": [
+    "残差拟合误差",
+    "Residual fit error"
+  ],
+  "Penalized error": [
+    "含复杂度惩罚的误差",
+    "Penalized error"
+  ],
+  "Improvement": [
+    "误差改善",
+    "Improvement"
+  ],
+  "Fitted evidence": [
+    "拟合参数与约束",
+    "Fitted evidence"
+  ],
+  "Evidence behind this interval": [
+    "此区间的诊断证据",
+    "Evidence behind this interval"
+  ],
+  "Peak statistic": [
+    "峰值统计量",
+    "Peak statistic"
+  ],
+  "Confirmed at": [
+    "确认时刻",
+    "Confirmed at"
+  ],
+  "Link this interval to Incident": [
+    "将此区间关联至事件",
+    "Link this interval to Incident"
+  ],
+  "No diagnostic threshold exceedances in the selected interval.": [
+    "所选区间没有诊断统计量超限。",
+    "No diagnostic threshold exceedances in the selected interval."
+  ],
+  "Saved reference and reproducibility": [
+    "已保存的参考与复现信息",
+    "Saved reference and reproducibility"
+  ],
+  "Fit samples": [
+    "拟合样本",
+    "Fit samples"
+  ],
+  "Calibration samples": [
+    "校准样本",
+    "Calibration samples"
+  ],
+  "Normal reference": [
+    "正常参考",
+    "Normal reference"
+  ],
+  "Source digest": [
+    "源数据摘要",
+    "Source digest"
+  ],
+  "Saved sensor diagnostic evidence; candidate explanations require investigation.": [
+    "已保存传感器诊断证据，候选解释仍需进一步调查确认。",
+    "Saved sensor diagnostic evidence; candidate explanations require investigation."
+  ],
+  "Open sensor diagnostics ↗": [
+    "打开传感器诊断 ↗",
+    "Open sensor diagnostics ↗"
+  ],
+  "Assessment": [
+    "诊断判断",
+    "Assessment"
+  ],
+  "level_shift": [
+    "液位或信号偏移",
+    "Level shift / possible offset"
+  ],
+  "drift": [
+    "渐进漂移指示",
+    "Gradual drift indicator"
+  ],
+  "noise": [
+    "异常测量噪声指示",
+    "Abnormal noise indicator"
+  ],
+  "stuck": [
+    "测量冻结",
+    "Stuck measurement"
+  ],
+  "spike": [
+    "孤立尖峰",
+    "Isolated spike"
+  ],
+  "dropout": [
+    "测量缺失",
+    "Measurement dropout"
+  ],
+  "relationship": [
+    "跨信号关系不一致",
+    "Cross-signal inconsistency"
+  ],
+  "model_residual": [
+    "物理模型残差超限",
+    "Physical model residual exceedance"
+  ],
+  "hydraulic1": [
+    "水箱 1 液位与流量关系残差",
+    "Tank 1 hydraulic residual"
+  ],
+  "hydraulic2": [
+    "水箱 2 液位与流量关系残差",
+    "Tank 2 hydraulic residual"
+  ],
+  "balance1": [
+    "水箱 1 质量平衡残差",
+    "Tank 1 mass-balance residual"
+  ],
+  "balance2": [
+    "水箱 2 质量平衡残差",
+    "Tank 2 mass-balance residual"
+  ],
+  "pump_capacity": [
+    "泵容量残差",
+    "Pump capacity residual"
+  ],
+  "valve_opening": [
+    "阀门开度变化残差",
+    "Valve opening residual"
+  ],
+  "sensor": [
+    "测量故障证据占优",
+    "Sensor-fault evidence favored"
+  ],
+  "process": [
+    "过程变化证据占优",
+    "Process-fault evidence favored"
+  ],
+  "insufficient_evidence": [
+    "证据不足或解释不唯一",
+    "Insufficient or ambiguous evidence"
+  ],
+  "level1_offset": [
+    "水箱 1 液位测量偏置",
+    "Tank 1 level sensor offset"
+  ],
+  "level2_offset": [
+    "水箱 2 液位测量偏置",
+    "Tank 2 level sensor offset"
+  ],
+  "level1_drift": [
+    "水箱 1 液位传感器漂移",
+    "Tank 1 level sensor drift"
+  ],
+  "level2_drift": [
+    "水箱 2 液位传感器漂移",
+    "Tank 2 level sensor drift"
+  ],
+  "level1_integrity": [
+    "水箱 1 液位测量完整性故障",
+    "Tank 1 level sensor integrity fault"
+  ],
+  "level2_integrity": [
+    "水箱 2 液位测量完整性故障",
+    "Tank 2 level sensor integrity fault"
+  ],
+  "integrity_is_not_causality": [
+    "单信号异常不能证明传感器故障，真实过程变化也可能产生相同指示。",
+    "A single-signal anomaly does not prove sensor failure; real process changes can produce the same indicators."
+  ],
+  "normal_reference_required": [
+    "参考区间必须为有代表性的正常实测数据。偏置已存在于参考区间时可能无法辨识。",
+    "The reference must contain representative normal measurements. Bias already present in the reference may be unidentifiable."
+  ],
+  "single_fault_assumption": [
+    "每个区间按一个主要故障比较；多个同时故障可能导致证据不足。",
+    "Each interval compares one dominant fault; simultaneous faults can yield insufficient evidence."
+  ],
+  "no_physical_model": [
+    "未提供物理模型，完整性和关系检查不进行过程因果归因。",
+    "Without a physical model, integrity and relationship checks do not assign process causes."
+  ],
+  "known_tank_parameters": [
+    "假定水箱几何参数和标称泵、阀及出口系数已知且稳定。",
+    "Tank geometry and nominal pump, valve and outlet coefficients are assumed known and stable."
+  ],
+  "independent_flow_measurements": [
+    "假定流量测量独立且可信；共享故障或由液位计算的流量会破坏隔离依据。",
+    "Flow measurements are assumed independent and trustworthy; shared faults or level-derived flows invalidate isolation evidence."
+  ],
+  "valve_change_ambiguity": [
+    "阀门受限与有意改变开度仅凭这些测量无法区分。",
+    "These measurements cannot distinguish valve restriction from a deliberate opening change."
+  ],
+  "unsaturated_tanks": [
+    "仅在非空、未溢流的水箱条件下使用此物理诊断，缺失和采集间隙使窗口重置。",
+    "Physical diagnosis requires nonempty tanks below overflow; missing values and acquisition gaps reset evidence windows."
+  ],
+  "constant_reference": [
+    "正常参考近似常数，无法据此判定后续恒定读数为冻结。",
+    "The normal reference is constant; later constant readings alone cannot establish a frozen sensor."
+  ],
+  "acquisition_gaps": [
+    "存在采集时间间隙，窗口已重置且不插值补齐。",
+    "Acquisition gaps reset windows; missing times are not interpolated."
+  ],
+  "pump": [
+    "泵指令（%）",
+    "Pump command (%)"
+  ],
+  "valve": [
+    "连接阀开度",
+    "Connection valve opening"
+  ],
+  "area1": [
+    "水箱 1 截面积（m²）",
+    "Tank 1 area (m²)"
+  ],
+  "area2": [
+    "水箱 2 截面积（m²）",
+    "Tank 2 area (m²)"
+  ],
+  "connection": [
+    "箱间流量系数（m^(5/2)/s）",
+    "Connection coefficient (m^(5/2)/s)"
+  ],
+  "outletValve": [
+    "出口阀开度",
+    "Outlet valve opening"
+  ],
+  "pumpRate": [
+    "标称泵流量（m³/s）",
+    "Nominal pump flow (m³/s)"
+  ],
+  "tankHeight": [
+    "溢流高度（m）",
+    "Overflow height (m)"
+  ],
+  "referenceMedian": [
+    "参考中位数",
+    "Reference median"
+  ],
+  "referenceScale": [
+    "参考尺度",
+    "Reference scale"
+  ],
+  "referenceRange": [
+    "参考极差",
+    "Reference range"
+  ],
+  "referenceNoise": [
+    "参考噪声",
+    "Reference noise"
+  ],
+  "referenceResidual": [
+    "参考残差中心",
+    "Reference residual center"
+  ],
+  "residualScale": [
+    "残差尺度",
+    "Residual scale"
+  ],
+  "windowSamples": [
+    "窗口样本数",
+    "Window samples"
+  ],
+  "tolerance": [
+    "恒定容差",
+    "Constant tolerance"
+  ],
+  "confirmationSamples": [
+    "确认所需后续样本",
+    "Subsequent confirmation samples"
+  ],
+  "coefficient": [
+    "线性系数",
+    "Linear coefficient"
+  ],
+  "intercept": [
+    "截距",
+    "Intercept"
+  ],
+  "constraint": [
+    "物理约束",
+    "Physical constraint"
+  ],
+  "offset": [
+    "偏置估计",
+    "Estimated offset"
+  ],
+  "offsetAtCenter": [
+    "中心时刻偏置",
+    "Offset at center time"
+  ],
+  "rate": [
+    "漂移速率",
+    "Drift rate"
+  ],
+  "centerTime": [
+    "中心时刻（秒）",
+    "Center time (seconds)"
+  ],
+  "unexplainedRate": [
+    "未解释流出量（m³/s）",
+    "Unexplained outflow (m³/s)"
+  ],
+  "capacityLoss": [
+    "容量 / 开度损失",
+    "Capacity / opening loss"
+  ],
+  "integrity_indicator": [
+    "测量完整性指示",
+    "Integrity indicator"
+  ],
+  "A level shift can be a sensor offset or a real process change.": [
+    "信号偏移可能由测量偏置或真实过程变化引起。",
+    "A level shift can be a sensor offset or a real process change."
+  ],
+  "A sustained local slope requires cross-signal evidence for isolation.": [
+    "持续的局部斜率需要跨信号证据辅助隔离。",
+    "A sustained local slope requires cross-signal evidence for isolation."
+  ],
+  "Local linear detrending removes ramps, but process oscillations can also increase this statistic.": [
+    "局部线性去趋势可去除斜坡，但过程振荡也可能增大该统计量。",
+    "Local linear detrending removes ramps, but process oscillations can also increase this statistic."
+  ],
+  "Processed values count as unavailable measured evidence.": [
+    "处理填充值不计入可用实测证据。",
+    "Processed values count as unavailable measured evidence."
+  ],
+  "Disagreement identifies a relationship violation, not which channel failed.": [
+    "不一致表示信号关系被违背，不能单独确定故障通道。",
+    "Disagreement identifies a relationship violation, not which channel failed."
+  ],
+  "reference scales per window": [
+    "每窗口参考尺度数",
+    "reference scales per window"
+  ],
+  "signal units": [
+    "信号原单位",
+    "signal units"
+  ],
+  "missing observation": [
+    "缺失观测",
+    "missing observation"
+  ],
+  "Sensor diagnostic belongs to a different workspace.": [
+    "传感器诊断属于另一个工作区。",
+    "Sensor diagnostic belongs to a different workspace."
+  ],
+  "Sensor diagnostic not found.": [
+    "未找到传感器诊断。",
+    "Sensor diagnostic not found."
+  ],
+  "Choose an existing diagnostic fault interval.": [
+    "请选择已有的诊断故障区间。",
+    "Choose an existing diagnostic fault interval."
+  ],
+  "Sensor health configuration must be an object.": [
+    "传感器健康配置必须是对象。",
+    "Sensor health configuration must be an object."
+  ],
+  "Select 1–24 unique sensor signals from this dataset.": [
+    "请从数据集中选择 1–24 个不同的传感器信号。",
+    "Select 1–24 unique sensor signals from this dataset."
+  ],
+  "Sensor health supports 90–50,000 timestamped rows per run.": [
+    "单次传感器诊断支持 90–50,000 行带时间戳数据。",
+    "Sensor health supports 90–50,000 timestamped rows per run."
+  ],
+  "Sensor health requires strictly increasing unique timestamps; resolve duplicates first.": [
+    "诊断需要严格递增且唯一的时间戳，请先处理重复时间。",
+    "Sensor health requires strictly increasing unique timestamps; resolve duplicates first."
+  ],
+  "The diagnostic threshold multiplier must be between 3 and 12.": [
+    "诊断阈值倍数必须介于 3 到 12。",
+    "The diagnostic threshold multiplier must be between 3 and 12."
+  ],
+  "Choose valid reference and analysis intervals inside the dataset.": [
+    "请选择数据范围内有效的参考和诊断区间。",
+    "Choose valid reference and analysis intervals inside the dataset."
+  ],
+  "Use a normal reference of at least max(90, 3 × window) samples strictly before the analysis interval; analyze at least one window.": [
+    "正常参考须严格早于诊断区间，至少包含 max(90, 3 × 窗口) 个样本；诊断区间须至少包含一个窗口。",
+    "Use a normal reference of at least max(90, 3 × window) samples strictly before the analysis interval; analyze at least one window."
+  ],
+  "Use at most eight declared signal relationships.": [
+    "最多声明八组信号关系。",
+    "Use at most eight declared signal relationships."
+  ],
+  "Declare agreement or linear relationships between two distinct selected signals.": [
+    "请在两个不同的已选信号间声明一致性或线性关系。",
+    "Declare agreement or linear relationships between two distinct selected signals."
+  ],
+  "A declared relationship needs 30 paired normal fit observations.": [
+    "信号关系需要至少 30 个配对正常拟合样本。",
+    "A declared relationship needs 30 paired normal fit observations."
+  ],
+  "A declared relationship needs 20 paired normal calibration observations.": [
+    "信号关系需要至少 20 个配对正常校准样本。",
+    "A declared relationship needs 20 paired normal calibration observations."
+  ],
+  "Linear relationships need an excited predictor in the normal reference.": [
+    "线性关系的预测信号在正常参考区间必须有变化。",
+    "Linear relationships need an excited predictor in the normal reference."
+  ],
+  "Choose the supported coupled-tanks model with explicit signal mapping and physical parameters.": [
+    "请选择耦合水箱模型并显式配置映射和物理参数。",
+    "Choose the supported coupled-tanks model with explicit signal mapping and physical parameters."
+  ],
+  "Map all seven tank roles to distinct selected measured signals.": [
+    "请将七个水箱角色映射到不同的已选实测信号。",
+    "Map all seven tank roles to distinct selected measured signals."
+  ],
+  "Only declared geometry and nominal hydraulic parameters are diagnostic inputs; fault labels are prohibited.": [
+    "诊断仅接受声明的几何与标称水力参数，不接受故障标签。",
+    "Only declared geometry and nominal hydraulic parameters are diagnostic inputs; fault labels are prohibited."
+  ],
+  "Tank geometry and nominal coefficients must be finite and positive, at most 100.": [
+    "水箱几何参数和标称系数须为不大于 100 的有限正数。",
+    "Tank geometry and nominal coefficients must be finite and positive, at most 100."
+  ],
+  "Tank diagnosis requires paired, unsaturated reference measurements for 30 fit and 20 calibration samples.": [
+    "水箱诊断参考区间需要 30 个拟合及 20 个校准样本，所有测量须配对且水箱未空或溢流。",
+    "Tank diagnosis requires paired, unsaturated reference measurements for 30 fit and 20 calibration samples."
+  ],
+  "{0}: reference needs 30 measured fit and 20 measured calibration values.": [
+    "{0}：参考区间需要 30 个实测拟合值和 20 个实测校准值。",
+    "{0}: reference needs 30 measured fit and 20 measured calibration values."
+  ],
+  "{0} is outside the supported integer range {1}–{2}.": [
+    "{0} 超出支持的整数范围 {1}–{2}。",
+    "{0} is outside the supported integer range {1}–{2}."
+  ],
+  "Use only declared sensor diagnostic settings; simulator labels are not accepted.": [
+    "仅接受已声明的诊断配置，不接受模拟器故障标签。",
+    "Use only declared sensor diagnostic settings; simulator labels are not accepted."
+  ],
+  "Outlet flow (m³/s)": [
+    "出口流量（m³/s）",
+    "Outlet flow (m³/s)"
+  ],
+  "Outlet discharge coefficient (m^(5/2)/s)": [
+    "出口流量系数（m^(5/2)/s）",
+    "Outlet discharge coefficient (m^(5/2)/s)"
+  ],
+  "Levels: m · flows: m³/s · pump command: % · opening: fraction. Convert incompatible units in Transformations first.": [
+    "液位：m · 流量：m³/s · 泵指令：% · 开度：比例。单位不匹配时请先在数据变换中转换。",
+    "Levels: m · flows: m³/s · pump command: % · opening: fraction. Convert incompatible units in Transformations first."
+  ],
+  "Redundant agreement requires matching units; convert signals in Transformations first.": [
+    "冗余测量一致性检查要求单位相同，请先在数据变换中转换信号。",
+    "Redundant agreement requires matching units; convert signals in Transformations first."
+  ],
+  "Convert tank levels to m, flows to m³/s, pump command to %, and opening to fraction before diagnosis.": [
+    "诊断前请将液位转换为 m，流量转换为 m³/s，泵指令转换为 %，开度转换为比例。",
+    "Convert tank levels to m, flows to m³/s, pump command to %, and opening to fraction before diagnosis."
+  ],
+  "{0} · severity {1}": [
+    "{0} · 严重度 {1}",
+    "{0} · severity {1}"
+  ]
+}

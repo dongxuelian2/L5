@@ -55,6 +55,8 @@ class WorkspaceStore:
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
         self.tep_studies = TEPStudyService(self)
+        from .sensor_health_service import SensorHealthService
+        self.sensor_health = SensorHealthService(self)
 
     @contextmanager
     def connect(self):

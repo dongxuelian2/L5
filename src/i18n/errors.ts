@@ -6,6 +6,8 @@ export function errorMessage(value: string) {
   const exact = t(raw);
   if (exact !== raw) return exact;
   const patterns: [RegExp, string][] = [
+    [/^(.+): reference needs 30 measured fit and 20 measured calibration values\.$/, "{0}: reference needs 30 measured fit and 20 measured calibration values."],
+    [/^(.+) is outside the supported integer range (\d+)–(\d+)\.$/, "{0} is outside the supported integer range {1}–{2}."],
     [/^Request failed \((\d+)\)\.$/, "Request failed ({0})."],
     [/^(.+) must be a finite number\.$/, "{0} must be a finite number."],
     [/^(.+) must be an integer\.$/, "{0} must be an integer."],

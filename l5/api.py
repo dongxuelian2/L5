@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external', 'sensor-health'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,9 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if parts[1] == 'sensor-health' and len(parts) == 3 and method == 'GET':
+            result = store.sensor_health.get(parts[2])
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL
@@ -188,7 +190,12 @@ def dispatch(handler, method: str) -> bool:
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'model-research' and method == 'GET':
+            if parts[3] == 'sensor-health':
+                if method == 'GET':
+                    result = {'diagnostics': store.sensor_health.list(parts[2])}
+                elif method == 'POST':
+                    result, status = store.sensor_health.run(parts[2], body), 201
+            elif parts[3] == 'model-research' and method == 'GET':
                 from .model_research import research
                 result = research(store, parts[2])
             elif parts[3] == 'scenarios':
@@ -260,6 +267,8 @@ def dispatch(handler, method: str) -> bool:
             result, status = store.experiments.simulation_labels(parts[2], body), 201
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'quality' and method == 'GET':
             result = store.dataset(parts[2])['metadata']['quality']
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'sensor-model' and method == 'GET':
+            result = {'model': store.sensor_health.model_defaults(parts[2])}
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'time-reference':
             if method == 'GET':
                 result = store.signals.clock(parts[2])

@@ -3,6 +3,8 @@ import { t as tr, useLocale } from "../i18n";
 import { TransformationLineage } from "./TransformationWorkspace";
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, message } from "./api";
+import { SensorHealthResult } from "./SensorHealthWorkspace";
+import type { HealthResult } from "./sensorHealthTypes";
 import { Plot, SignalPlots } from "./Charts";
 import { intervalWindow } from "./findings";
 import { IncidentLinkDialog, incidentStatuses } from "./IncidentLinkDialog";
@@ -14,7 +16,7 @@ import { dateLabel, datasetClock, datasetTimeLabel, namedSignal, number, signalL
 const SavedRunView = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.SavedRunView })));
 const entryKinds = { get note() { return tr("调查笔记"); }, get evidence() { return tr("证据"); }, get hypothesis() { return tr("候选解释"); } };
 const stances = { get neutral() { return tr("待判断"); }, get support() { return tr("支持"); }, get oppose() { return tr("反对"); } };
-const linkKinds = { get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); } };
+const linkKinds = { get "sensor-health"() { return tr("Sensor health"); }, get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); } };
 const runKinds: Record<string, string> = { get tools() { return tr("工具调查"); }, get tool() { return tr("工具调查"); }, get assistant() { return tr("助手调查"); }, get intervention() { return tr("干预实验"); } };
 const numericAxis: TimeAxis = { kind: "numeric", column: null, origin: null, start: 0, end: 0 };
 function eventTime(incident: IncidentSummary, value: number | null, datasets: Dataset[] = []) {
@@ -93,7 +95,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
     setFocused(sourceId);
     const source = incident.links.find(l => l.id === sourceId), dataset = datasets.find(d => d.id === source?.details.datasetId);
     if (source) {
-      const interval = source.details.interval;
+      const interval = sourceInterval(source);
       const range = interval && source.details.analysisRange ? intervalWindow(interval, source.details.analysisRange) : source.details.analysisRange || source.details.observationWindow && [source.details.observationWindow.windowStart, source.details.observationWindow.asOf] || (source.details.run ? [Number(source.details.run.request.windowStart || 0), Number(source.details.run.request.asOf)] : dataset && [dataset.metadata.time.start, dataset.metadata.time.end]);
       const clock = dataset ? datasetClock(dataset) : { axisId: `simulation:${source.details.simulationId}`, offset: 0 };
       if (range) setSelection({ axisId: clock.axisId, start: range[0]+clock.offset, end: range[1]+clock.offset, at: (interval?.peakTime ?? range[1])+clock.offset, linkId: sourceId, analysisId: source.details.analysisId, intervalIndex: source.details.intervalIndex });
@@ -151,7 +153,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
         <div className="ws-inline ws-between"><span className="ws-kicker">{linkKinds[source.kind]}</span><button className="ws-danger" disabled={busy} onClick={() => void mutate(`/links/${source.id}`, undefined, "DELETE")} aria-label={tr("解除关联 {0}", {0: source.details.title})}>{tr("解除关联")}</button></div>
         <h3>{source.details.title}</h3><SourceSummary source={source} datasets={datasets} />{datasets.find(d => d.id === source.details.datasetId)?.metadata.transformation && <TransformationLineage dataset={datasets.find(d => d.id === source.details.datasetId)!} />}
         <div className="ws-inline incident-actions">{source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
-          {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开原始分析 ↗")}</a>}
+          {source.details.diagnosticId && <a className="ws-link" href={`#/workspaces/${incident.workspace_id}/sensor-health/${source.details.diagnosticId}`}>{tr("Open sensor diagnostics ↗")}</a>}{source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开原始分析 ↗")}</a>}
           {source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("返回模拟会话 ↗")}</a>}
           {source.kind === "run" && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看已保存结果")}</button>}
           <button onClick={() => { setFocused(source.id); begin("evidence"); }}>{tr("记录来源证据")}</button>
@@ -190,7 +192,7 @@ function EntryHeading({ entry, busy, edit, remove }: { entry: IncidentEntry; bus
 function EntrySource({ entry, incident }: { entry: IncidentEntry; incident: Incident }) {
   useLocale();
   const source = incident.links.find(l => l.id === entry.source_link_id);
-  return source ? <p className="ws-muted">{tr("来源：")}{source.details.title} · {linkKinds[source.kind]} {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开分析 ↗")}</a>}{source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("打开模拟 ↗")}</a>}</p> : null;
+  return source ? <p className="ws-muted">{tr("来源：")}{source.details.title} · {linkKinds[source.kind]} {source.details.diagnosticId && <a className="ws-link" href={`#/workspaces/${incident.workspace_id}/sensor-health/${source.details.diagnosticId}`}>{tr("Open sensor diagnostics ↗")}</a>}{source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开分析 ↗")}</a>}{source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("打开模拟 ↗")}</a>}</p> : null;
 }
 
 function EntryEditor({ entry, kind, incident, sourceId, busy, error, onClose, save }: { entry?: IncidentEntry; kind: IncidentEntry["kind"]; incident: Incident; sourceId: string; busy: boolean; error: string; onClose: () => void; save: (value: Partial<IncidentEntry>) => Promise<void> }) {
@@ -221,9 +223,13 @@ function simulationHref(workspaceId: string, source: IncidentLink) {
   const context = source.details.observationWindow;
   return `#/workspaces/${workspaceId}/simulations/${source.details.simulationId}${source.details.run ? `/${source.details.run.id}` : context ? `/window/${context.windowStart}/${context.asOf}/${context.hypothesis || ""}` : ""}`;
 }
+function sourceInterval(source: IncidentLink): import("./types").Interval | undefined {
+  const episode = source.details.episode;
+  return source.details.interval || (episode ? { start: episode.start, end: episode.end, samples: episode.samples, peakScore: episode.severity, peakTime: episode.detectedAt, signals: episode.signals } : undefined);
+}
 function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: Dataset[] }) {
   useLocale();
-  const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = d.interval;
+  const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = sourceInterval(source);
   const experiment = d.experiment;
   if (experiment) return <><p><a className="ws-link" href={`#/workspaces/${dataset?.workspace_id}/experiments/${experiment.experimentId}`}>{tr("返回来源实验 ↗")}</a>{" "}{tr("· run")}{" "}{experiment.runId}{" "}{tr("· task")}{" "}{experiment.taskId}</p><SourceSummary source={{ ...source, details: { ...d, experiment: undefined } }} datasets={datasets} /></>;
   return <>{d.modelName && <p>{d.modelName} v{d.modelVersion}{" "}{tr("· scenario")}{" "}{d.scenarioId || tr("legacy / direct configuration")}{d.scenarioVersion ? ` v${d.scenarioVersion}` : ""}</p>}<p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>{tr("峰值时间")}{" "}{dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`}{" "}{tr("· 分数")}{" "}{number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.map(s => dataset ? namedSignal(dataset, s) : s).join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? tr("干预实验") : tr("工具调查")}{" "}{tr("· 观察至")}{" "}{String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>{tr("观察窗口")}{" "}{number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)}{" "}{tr("s · 工作假设")}{" "}{d.observationWindow.hypothesis}</p>}</>;
@@ -232,6 +238,14 @@ function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: D
 function SourcePreview({ source, datasets, selection, onSelection }: { source: IncidentLink; datasets: Dataset[]; selection: IncidentSelection | null; onSelection: (value: IncidentSelection) => void }) {
   useLocale();
   const [result, setResult] = useState<AnalysisResult | null>(null), [error, setError] = useState("");
+  const [health, setHealth] = useState<HealthResult | null>(null);
+  useEffect(() => {
+    setHealth(null);
+    if (!source.details.diagnosticId) return;
+    const controller = new AbortController();
+    api<HealthResult>(`/sensor-health/${source.details.diagnosticId}`, undefined, "GET", controller.signal).then(r => { if (!controller.signal.aborted) setHealth(r); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
+    return () => controller.abort();
+  }, [source.details.diagnosticId]);
   const dataset = datasets.find(d => d.id === source.details.datasetId);
   const [signals, setSignals] = useState((source.details.interval?.signals || source.details.signals || dataset?.metadata.columns.map(c => c.name) || []).slice(0, 3));
   useEffect(() => {
@@ -241,7 +255,7 @@ function SourcePreview({ source, datasets, selection, onSelection }: { source: I
     return () => controller.abort();
   }, [source.details.analysisId]);
   const clock = dataset ? datasetClock(dataset) : { axisId: `simulation:${source.details.simulationId}`, offset: 0 };
-  const interval = selection?.analysisId === result?.id && selection?.intervalIndex != null ? result?.intervals[selection.intervalIndex] : source.details.interval;
+  const interval = selection?.analysisId === result?.id && selection?.intervalIndex != null ? result?.intervals[selection.intervalIndex] : sourceInterval(source);
   const savedWindow = source.details.run ? [Number(source.details.run.request.windowStart || 0), Number(source.details.run.request.asOf)] : source.details.observationWindow ? [source.details.observationWindow.windowStart, source.details.observationWindow.asOf] : undefined;
   const fallback = interval && source.details.analysisRange ? intervalWindow(interval, source.details.analysisRange) : source.details.analysisRange || savedWindow || (dataset && [dataset.metadata.time.start, dataset.metadata.time.end]);
   const range: [number, number] | undefined = selection?.axisId === clock.axisId ? [selection.start-clock.offset, selection.end-clock.offset] : fallback ? [fallback[0], fallback[1]] : undefined;
@@ -259,6 +273,7 @@ function SourcePreview({ source, datasets, selection, onSelection }: { source: I
     {result && dataset && indexes && <Plot title={tr("{0} · 关联时间窗口", {0: result.algorithmLabel})} times={indexes.map(v => v.t)} values={indexes.map(v => result.states?.[v.i] === "abstain" ? null : result.scores[v.i])} axis={dataset.metadata.time} threshold={result.threshold} intervals={interval ? [interval] : result.intervals} color="#e9927d" selectedTime={selectedTime} onSelectTime={choose} />}
     {interval && <Contributions values={interval.contributions} signals={interval.signals} metric={source.details.contributionMetric} label={s => dataset ? namedSignal(dataset, s) : s} />}
     {dataset && <><fieldset><legend>{tr("原始信号曲线")}</legend><div className="ws-signal-list">{dataset.metadata.columns.map(c => <label key={c.name}><input type="checkbox" checked={signals.includes(c.name)} onChange={e => setSignals(e.target.checked ? [...signals, c.name] : signals.filter(s => s !== c.name))} />{signalLabel(c)}</label>)}</div></fieldset><SignalPlots dataset={dataset} signals={signals} range={range} intervals={interval ? [interval] : result?.intervals} selectedTime={selectedTime} onSelectTime={choose} />{selectedTime !== undefined && signals.length > 0 && <SignalSnapshot dataset={dataset} signals={signals} at={selectedTime} choose={choose} />}</>}
+    {health && <SensorHealthResult result={health} dataset={dataset} embedded initialEpisode={source.details.episodeIndex} />}
     {source.details.run && <Suspense fallback={<p>{tr("正在打开实验结果…")}</p>}><SavedRunView run={source.details.run} /></Suspense>}
   </section>;
 }

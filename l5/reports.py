@@ -214,6 +214,8 @@ def render_report(store, identity):
         rows = []
         for item in events:
             detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
+            if item.get('diagnosticAssessment'):
+                detail = report_text('{0} · severity {1}').format(report_text(item['diagnosticAssessment']), n(item['diagnosticSeverity']))
             if item['kind'] == 'alarm':
                 detail = f"{r('峰值 ')}{timestamp(item['peakTime'], axis)}{r('；原始分数 ')}{n(item['peakScore'])}{r('；变量：')}" + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
             if item.get('observationWindow'):
@@ -311,6 +313,8 @@ def render_report(store, identity):
             label = signal_label(dataset['id'], signal)
             unit = next((c.get('unit') for c in dataset['metadata']['columns'] if c['name'] == signal), '')
             parts.append(chart(dataset['name'] + ' · ' + label, [t+clock['offset'] for t in series['times']], [dict(label=label, values=values, segmentIds=series['segmentIds'][signal])], axis=axes.get(clock['axisId']), unit=unit or r('原始值（源数据未提供单位）')))
+    from .sensor_health_reports import diagnostic_sections
+    parts.extend(diagnostic_sections(store, incident, axes))
     parts.append(r('<h2>4. 调查证据与候选解释</h2>'))
     entries = incident['entries']
     for entry in sorted(entries, key=lambda v: (v['kind'] != 'hypothesis', v['created_at'])):

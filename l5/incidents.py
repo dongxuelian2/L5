@@ -177,6 +177,8 @@ class IncidentService:
 
     def prepared_axis(self, source):
         kind, reference = source['kind'], source['reference_id']
+        if kind == 'sensor-health':
+            reference = self.store.sensor_health.get(reference)['datasetId']
         if kind in ('simulation', 'run'):
             return 'simulation:' + reference
         did = self.store.result(reference)['datasetId'] if kind in ('analysis', 'interval') else reference
@@ -209,7 +211,17 @@ class IncidentService:
         if not isinstance(body, dict):
             raise ValueError('请选择要关联的已有记录。')
         kind, selector = body.get('kind'), ''
-        if kind == 'dataset':
+        if kind == 'sensor-health':
+            identity = body.get('diagnosticId', '')
+            result = self.store.sensor_health.get(identity)
+            if result['workspaceId'] != workspace_id:
+                raise ValueError('Sensor diagnostic belongs to a different workspace.')
+            index = body.get('episodeIndex')
+            if index is not None:
+                if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < len(result['episodes']):
+                    raise ValueError('Choose an existing diagnostic fault interval.')
+                selector = str(index)
+        elif kind == 'dataset':
             identity = body.get('datasetId', '')
             dataset = self.store.dataset(identity)
             if dataset['workspace_id'] != workspace_id:
@@ -355,7 +367,13 @@ class IncidentService:
         datasets = None
         for link in rows:
             kind, reference = link['kind'], link['reference_id']
-            if kind == 'dataset':
+            if kind == 'sensor-health':
+                result = self.store.sensor_health.get(reference)
+                link['details'] = dict(diagnosticId=reference, datasetId=result['datasetId'], title=result['name'],
+                    signals=result['config']['signals'], analysisRange=result['config']['analysisRange'])
+                if link['selector']:
+                    link['details'].update(episodeIndex=int(link['selector']), episode=result['episodes'][int(link['selector'])])
+            elif kind == 'dataset':
                 dataset = self.store.dataset(reference)
                 link['details'] = dict(datasetId=reference, title=dataset['name'])
             elif kind in ('analysis', 'interval'):
