@@ -52,6 +52,7 @@ const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
 const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
+const { SensorHealthWorkspace, SensorHealthResult, newHealthConfig } = require('../src/workspace/SensorHealthWorkspace.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
 const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
@@ -1487,7 +1488,7 @@ test('report generation uses the selected locale and discards responses from an 
 
 test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
   const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors', 'sensor-health']) {
     const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
     for (const property of source.statements[0].expression.properties) {
       const key = property.name.text;
@@ -1582,4 +1583,74 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
+});
+
+function healthResult() {
+  const episode = {start:220,end:240,detectedAt:220,samples:21,severity:2,indicatorIds:['shift'],signals:['temperature'],assessment:'sensor',evidenceCoverage:1,
+    candidates:[{key:'level2_offset',category:'sensor',fitError:.5,penalizedError:1.5,improvement:.95,parameters:{offset:.2},constraints:['hydraulic2','balance2']}]};
+  return {id:'health-1',workspaceId:'test',datasetId:'sensor-data',name:'Saved health',version:'1.0.0',createdAt:'2026-01-01T00:00:00Z',sourceDigest:'abc123',
+    config:{signals:['temperature'],baselineRange:[0,149],analysisRange:[150,299],window:21,persistence:3,z:6,relationships:[]},
+    times:[200,220,240],signals:{temperature:{referenceMedian:1,referenceScale:.01,measuredFraction:1,observed:[1,1.2,1.2],segmentIds:[1,1,1]}},
+    indicators:[{id:'shift',kind:'level_shift',signals:['temperature'],threshold:6,scores:[0,10,10],intervals:[{...episode,peakTime:220,evidenceValue:10}],evidence:{referenceMedian:1,referenceScale:.01,interpretation:'A level shift can be a sensor offset or a real process change.'}}],
+    episodes:[episode],warnings:[],limitations:['integrity_is_not_causality'],reference:{times:[0,1,2],values:{temperature:[1,1.01,.99]},fitSamples:105,calibrationSamples:45},relationships:[],
+    physical:{kind:'coupled-tanks',mapping:{level2:'temperature'},parameters:{area2:1},expected:{temperature:[1,1,1]},segmentIds:{temperature:[1,1,1]},measuredCoverage:1,assumptions:['independent_flow_measurements'],residuals:[{key:'hydraulic2',unit:'m',values:[0,.2,.2],scale:.01,threshold:.06}]},
+    datasetSnapshot:{name:'sensor-data',time:{kind:'numeric',column:'t',origin:null,start:0,end:299},createdAt:'2026-01-01'},summary:{samples:3,flaggedSamples:2,episodes:1,firstDetection:220}};
+}
+
+test('sensor workspace declares normal, saves numerical configuration and links a real interval to an existing incident', async () => {
+  const source=dataset('sensor-data',300); source.metadata.columns=[{name:'temperature',missing:0,min:0,max:2}];
+  source.metadata.suggestedRanges={baselineRange:[0,1],analysisRange:[2,299]};
+  assert.notDeepEqual(newHealthConfig(source).baselineRange,[0,1]);
+  const saved=healthResult(), requests=[];
+  globalThis.fetch=async (url,options={})=>{
+    if(url.endsWith('/sensor-model')) return response({model:null});
+    if(url.startsWith('/api/simulations')) return response({simulations:[]});
+    if(url.endsWith('/sensor-health') && options.method==='POST'){requests.push(JSON.parse(options.body));return response(saved);}
+    if(url.endsWith('/sensor-health')) return response({diagnostics:[]});
+    if(url.endsWith('/incidents')) return response({incidents:[{id:'incident-1',title:'Existing incident',status:'investigating'}]});
+    if(url.endsWith('/incidents/incident-1/links')){requests.push(JSON.parse(options.body));return response({id:'incident-1'});}
+    throw new Error(url);
+  };
+  await mount(React.createElement(SensorHealthWorkspace,{workspaceId:'test',datasets:[source],onChanged(){}}));
+  assert.equal(button('Run and save diagnostics').disabled,true);
+  await click(container.querySelector('.health-confirm input'));
+  assert.equal(button('Run and save diagnostics').disabled,false);
+  await act(async()=>container.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(requests[0].datasetId,'sensor-data');
+  assert.deepEqual(requests[0].signals,['temperature']);
+  assert.equal(requests[0].z,6);
+  assert.match(window.location.hash,/sensor-health\/health-1/);
+  assert.match(container.textContent,/Tank 2 level sensor offset/);
+  await click(button('Link this interval to Incident'));
+  assert.ok(container.querySelector('dialog[open]'));
+  await act(async()=>container.querySelector('dialog form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.deepEqual(requests[1],{kind:'sensor-health',diagnosticId:'health-1',episodeIndex:0});
+  assert.match(window.location.hash,/incidents\/incident-1/);
+});
+
+test('saved sensor results switch languages without rewriting evidence and share graph cursor selection', async () => {
+  const saved=healthResult(), before=JSON.stringify(saved);
+  await mount(React.createElement(SensorHealthResult,{result:saved}));
+  const svg=container.querySelector('svg');
+  await act(async()=>svg.dispatchEvent(new window.MouseEvent('pointermove',{bubbles:true,clientX:100})));
+  assert.ok(container.querySelectorAll('[data-selected-time]').length>=2);
+  assert.match(container.textContent,/Tank 2 level sensor offset/);
+  await act(async()=>setLocale('zh-CN'));
+  assert.match(container.textContent,/水箱 2 液位测量偏置/);
+  assert.match(container.textContent,/物理约束残差/);
+  assert.doesNotMatch(container.textContent,/Rankings compare residual corrections/);
+  await act(async()=>setLocale('en'));
+  assert.equal(JSON.stringify(saved),before);
+});
+
+test('sensor deep links ignore an aborted older response and preserve saved results after reopening', async () => {
+  const saved=healthResult(); let resolveOld;
+  const old=new Promise(resolve=>{resolveOld=resolve;});
+  globalThis.fetch=async url=>url.endsWith('/sensor-health/old') ? old : url.endsWith('/sensor-health/new') ? response({...saved,id:'new',name:'Newest diagnostic'}) : url.endsWith('/sensor-model') ? response({model:null}) : url.startsWith('/api/simulations') ? response({simulations:[]}) : response({diagnostics:[]});
+  const props={workspaceId:'test',datasets:[dataset('sensor-data',300)],onChanged(){}};
+  await mount(React.createElement(SensorHealthWorkspace,{...props,diagnosticId:'old'}));
+  await act(async()=>root.render(React.createElement(SensorHealthWorkspace,{...props,diagnosticId:'new'})));
+  assert.match(container.textContent,/Newest diagnostic/);
+  await act(async()=>resolveOld(response({...saved,name:'Stale diagnostic'})));
+  assert.doesNotMatch(container.textContent,/Stale diagnostic/);
 });
