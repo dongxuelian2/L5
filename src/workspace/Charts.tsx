@@ -20,15 +20,17 @@ function plotIndexes(values: (number | null)[]) {
   return [...result].sort((a, b) => a - b);
 }
 
-type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string; points?: boolean };
+type Band = { lower: number[]; upper: number[]; color: string; title: string };
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], bands = [], gaps = [], markers = [] }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; bands?: Band[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);
   if (!times.length) return null;
   let low = Infinity, high = -Infinity;
   for (const line of [{ values }, ...overlays]) for (const value of line.values) if (value != null) { low = Math.min(low, value); high = Math.max(high, value); }
+  for (const band of bands) for (const value of [...band.lower, ...band.upper]) { low = Math.min(low, value); high = Math.max(high, value); }
   if (!Number.isFinite(low)) return <div className="ws-notice">{title}{tr(": no measured values in this window.")}</div>;
   if (domain) [low, high] = domain;
   if (threshold !== undefined) { low = Math.min(domain ? low : 0, low, threshold); high = Math.max(high, threshold); }
@@ -66,8 +68,10 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       {gaps.filter(g => g.end >= first && g.start <= last).map((gap, i) => <rect key={`gap-${i}`} data-quality-gap="true" x={x(Math.max(first, gap.start))} width={Math.max(2, x(Math.min(last, gap.end)) - x(Math.max(first, gap.start)))} y={T} height={H - T - B} fill="#e2bc75" opacity=".13"><title>{tr("Sampling gap")}</title></rect>)}
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       {markers.filter(m => m.time >= first && m.time <= last).map(m => <g key={m.time} data-truth-onset={m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
+      {bands.map(band => <path key={band.title} data-uncertainty-band="true" d={`${pathFor(times, band.upper)} ${pathFor([...times].reverse(), [...band.lower].reverse()).replace(/^M/, "L")} Z`} fill={band.color} opacity=".16"><title>{band.title}</title></path>)}
       <path d={pathFor(times, values, segmentIds)} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
       {overlays.map(line => <path key={line.title} d={pathFor(line.times, line.values, line.segmentIds)} fill="none" stroke={line.color} strokeWidth="1.7" vectorEffect="non-scaling-stroke"><title>{line.title}</title></path>)}
+      {overlays.filter(line => line.points).map(line => <g key={line.title} data-measurement-points="true">{plotIndexes(line.values).filter(i => line.values[i] != null).map(i => <circle key={i} cx={x(line.times[i])} cy={y(line.values[i]!)} r="2" fill={line.color}><title>{line.title}: {number(line.values[i]!)}</title></circle>)}</g>)}
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
       {selectedTime !== undefined && selectedTime >= first && selectedTime <= last && <line data-selected-time={selectedTime} x1={x(selectedTime)} x2={x(selectedTime)} y1={T} y2={H - B} stroke="#e2bc75" strokeDasharray="4 3" />}
       <text x={L} y={H - 5}>{timeLabel(axis, first)}</text><text x={W - R} y={H - 5} textAnchor="end">{timeLabel(axis, last)}</text>

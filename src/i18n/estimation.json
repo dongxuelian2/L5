@@ -1,0 +1,462 @@
+{
+  "State estimation": [
+    "状态估计",
+    "State estimation"
+  ],
+  "12 / STATE ESTIMATION": [
+    "12 / 状态估计",
+    "12 / STATE ESTIMATION"
+  ],
+  "State estimation & sensor fusion": [
+    "状态估计与传感器融合",
+    "State estimation & sensor fusion"
+  ],
+  "Reconstruct coupled-tank levels from incomplete, asynchronous observations with a causal nonlinear EKF.": [
+    "使用因果非线性扩展卡尔曼滤波器，从不完整、异步观测中重建耦合水箱液位。",
+    "Reconstruct coupled-tank levels from incomplete, asynchronous observations with a causal nonlinear EKF."
+  ],
+  "Tank 1": [
+    "水箱 1",
+    "Tank 1"
+  ],
+  "Tank 2": [
+    "水箱 2",
+    "Tank 2"
+  ],
+  "No level sensors": [
+    "无液位传感器",
+    "No level sensors"
+  ],
+  "Local observability": [
+    "局部可观测性",
+    "Local observability"
+  ],
+  "O = [H; HA] uses the continuous hydraulic Jacobian at the selected point. Rank is local and does not establish global nonlinear observability. Singular values mix measurement and derivative scales in SI units; conditioning is a diagnostic, not an information bound.": [
+    "O = [H; HA] 使用所选工作点的连续水力学雅可比矩阵。矩阵秩仅描述局部性质，不能证明全局非线性可观测性。奇异值混合了 SI 单位下的测量与导数尺度；条件数仅用于诊断，并非信息界限。",
+    "O = [H; HA] uses the continuous hydraulic Jacobian at the selected point. Rank is local and does not establish global nonlinear observability. Singular values mix measurement and derivative scales in SI units; conditioning is a diagnostic, not an information bound."
+  ],
+  "Sensors": [
+    "传感器",
+    "Sensors"
+  ],
+  "Rank": [
+    "秩",
+    "Rank"
+  ],
+  "Singular values": [
+    "奇异值",
+    "Singular values"
+  ],
+  "Condition number": [
+    "条件数",
+    "Condition number"
+  ],
+  "Interpretation": [
+    "解释",
+    "Interpretation"
+  ],
+  "Nondifferentiable flow": [
+    "流量不可微",
+    "Nondifferentiable flow"
+  ],
+  "Poorly observable": [
+    "可观测性较差",
+    "Poorly observable"
+  ],
+  "Locally observable": [
+    "局部可观测",
+    "Locally observable"
+  ],
+  "One sensor can reconstruct both states when hydraulic coupling is nonzero at a smooth point. With a fully closed connection valve, the unmeasured tank is unobservable. Equal levels and dry outlets have no classical square-root Jacobian.": [
+    "在光滑工作点且水力耦合非零时，一个传感器可以重建两个状态。连接阀完全关闭时，未测水箱不可观测。等液位及干涸出口处不存在经典平方根雅可比矩阵。",
+    "One sensor can reconstruct both states when hydraulic coupling is nonzero at a smooth point. With a fully closed connection valve, the unmeasured tank is unobservable. Equal levels and dry outlets have no classical square-root Jacobian."
+  ],
+  "Linearization matrices and operating point": [
+    "线性化矩阵与工作点",
+    "Linearization matrices and operating point"
+  ],
+  "No hidden state is available for this Dataset. Accuracy, coverage and NEES cannot be calculated.": [
+    "此数据集没有隐藏真实状态，无法计算准确度、覆盖率和 NEES。",
+    "No hidden state is available for this Dataset. Accuracy, coverage and NEES cannot be calculated."
+  ],
+  "Scored samples": [
+    "评分样本数",
+    "Scored samples"
+  ],
+  "Extended Kalman filter": [
+    "扩展卡尔曼滤波",
+    "Extended Kalman filter"
+  ],
+  "Open-loop model": [
+    "开环模型",
+    "Open-loop model"
+  ],
+  "Current measurement": [
+    "当前测量值",
+    "Current measurement"
+  ],
+  "Empirical 95% coverage": [
+    "经验 95% 区间覆盖率",
+    "Empirical 95% coverage"
+  ],
+  "Mean NEES (2 states)": [
+    "平均 NEES（2 个状态）",
+    "Mean NEES (2 states)"
+  ],
+  "Converged through run end": [
+    "持续收敛至运行结束的起始时间",
+    "Converged through run end"
+  ],
+  "EKF is worse than the open-loop baseline on at least one state in this run.": [
+    "本次运行中，EKF 至少有一个状态的误差大于开环基线。",
+    "EKF is worse than the open-loop baseline on at least one state in this run."
+  ],
+  "SAVED ESTIMATION": [
+    "已保存的估计",
+    "SAVED ESTIMATION"
+  ],
+  "prediction-only rows": [
+    "行仅预测",
+    "prediction-only rows"
+  ],
+  "Export estimates as Dataset": [
+    "将估计导出为数据集",
+    "Export estimates as Dataset"
+  ],
+  "Green: EKF · blue: observations · amber: open-loop · gray: prior prediction · purple: conditional 95% interval. Gaps remain missing.": [
+    "绿色：EKF · 蓝色：观测 · 琥珀色：开环 · 灰色：先验预测 · 紫色：条件 95% 区间。缺失数据保留为空。",
+    "Green: EKF · blue: observations · amber: open-loop · gray: prior prediction · purple: conditional 95% interval. Gaps remain missing."
+  ],
+  "Intervals condition on the assumed model, Q and R. Bias, unmodeled faults, boundary projection and nonlinearities can invalidate Gaussian calibration. NIS has the current measurement dimension (1 or 2); NEES has 2 states. Chi-square expectations assume a correct model and unbiased independent Gaussian disturbances. Time samples are correlated; these are diagnostics, not independent confidence tests.": [
+    "区间以假定模型、Q 和 R 为条件。偏置、未建模故障、边界投影和非线性可能使高斯校准失效。NIS 维度为当前测量数（1 或 2）；NEES 维度为 2 个状态。卡方期望要求模型正确、扰动无偏且相互独立并服从高斯分布。时间样本存在相关性；这些是诊断量，并非独立置信检验。",
+    "Intervals condition on the assumed model, Q and R. Bias, unmodeled faults, boundary projection and nonlinearities can invalidate Gaussian calibration. NIS has the current measurement dimension (1 or 2); NEES has 2 states. Chi-square expectations assume a correct model and unbiased independent Gaussian disturbances. Time samples are correlated; these are diagnostics, not independent confidence tests."
+  ],
+  "Near a dry or equal-level boundary, the filter uses a finite-resolution secant. Local Gaussian uncertainty may be unreliable.": [
+    "接近干涸或等液位边界时，滤波器使用有限分辨率割线。局部高斯不确定性可能不可靠。",
+    "Near a dry or equal-level boundary, the filter uses a finite-resolution secant. Local Gaussian uncertainty may be unreliable."
+  ],
+  "A negative posterior height was projected to zero. Its covariance is an untruncated Gaussian approximation.": [
+    "负的后验液位已投影到零；协方差仍为未截断的高斯近似。",
+    "A negative posterior height was projected to zero. Its covariance is an untruncated Gaussian approximation."
+  ],
+  "Shared cursor": [
+    "同步游标",
+    "Shared cursor"
+  ],
+  "Measured or inferred": [
+    "测量或推断",
+    "Measured or inferred"
+  ],
+  "Inferred at this time": [
+    "此时由模型推断",
+    "Inferred at this time"
+  ],
+  "Directly measured at this time": [
+    "此时有直接测量",
+    "Directly measured at this time"
+  ],
+  "Observation": [
+    "观测",
+    "Observation"
+  ],
+  "Estimate": [
+    "估计",
+    "Estimate"
+  ],
+  "Prior prediction": [
+    "先验预测",
+    "Prior prediction"
+  ],
+  "Standard deviation": [
+    "标准差",
+    "Standard deviation"
+  ],
+  "state estimate": [
+    "状态估计",
+    "state estimate"
+  ],
+  "Conditional 95% interval": [
+    "条件 95% 区间",
+    "Conditional 95% interval"
+  ],
+  "Innovation and posterior residual": [
+    "新息与后验残差",
+    "Innovation and posterior residual"
+  ],
+  "Posterior residual": [
+    "后验残差",
+    "Posterior residual"
+  ],
+  "Innovation 95% bound": [
+    "新息 95% 界限",
+    "Innovation 95% bound"
+  ],
+  "Posterior covariance (m²)": [
+    "后验协方差 (m²)",
+    "Posterior covariance (m²)"
+  ],
+  "Normalized innovation squared (NIS)": [
+    "归一化新息平方（NIS）",
+    "Normalized innovation squared (NIS)"
+  ],
+  "Pointwise chi-square 95% bound": [
+    "逐点卡方 95% 界限",
+    "Pointwise chi-square 95% bound"
+  ],
+  "Retrospective evaluation": [
+    "回顾性评估",
+    "Retrospective evaluation"
+  ],
+  "Innovation consistency": [
+    "新息一致性",
+    "Innovation consistency"
+  ],
+  "Mean innovations (m)": [
+    "平均新息 (m)",
+    "Mean innovations (m)"
+  ],
+  "Dimension": [
+    "维度",
+    "Dimension"
+  ],
+  "Updates": [
+    "更新次数",
+    "Updates"
+  ],
+  "Mean NIS / expected": [
+    "平均 NIS / 期望值",
+    "Mean NIS / expected"
+  ],
+  "Within 95% bound": [
+    "位于 95% 界限内",
+    "Within 95% bound"
+  ],
+  "Sensor configuration comparison": [
+    "传感器配置对比",
+    "Sensor configuration comparison"
+  ],
+  "All configurations use the same frozen observations and filter settings. Direct measurement errors are scored only where a real observation exists.": [
+    "各配置使用同一份冻结观测和滤波参数。直接测量误差仅在存在真实观测时评分。",
+    "All configurations use the same frozen observations and filter settings. Direct measurement errors are scored only where a real observation exists."
+  ],
+  "95% coverage 1 / 2": [
+    "95% 覆盖率 1 / 2",
+    "95% coverage 1 / 2"
+  ],
+  "Prediction-only rows": [
+    "仅预测行数",
+    "Prediction-only rows"
+  ],
+  "Frozen inputs, settings and provenance": [
+    "冻结输入、设置与来源",
+    "Frozen inputs, settings and provenance"
+  ],
+  "Tank state estimation": [
+    "水箱状态估计",
+    "Tank state estimation"
+  ],
+  "Computing or opening estimation…": [
+    "正在计算或打开估计…",
+    "Computing or opening estimation…"
+  ],
+  "Saved estimations": [
+    "已保存的估计",
+    "Saved estimations"
+  ],
+  "New estimation": [
+    "新建估计",
+    "New estimation"
+  ],
+  "Configure estimation experiment": [
+    "配置估计实验",
+    "Configure estimation experiment"
+  ],
+  "Run name": [
+    "运行名称",
+    "Run name"
+  ],
+  "Observation source": [
+    "观测来源",
+    "Observation source"
+  ],
+  "Reproducible simulation": [
+    "可复现仿真",
+    "Reproducible simulation"
+  ],
+  "Saved tank scenario": [
+    "已保存的水箱场景",
+    "Saved tank scenario"
+  ],
+  "Dataset with level measurements": [
+    "含液位测量的数据集",
+    "Dataset with level measurements"
+  ],
+  "Choose a Dataset": [
+    "选择数据集",
+    "Choose a Dataset"
+  ],
+  "Choose a scenario": [
+    "选择场景",
+    "Choose a scenario"
+  ],
+  "Simulated fault": [
+    "仿真故障",
+    "Simulated fault"
+  ],
+  "Tank 1 measurement (m)": [
+    "水箱 1 测量 (m)",
+    "Tank 1 measurement (m)"
+  ],
+  "Tank 2 measurement (m)": [
+    "水箱 2 测量 (m)",
+    "Tank 2 measurement (m)"
+  ],
+  "Known pump command (%)": [
+    "已知泵指令 (%)",
+    "Known pump command (%)"
+  ],
+  "Known valve command (0–1)": [
+    "已知阀门指令 (0–1)",
+    "Known valve command (0–1)"
+  ],
+  "Unavailable / use nominal control": [
+    "不可用 / 使用标称控制",
+    "Unavailable / use nominal control"
+  ],
+  "noise SD (m)": [
+    "噪声标准差 (m)",
+    "noise SD (m)"
+  ],
+  "sample every N base ticks": [
+    "每 N 个基础采样点测量一次",
+    "sample every N base ticks"
+  ],
+  "Sensor dropout probability": [
+    "传感器丢测概率",
+    "Sensor dropout probability"
+  ],
+  "Irregular observation timestamps": [
+    "不规则观测时间戳",
+    "Irregular observation timestamps"
+  ],
+  "Measurements must be in meters; timestamps in dataset seconds. Pump commands use percent, valves use fractions. Only original observations are assimilated; derived or interpolated samples are excluded. Unknown controls use the explicit nominal model.": [
+    "测量单位须为米，时间戳为数据集秒数。泵指令使用百分比，阀门使用开度比例。仅同化原始观测，派生值或插值不参与更新。未知控制使用明确的标称模型值。",
+    "Measurements must be in meters; timestamps in dataset seconds. Pump commands use percent, valves use fractions. Only original observations are assimilated; derived or interpolated samples are excluded. Unknown controls use the explicit nominal model."
+  ],
+  "Observe": [
+    "观测",
+    "Observe"
+  ],
+  "Use known pump commands": [
+    "使用已知泵指令",
+    "Use known pump commands"
+  ],
+  "Use known valve commands": [
+    "使用已知阀门指令",
+    "Use known valve commands"
+  ],
+  "Compare both / single / no sensors": [
+    "对比双传感器 / 单传感器 / 无传感器",
+    "Compare both / single / no sensors"
+  ],
+  "initial estimate (m)": [
+    "初始估计 (m)",
+    "initial estimate (m)"
+  ],
+  "Initial time (s)": [
+    "初始时间 (s)",
+    "Initial time (s)"
+  ],
+  "Maximum integration step (s)": [
+    "最大积分步长 (s)",
+    "Maximum integration step (s)"
+  ],
+  "P0 · initial covariance (m²)": [
+    "P0 · 初始协方差 (m²)",
+    "P0 · initial covariance (m²)"
+  ],
+  "Q · process spectral density (m²/s)": [
+    "Q · 过程噪声谱密度 (m²/s)",
+    "Q · process spectral density (m²/s)"
+  ],
+  "R · measurement covariance (m²)": [
+    "R · 测量协方差 (m²)",
+    "R · measurement covariance (m²)"
+  ],
+  "Assumed physical model and operating point": [
+    "假定物理模型与工作点",
+    "Assumed physical model and operating point"
+  ],
+  "Edit physical parameters to study mismatch. These assumptions are independent of the simulator fault and hidden initial state. A zero valve opening represents disconnected tanks.": [
+    "编辑物理参数以研究模型失配。这些假设独立于仿真故障和隐藏初始状态。阀门开度为零表示水箱断开连接。",
+    "Edit physical parameters to study mismatch. These assumptions are independent of the simulator fault and hidden initial state. A zero valve opening represents disconnected tanks."
+  ],
+  "Assumed physical model": [
+    "假定物理模型",
+    "Assumed physical model"
+  ],
+  "operating point (m)": [
+    "工作点 (m)",
+    "operating point (m)"
+  ],
+  "Analyze local observability": [
+    "分析局部可观测性",
+    "Analyze local observability"
+  ],
+  "Run estimation and save": [
+    "运行估计并保存",
+    "Run estimation and save"
+  ],
+  "Estimates saved as Dataset": [
+    "估计已保存为数据集",
+    "Estimates saved as Dataset"
+  ],
+  "Estimation belongs to another Workspace.": [
+    "估计属于另一个工作区。",
+    "Estimation belongs to another Workspace."
+  ],
+  "Estimation run not found.": [
+    "未找到估计运行。",
+    "Estimation run not found."
+  ],
+  "Choose a simulation, scenario or Dataset source.": [
+    "请选择仿真、场景或数据集来源。",
+    "Choose a simulation, scenario or Dataset source."
+  ],
+  "Initial state must contain two finite heights between 0 and 100 m.": [
+    "初始状态须包含两个 0 至 100 米之间的有限液位。",
+    "Initial state must contain two finite heights between 0 and 100 m."
+  ],
+  "Dataset needs at most 6,000 finite strictly increasing timestamps; resolve duplicates before estimation.": [
+    "数据集须包含不超过 6,000 个有限且严格递增的时间戳；请先处理重复时间戳。",
+    "Dataset needs at most 6,000 finite strictly increasing timestamps; resolve duplicates before estimation."
+  ],
+  "Map at least one distinct measurement or control column.": [
+    "请映射至少一个不重复的测量列或控制列。",
+    "Map at least one distinct measurement or control column."
+  ],
+  "Estimation exceeds the 120,000-substep budget.": [
+    "估计超过 120,000 个积分子步的计算预算。",
+    "Estimation exceeds the 120,000-substep budget."
+  ],
+  "Estimated states · processed data": [
+    "估计状态 · 处理后数据",
+    "Estimated states · processed data"
+  ],
+  "Reopen estimation and provenance": [
+    "重开估计与来源记录",
+    "Reopen estimation and provenance"
+  ],
+  "Estimates use the processed-value observation policy in downstream analyses and experiments.": [
+    "在后续分析和实验中，估计数据需要选择包含处理后数值的观测策略。",
+    "Estimates use the processed-value observation policy in downstream analyses and experiments."
+  ],
+  "Enter valid JSON for the model and covariance matrices.": [
+    "请为模型与协方差矩阵输入有效 JSON。",
+    "Enter valid JSON for the model and covariance matrices."
+  ],
+  "Jacobian difference step (m)": [
+    "雅可比差分步长 (m)",
+    "Jacobian difference step (m)"
+  ]
+}

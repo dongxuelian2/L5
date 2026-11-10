@@ -43,6 +43,8 @@ class WorkspaceStore:
         self.runtime = SimulationService(self)
         from .scenarios import ScenarioService
         self.scenarios = ScenarioService(self)
+        from .estimation_workspace import EstimationService
+        self.estimations = EstimationService(self)
         from .incidents import IncidentService
         self.incidents = IncidentService(self)
         from .signals import SignalWorkspace
@@ -177,6 +179,8 @@ class WorkspaceStore:
             return data['observed'] if 'observed' in data.files else np.isfinite(data['values'])
 
     def provenance_sample(self, dataset, index, signals):
+        if dataset['metadata'].get('estimation'):
+            return dict(provenance={s:'state-estimation' for s in signals}, observed={s:False for s in signals})
         if not dataset['metadata'].get('transformation'):
             return {}
         from .resampling import PROVENANCE
@@ -239,7 +243,7 @@ class WorkspaceStore:
         else:
             times, values = self.load_data(dataset)
             result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
-                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
+                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') or dataset['metadata'].get('estimation') else None)
         if dataset['metadata'].get('transformation'):
             lineage = dataset['metadata']['transformation']
             result['transformation'] = {k: lineage[k] for k in ('definitionId', 'revision', 'executionId', 'createdAt')}

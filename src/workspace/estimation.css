@@ -1,0 +1,11 @@
+.estimation-workspace .ws-panel { margin-bottom: 20px; }
+.estimation-workspace fieldset { border: 0; padding: 0; min-width: 0; }
+.estimation-workspace summary { cursor: pointer; padding: 6px 0 16px; }
+.estimation-workspace form .ws-form-grid { margin: 16px 0; }
+.estimation-workspace .estimation-check { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.estimation-workspace .estimation-check input { width: auto; }
+.estimation-workspace textarea { font-family: var(--font-mono, monospace); max-width: 100%; }
+.estimation-model { width: 100%; }
+.estimation-workspace pre { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.estimation-results .ws-plot { margin-bottom: 18px; }
+.estimation-results caption { text-align: left; padding: 12px 0; color: #b5ed9a; }

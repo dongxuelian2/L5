@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external', 'estimations'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,20 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if len(parts) == 3 and parts[1] == 'estimations' and method == 'GET':
+            result = store.estimations.get(parts[2])
+        elif len(parts) == 4 and parts[1] == 'estimations' and parts[3] == 'dataset' and method == 'POST':
+            result, status = store.estimations.export(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['estimations', 'observability'] and method == 'POST':
+            from .estimation import observability
+            store.workspace(parts[2])
+            result = observability(body.get('model'), body.get('point'), body.get('sensors'))
+        elif len(parts) == 4 and parts[1] == 'workspaces' and parts[3] == 'estimations':
+            if method == 'GET':
+                result = dict(runs=store.estimations.list(parts[2]))
+            elif method == 'POST':
+                result, status = store.estimations.create(parts[2], body), 201
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL

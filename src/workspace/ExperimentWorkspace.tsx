@@ -12,6 +12,7 @@ import { taskParameters, type AlgorithmPlan, type Experiment, type ExperimentCom
 import { IndependentTraining } from "./IndependentTraining";
 import { TEPBenchmark } from "./TEPBenchmark";
 import { ExternalProvenance } from "./TEPWorkspace";
+import { EstimationProvenance } from "./EstimationProvenance";
 import "./experiments.css";
 
 type Draft = Pick<Experiment, "name" | "description" | "config" | "notes" | "conclusion" | "conclusion_run_ids">;
@@ -158,6 +159,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
         <label>{tr("Research question / description")}<textarea value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} /></label>
         {dataset.metadata.model && <p><a className="ws-link" href={`#/workspaces/${workspaceId}/simulations/${dataset.metadata.model.simulationId}`}>{tr("Open source model investigation ↗")}</a> · {tr(dataset.metadata.model.name || dataset.metadata.model.id)} {dataset.metadata.model.version && `v${dataset.metadata.model.version}`} {dataset.metadata.model.scenarioVersion && tr("· scenario v{0}", {0: dataset.metadata.model.scenarioVersion})}</p>}
         {dataset.metadata.transformation && <TransformationLineage dataset={dataset} />}
+        <EstimationProvenance dataset={dataset} />
         <IndependentTraining datasets={datasets} config={draft.config} onChange={configure} /><ExternalProvenance dataset={dataset} />
         <fieldset><legend>{tr("Input signals ·")}{" "}{draft.config.signals.length}{" "}{tr("selected")}</legend><div className="ws-inline"><button type="button" onClick={() => configure({ signals: inputDataset!.metadata.columns.map(c => c.name) })}>{tr("Select all signals")}</button><button type="button" onClick={() => configure({ signals: [], requiredSignals: [] })}>{tr("Clear signals")}</button></div><div className="ws-signal-list">{inputDataset!.metadata.columns.map(column => <label key={column.name}><input type="checkbox" checked={draft.config.signals.includes(column.name)} onChange={e => { const signals = e.target.checked ? [...draft.config.signals, column.name] : draft.config.signals.filter(s => s !== column.name); configure({ signals, requiredSignals: draft.config.requiredSignals?.filter(s => signals.includes(s)) }); }} />{signalLabel(column)}</label>)}</div></fieldset>
         {!draft.config.training && <div className="ws-window-grid">{(["baselineRange", "analysisRange"] as const).map(key => <fieldset key={key}><legend>{key === "baselineRange" ? tr("Assumed normal baseline") : tr("Analysis window")}</legend><div className="ws-form-grid">{([0,1] as const).map(i => <label key={i}>{key === "baselineRange" ? tr("Baseline") : tr("Analysis")} {i === 0 ? tr("start") : tr("end")} (s)<input type="number" step="any" required min={dataset.metadata.time.start} max={dataset.metadata.time.end} value={draft.config[key][i]} onChange={e => configure({ [key]: i === 0 ? [Number(e.target.value), draft.config[key][1]] : [draft.config[key][0], Number(e.target.value)] })} /></label>)}</div></fieldset>)}</div>}

@@ -85,6 +85,27 @@ def flows(c, heads, time, action, at, parameters):
     return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
 
 
+def euler_stage(c, state, when, dt, action=None, at=0., parameters=None):
+    """Conservative donor-limited stage shared by simulation and estimation."""
+    f, _, _, _ = flows(c, state, when, action, at, parameters or {})
+    demand1 = max(0, f[1])+f[3]+f[4]
+    scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
+    demand2 = max(0, -f[1])+f[2]+f[5]
+    scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
+    f[1] *= scale1 if f[1] >= 0 else scale2
+    f[3] *= scale1; f[4] *= scale1
+    f[2] *= scale2; f[5] *= scale2
+    return [max(0., state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
+            max(0., state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+
+
+def hydraulic_step(c, state, when, dt, action=None, at=0., parameters=None):
+    """One SSPRK2 step; both stages stay on the left side of input events."""
+    left, flux1 = euler_stage(c, state, when, dt, action, at, parameters)
+    right, flux2 = euler_stage(c, left, when+dt*.999999999, dt, action, at, parameters)
+    return [(a+b)/2 for a, b in zip(state, right)], [(a+b)/2 for a, b in zip(flux1, flux2)]
+
+
 def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
@@ -94,19 +115,6 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     totals = [0.]*6
     physical, rows = [], []
     boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
-
-    def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
-        # Joint donor limiting keeps transfer, leak and overflow conservative.
-        demand1 = max(0,f[1])+f[3]+f[4]
-        scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
-        demand2 = max(0,-f[1])+f[2]+f[5]
-        scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
-        f[1] *= scale1 if f[1] >= 0 else scale2
-        f[3] *= scale1; f[4] *= scale1
-        f[2] *= scale2; f[5] *= scale2
-        return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
-                max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
 
     count = math.ceil(c['duration']/c['step'])
     targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
@@ -118,10 +126,8 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
             dt = min(c['integrationStep'],target-t,next_boundary-t)
             # Both SSP stages use the same side of a discontinuity. The next
             # substep begins at the event with the new fault/action inputs.
-            left, flux1 = stage(heads,t,dt)
-            right, flux2 = stage(left,t+dt*.999999999,dt)
-            heads = [(a+b)/2 for a,b in zip(heads,right)]
-            totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
+            heads, flux = hydraulic_step(c, heads, t, dt, action, at, p)
+            totals = [v+dt*f for v,f in zip(totals,flux)]
             t = round(t+dt,12)
         f,pump,opening,s = flows(c,heads,target,action,at,p)
         bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.

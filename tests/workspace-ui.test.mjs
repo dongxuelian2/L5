@@ -50,6 +50,8 @@ const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
 const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
 const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
 const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
+const { EstimationWorkspace, EstimationResults } = require('../src/workspace/EstimationWorkspace.tsx');
+const { EstimationProvenance } = require('../src/workspace/EstimationProvenance.tsx');
 const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
@@ -1487,7 +1489,7 @@ test('report generation uses the selected locale and discards responses from an 
 
 test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
   const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors', 'estimation']) {
     const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
     for (const property of source.statements[0].expression.properties) {
       const key = property.name.text;
@@ -1582,4 +1584,109 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
+});
+
+function estimationFixture(id='estimation-1') {
+  const rows=[0,.3,1.1].map((t,i)=>({t,estimate:[1.4-i*.01,1-i*.01],prediction:[1.3,.9],openLoop:[1.2,.8],
+    direct:[i===0 ? 1.45 : null,i===2 ? .99 : null],observed:[i===0 ? 1.45 : null,i===2 ? .99 : null],
+    covariance:[[.002,.001],[.001,.003]],lower:[1.3,.9],upper:[1.5,1.1],innovation:[i===0 ? .15 : null,i===2 ? .09 : null],
+    residual:[i===0 ? .05 : null,i===2 ? .01 : null],innovationSd:[i===0 ? .1 : null,i===2 ? .1 : null],nis:i===1 ? null : 1,dof:i===1 ? 0 : 1}));
+  return {id,name:id,workspaceId:'test',createdAt:'2026-11-10T00:00:00Z',format:'tank-estimation-v1',inputSha256:'abc123',
+    source:{kind:'simulation'},request:{sensors:['level1','level2']},inputs:{observations:rows.map(r=>({t:r.t}))},
+    result:{rows,sensors:['level1','level2'],config:{initialState:[1.2,.7],initialTime:0,maxStep:.1,jacobianStep:1e-5,initialCovariance:[[.16,0],[0,.16]],processCovariance:[[1e-6,0],[0,1e-6]],measurementCovariance:[[.0004,0],[0,.0004]]},model:{},predictionOnly:1,warnings:[],innovationMean:[.15,.09],
+      innovationConsistency:{1:{count:2,meanNIS:1,expectedMean:1,fraction95:1}}},score:null,
+    comparisons:[{sensors:['level1','level2'],predictionOnly:1,score:null}],
+    observability:[{point:[1.5625,1],sensors:['level2'],A:[[-.02,.02],[.02,-.035]],H:[[0,1]],matrix:[[0,1],[.02,-.035]],
+      rank:2,singularValues:[1,.02],condition:50,poorlyObservable:false,status:'local-linearization',equilibrium:true,drift:[0,0]}]};
+}
+
+test('estimation uses selected sensors and full covariance, preserves missing samples and exports a saved Dataset',async()=>{
+  const saved=[],writes=[],run=estimationFixture(),generated=dataset('estimated-dataset');
+  globalThis.fetch=async(url,options={})=>{
+    if(url.endsWith('/scenarios'))return response({scenarios:[]});
+    if(options.method==='POST') {
+      writes.push({url,body:JSON.parse(options.body)});
+      return response(url.endsWith('/dataset') ? generated : run);
+    }
+    return response({runs:[]});
+  };
+  await mount(React.createElement(EstimationWorkspace,{workspaceId:'test',datasets:[],onSaved:d=>saved.push(d)}));
+  await click([...container.querySelectorAll('label')].find(l=>l.textContent==='Observe Tank 1').querySelector('input'));
+  await setField(inputFor('R · measurement covariance (m²)'), '[[0.0004,0.0001],[0.0001,0.0009]]');
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.deepEqual(writes[0].body.sensors,['level2']);
+  assert.deepEqual(writes[0].body.config.measurementCovariance,[[.0004,.0001],[.0001,.0009]]);
+  assert.equal(writes[0].body.source.irregular,true);
+  assert.ok(!('truth' in writes[0].body));
+  assert.equal(container.querySelectorAll('[data-uncertainty-band]').length,2);
+  assert.equal(container.querySelectorAll('[data-measurement-points] circle').length,2,'isolated observations remain visible without filling gaps');
+  assert.ok(container.textContent.includes('Inferred at this time'));
+  await click(button('Export estimates as Dataset'));
+  assert.equal(saved[0].id,generated.id);
+  assert.equal(writes[1].url,'/api/estimations/estimation-1/dataset');
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/estimated-dataset"]'));
+});
+
+test('estimation charts share cursor and window and relocalize without rerunning inference',async()=>{
+  let exports=0;
+  await mount(React.createElement(EstimationResults,{run:estimationFixture(),onExport(){exports++;},busy:false}));
+  const svg=container.querySelector('svg');
+  svg.getBoundingClientRect=()=>({left:0,width:960,top:0,height:190,right:960,bottom:190});
+  await act(async()=>svg.dispatchEvent(new dom.window.MouseEvent('pointermove',{bubbles:true,clientX:500})));
+  const cursors=[...container.querySelectorAll('[data-selected-time]')];
+  assert.equal(cursors.length,6);
+  assert.equal(new Set(cursors.map(n=>n.getAttribute('data-selected-time'))).size,1);
+  await setField(inputFor('Window end (s)'),.3);
+  assert.equal(container.querySelectorAll('[data-measurement-points] circle').length,1);
+  await act(async()=>setLocale('zh-CN'));
+  assert.ok(container.textContent.includes('局部可观测性'));
+  assert.ok(container.textContent.includes('将估计导出为数据集'));
+  assert.ok(!container.textContent.includes('Local observability'));
+  assert.equal(exports,0);
+});
+
+test('late estimation load cannot overwrite a newer run or reappear after unmount',async()=>{
+  let resolveFirst;
+  globalThis.fetch=(url)=>{
+    if(url.endsWith('/scenarios'))return Promise.resolve(response({scenarios:[]}));
+    if(url.endsWith('/estimations'))return Promise.resolve(response({runs:[]}));
+    if(url.endsWith('/first'))return new Promise(resolve=>{resolveFirst=resolve;});
+    return Promise.resolve(response(estimationFixture('second')));
+  };
+  const props={workspaceId:'test',datasets:[],onSaved(){}};
+  await mount(React.createElement(EstimationWorkspace,{...props,runId:'first'}));
+  await act(async()=>root.render(React.createElement(EstimationWorkspace,{...props,runId:'second'})));
+  await act(async()=>resolveFirst(response(estimationFixture('first'))));
+  assert.equal(container.querySelector('.estimation-results h2').textContent,'second');
+  assert.ok(!container.querySelector('[role="status"]'));
+});
+
+test('generated estimation Dataset retains a route to its frozen run and processed-value explanation',async()=>{
+  const d=dataset('generated-estimates');d.metadata.estimation={runId:'frozen-run',createdAt:'2026-11-10T00:00:00Z',inputSha256:'frozen-hash',source:{kind:'simulation'},request:{}};
+  await mount(React.createElement(EstimationProvenance,{dataset:d}));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/estimations/frozen-run"]'));
+  assert.ok(container.textContent.includes('processed-value observation policy'));
+  assert.ok(container.textContent.includes('frozen-hash'));
+});
+
+test('reopened estimation restores covariance, source scenario version and sensor settings for a reproducible rerun',async()=>{
+  const run=estimationFixture('restored');
+  run.source={kind:'scenario',scenarioId:'scenario-1',scenarioSnapshot:{version:1},noise:[.03,.04],every:[2,7],dropout:.2,irregular:true};
+  run.request={model:{connection:.031},knownControls:['pumpControl'],compareSensors:true,operatingPoint:[1.8,.9]};
+  run.result.sensors=['level2'];run.result.config.initialState=[.8,.5];run.result.config.measurementCovariance=[[.0009,.0001],[.0001,.0016]];
+  let submitted;
+  globalThis.fetch=async(url,options={})=>{
+    if(url.endsWith('/scenarios'))return response({scenarios:[{id:'scenario-1',modelId:'coupled-tanks',name:'Newer scenario',version:2}]});
+    if(options.method==='POST'){submitted=JSON.parse(options.body);return response({...run,id:'restored-rerun'});}
+    if(url.endsWith('/estimations'))return response({runs:[{id:run.id,name:run.name,created_at:run.createdAt}]});
+    return response(run);
+  };
+  await mount(React.createElement(EstimationWorkspace,{workspaceId:'test',datasets:[],runId:run.id,onSaved(){}}));
+  assert.equal(inputFor('R · measurement covariance (m²)').value,'[[0.0009,0.0001],[0.0001,0.0016]]');
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(submitted.source.version,1,'rerun stays on the saved scenario version');
+  assert.deepEqual(submitted.source.noise,[.03,.04]);
+  assert.deepEqual(submitted.config.initialState,[.8,.5]);
+  assert.deepEqual(submitted.sensors,['level2']);
+  assert.deepEqual(submitted.knownControls,['pumpControl']);
 });
