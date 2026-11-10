@@ -63,6 +63,8 @@ class SimulationService:
             raise ValueError('Saved model version unavailable for new computations; saved results remain readable.')
         if capability and capability not in model.describe()['capabilities']:
             raise ValueError(f'This model does not support {capability}.')
+        if session.get('control') and capability in ('interventions','forecast'):
+            raise ValueError('Closed-loop trajectories must be recomputed in the Control Workspace.')
         return model
 
     def list(self, workspace_id=None):
@@ -171,6 +173,8 @@ class SimulationService:
             session = self.get(identity)
             workspace_id = body.get('workspaceId') or session.get('workspaceId')
             self.store.workspace(workspace_id)
+            if session.get('control') and workspace_id != session.get('workspaceId'):
+                raise ValueError('Closed-loop Datasets must stay in their control experiment workspace.')
             if session.get('datasetId') and session.get('workspaceId') == workspace_id:
                 return self.store.dataset(session['datasetId'])
             descriptor = session['modelDescriptor']
@@ -180,7 +184,8 @@ class SimulationService:
                                                 model=dict(id=session['modelId'], version=session['modelVersion'], name=descriptor['name'],
                                                     simulationId=identity, scenarioId=session['scenarioId'], scenarioVersion=session['scenarioVersion'],
                                                     scenarioSnapshot=session.get('scenarioSnapshot'), config=session['config'], groundTruth=session['groundTruth'],
-                                                    signals=descriptor['signals'], capabilities=descriptor['capabilities']))
+                                                    signals=descriptor['signals'], capabilities=descriptor['capabilities'],
+                                                    **({'control':session['control']} if session.get('control') else {})))
             session.update(workspaceId=workspace_id, datasetId=dataset['id'])
             self.write(self.folder(identity) / 'session.json', session)
             return dataset

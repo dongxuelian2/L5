@@ -6,6 +6,8 @@ export function errorMessage(value: string) {
   const exact = t(raw);
   if (exact !== raw) return exact;
   const patterns: [RegExp, string][] = [
+    [/^Control (.+): expected (integer|number) in \[(.+), (.+)\]\.$/, "Control {0}: expected {1} in [{2}, {3}]."],
+    [/^Unknown (.+) settings\.$/, "Unknown {0} settings."],
     [/^Request failed \((\d+)\)\.$/, "Request failed ({0})."],
     [/^(.+) must be a finite number\.$/, "{0} must be a finite number."],
     [/^(.+) must be an integer\.$/, "{0} must be an integer."],

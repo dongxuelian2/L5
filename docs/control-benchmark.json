@@ -1,0 +1,1894 @@
+{
+  "protocolVersion": "tank-control-1",
+  "python": "3.12.14",
+  "platform": "Windows",
+  "parameterPolicy": "Fixed engineering defaults based on the nominal equilibrium; no parameter selection on these evaluation cases. Preview is explicitly disabled in the unannounced-step case. PI is a practical baseline, not an optimally tuned controller.",
+  "pi": {
+    "kind": "pi",
+    "kp": 180.0,
+    "ki": 2.0,
+    "actuateValve": false,
+    "valveKp": 0.5,
+    "valveBias": 1.0
+  },
+  "mpc": {
+    "kind": "mpc",
+    "predictionHorizon": 25,
+    "controlHorizon": 8,
+    "trackingWeight": 10.0,
+    "moveWeight": 0.08,
+    "effortWeight": 0.002,
+    "levelWeight": 1000.0,
+    "maxIterations": 1200,
+    "tolerance": 1e-05,
+    "preview": true,
+    "actuateValve": false
+  },
+  "cases": [
+    {
+      "name": "scheduled-step",
+      "config": {
+        "fault": "healthy",
+        "start": 40.0,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 180,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          },
+          {
+            "time": 45.0,
+            "level": 1.25
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "9ef97e2921d63513ffc4a21ef4a45c662b90f89a0f1dbaec096db0745c34f227",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 33.818729555525906,
+            "physicalIae": 33.75,
+            "overshoot": 0.005469014200761402,
+            "settlingTime": null,
+            "pumpEffort": 180.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 0.0,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.002798888696512828,
+            "maxSolveMs": 0.03840000135824084,
+            "recovery": []
+          },
+          "trajectorySha256": "447bb75562d8ff10173e935ef572e759b23e8378c18eb2d084de927bbe3fdd67",
+          "solverStatuses": {
+            "open-loop": 90
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 12.3028489476192,
+            "physicalIae": 12.231391933325947,
+            "overshoot": 0.0524700447051778,
+            "settlingTime": null,
+            "pumpEffort": 267.2622112701214,
+            "pumpVariation": 105.01795253517447,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.0391687510491465e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.013086666593961935,
+            "maxSolveMs": 0.05319999763742089,
+            "recovery": []
+          },
+          "trajectorySha256": "674dbaf2dc0ef33c2a11b26e1d3d4100ee8a17ba7c1ee59f1e2fa1287df8e7f6",
+          "solverStatuses": {
+            "pi": 90
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 3.753856952516289,
+            "physicalIae": 3.6466377207644363,
+            "overshoot": 0.1078556341080723,
+            "settlingTime": 26.599999999999994,
+            "pumpEffort": 269.3375693001515,
+            "pumpVariation": 326.4362298398139,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 5.861977570020827e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 3.5950211108785073,
+            "maxSolveMs": 5.56960000176332,
+            "recovery": []
+          },
+          "trajectorySha256": "1ad622d19f3afec1dc6b032aae0fc5a1b36590f2cb95fe43cc701adbaae62cd6",
+          "solverStatuses": {
+            "solved": 90
+          }
+        }
+      ]
+    },
+    {
+      "name": "unannounced-step",
+      "config": {
+        "fault": "healthy",
+        "start": 40.0,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 180,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          },
+          {
+            "time": 45.0,
+            "level": 1.25
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": false,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "9ef97e2921d63513ffc4a21ef4a45c662b90f89a0f1dbaec096db0745c34f227",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 33.818729555525906,
+            "physicalIae": 33.75,
+            "overshoot": 0.005469014200761402,
+            "settlingTime": null,
+            "pumpEffort": 180.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 0.0,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.003193333355334794,
+            "maxSolveMs": 0.018999999156221747,
+            "recovery": []
+          },
+          "trajectorySha256": "447bb75562d8ff10173e935ef572e759b23e8378c18eb2d084de927bbe3fdd67",
+          "solverStatuses": {
+            "open-loop": 90
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 12.3028489476192,
+            "physicalIae": 12.231391933325947,
+            "overshoot": 0.0524700447051778,
+            "settlingTime": null,
+            "pumpEffort": 267.2622112701214,
+            "pumpVariation": 105.01795253517447,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.0391687510491465e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.012304444397967827,
+            "maxSolveMs": 0.04130000161239877,
+            "recovery": []
+          },
+          "trajectorySha256": "674dbaf2dc0ef33c2a11b26e1d3d4100ee8a17ba7c1ee59f1e2fa1287df8e7f6",
+          "solverStatuses": {
+            "pi": 90
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": false,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 9.895320360240015,
+            "physicalIae": 9.790171203861409,
+            "overshoot": 0.005385941614517886,
+            "settlingTime": 62.599999999999994,
+            "pumpEffort": 259.47058481479644,
+            "pumpVariation": 314.7740620243972,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.6786572132332367e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 1,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 3.988315555478847,
+            "maxSolveMs": 8.783299999777228,
+            "recovery": []
+          },
+          "trajectorySha256": "076ecda5bcf2396bc3c28250a1e792bf2d31d2959372971effcfd48f37a78dc4",
+          "solverStatuses": {
+            "residual-check-failed": 1,
+            "solved": 89
+          }
+        }
+      ]
+    },
+    {
+      "name": "outlet-disturbance",
+      "config": {
+        "fault": "healthy",
+        "start": 40.0,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 240,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [
+          {
+            "start": 70.0,
+            "end": 130.0,
+            "inletFactor": 1.0,
+            "outletFactor": 1.4
+          }
+        ],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "c15cba5bbd6c70449df7512cb11a5211d128aa033777b5279bed904c3a1df09d",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 27.779074638892922,
+            "physicalIae": 27.663850465258584,
+            "overshoot": 0.005469014200761402,
+            "settlingTime": null,
+            "pumpEffort": 240.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.6786572132332367e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.002701666744542308,
+            "maxSolveMs": 0.04949999856762588,
+            "recovery": [
+              {
+                "time": 130.0,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "54e36ca19885929fdacb4d791a314f8b4af662f0920a591c7730928c28f370e6",
+          "solverStatuses": {
+            "open-loop": 120
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 18.27252687853331,
+            "physicalIae": 18.168907678612474,
+            "overshoot": 0.11783893408831392,
+            "settlingTime": null,
+            "pumpEffort": 299.02008314631144,
+            "pumpVariation": 131.10335179932778,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.127986593019159e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.013025833383532396,
+            "maxSolveMs": 0.0591000025451649,
+            "recovery": [
+              {
+                "time": 130.0,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "51f6630865c6800958dc6865a8e83a77910a6ffbcdb165320839ebdf626d95f0",
+          "solverStatuses": {
+            "pi": 120
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 9.290113555493448,
+            "physicalIae": 9.161740373982273,
+            "overshoot": 0.08356943578407772,
+            "settlingTime": 171.0,
+            "pumpEffort": 308.11379328618847,
+            "pumpVariation": 524.8056041600297,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.5276668818842154e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 2,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 3.207791666560903,
+            "maxSolveMs": 4.958299999998417,
+            "recovery": [
+              {
+                "time": 130.0,
+                "through": 240.0,
+                "settlingSeconds": 41.0
+              }
+            ]
+          },
+          "trajectorySha256": "6a62ed9211fd4a4a23bbecc98e62ad6c3a60d1e23ad2d248aacedaff7ed5e915",
+          "solverStatuses": {
+            "residual-check-failed": 2,
+            "solved": 118
+          }
+        }
+      ]
+    },
+    {
+      "name": "pump-degradation",
+      "config": {
+        "fault": "pump_degradation",
+        "start": 70,
+        "severity": 0.4,
+        "fault_duration": 80,
+        "duration": 240,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "c15cba5bbd6c70449df7512cb11a5211d128aa033777b5279bed904c3a1df09d",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 22.928035761127056,
+            "physicalIae": 22.806305758455935,
+            "overshoot": 0.005469014200761402,
+            "settlingTime": null,
+            "pumpEffort": 240.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 4.085620730620576e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.002469999829675847,
+            "maxSolveMs": 0.019600000086938962,
+            "recovery": [
+              {
+                "time": 150,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "253b8e1910ff7e5674717acb64c5edcc3e8c4dbfbc89479ab60b72e0330b44f9",
+          "solverStatuses": {
+            "open-loop": 120
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 10.642443956825257,
+            "physicalIae": 10.532735948655354,
+            "overshoot": 0.07088038762817006,
+            "settlingTime": null,
+            "pumpEffort": 304.39107543309734,
+            "pumpVariation": 81.52345206370423,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 7.815970093361102e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.0120049999471424,
+            "maxSolveMs": 0.04360000093583949,
+            "recovery": [
+              {
+                "time": 150,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "0cc3faa4e17fa749d893e802e29d9966c6e40b36777d70e429c57a9f81c2235a",
+          "solverStatuses": {
+            "pi": 120
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 0.4784824098741596,
+            "physicalIae": 0.2581876928089277,
+            "overshoot": 0.005829076055229088,
+            "settlingTime": 0.0,
+            "pumpEffort": 313.97083094149065,
+            "pumpVariation": 436.0174284002775,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 8.348877145181177e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 4.14192166678428,
+            "maxSolveMs": 5.092700001114281,
+            "recovery": [
+              {
+                "time": 150,
+                "through": 240.0,
+                "settlingSeconds": 0.0
+              }
+            ]
+          },
+          "trajectorySha256": "7f8ff728b58b58fedcdb3f82951ccaafe0d76bcf194ca27d87a0c3c3a7986e7e",
+          "solverStatuses": {
+            "solved": 120
+          }
+        }
+      ]
+    },
+    {
+      "name": "unreachable-pump-loss",
+      "config": {
+        "fault": "pump_degradation",
+        "start": 70,
+        "severity": 1.0,
+        "fault_duration": null,
+        "duration": 240,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "c2a3dc0c0c960a16e4f2b7961e9ca8e4958fffac6e8f30b5839af4d32cfc1f88",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 78.87581368617128,
+            "physicalIae": 78.75652968215674,
+            "overshoot": 0.005469014200761402,
+            "settlingTime": null,
+            "pumpEffort": 240.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 5.10702591327572e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.0036508336052065715,
+            "maxSolveMs": 0.028600003133760765,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "663c52a45cc709ee2994b20fdb08804a9ee0824ba5b01bce733f72a00b5efcab",
+          "solverStatuses": {
+            "open-loop": 120
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 66.75274333285654,
+            "physicalIae": 66.6436365570382,
+            "overshoot": 0.005408920616835289,
+            "settlingTime": null,
+            "pumpEffort": 417.32746462926906,
+            "pumpVariation": 63.06301815720927,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 4.920508445138694e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.013051666852940494,
+            "maxSolveMs": 0.04529999932856299,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "c361fda779233c426c3aacea0f1db1cc0d38c607392d1f208ba51843c72b11db",
+          "solverStatuses": {
+            "pi": 120
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 62.37468502533797,
+            "physicalIae": 62.289902811603454,
+            "overshoot": 0.005829076055229088,
+            "settlingTime": null,
+            "pumpEffort": 451.2038007620148,
+            "pumpVariation": 138.85421776506388,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 5.648814749292796e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 1,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 2.3432191668689484,
+            "maxSolveMs": 4.785299999639392,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "619a99c09f3a1d281900afbc1da314e865bb165eb3cf95e0ebcad53cdc0ff0e8",
+          "solverStatuses": {
+            "residual-check-failed": 1,
+            "solved": 119
+          }
+        }
+      ]
+    },
+    {
+      "name": "valve-restriction",
+      "config": {
+        "fault": "valve_restriction",
+        "start": 70,
+        "severity": 0.6,
+        "fault_duration": 90,
+        "duration": 240,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": true,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": true
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "c2a3dc0c0c960a16e4f2b7961e9ca8e4958fffac6e8f30b5839af4d32cfc1f88",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 34.14427981153563,
+            "physicalIae": 34.033584844718874,
+            "overshoot": 0.1492796873057236,
+            "settlingTime": null,
+            "pumpEffort": 240.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 1.3855583347321954e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.002930000209744321,
+            "maxSolveMs": 0.02340000355616212,
+            "recovery": [
+              {
+                "time": 160,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "30e3cddd9a5b680198f8fd5f46751c04adf152ba923665c4aef035f41e58c0c3",
+          "solverStatuses": {
+            "open-loop": 120
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": true,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 33.01027231154264,
+            "physicalIae": 32.91340836557355,
+            "overshoot": 0.2372643652814237,
+            "settlingTime": null,
+            "pumpEffort": 307.2483138211678,
+            "pumpVariation": 167.8449293824712,
+            "valveVariation": 0.19384103750441728,
+            "levelViolationSeconds": 79.99999999999999,
+            "maxLevelViolation": 0.49780301128564464,
+            "overflow": 0.5374069851947159,
+            "maxMassResidual": 1.2423395645555502e-13,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.014453333308968771,
+            "maxSolveMs": 0.04150000313529745,
+            "recovery": [
+              {
+                "time": 160,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "c1a2a11b5374f41dfb2c51c08c684ea013669738079b4165a5120556e63d3ce3",
+          "solverStatuses": {
+            "pi": 120
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": true,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": true,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 22.89068563058675,
+            "physicalIae": 22.78913448496671,
+            "overshoot": 0.01587906596990396,
+            "settlingTime": 174.2,
+            "pumpEffort": 234.21565391857376,
+            "pumpVariation": 631.8826322669042,
+            "valveVariation": 1.1474494628082734,
+            "levelViolationSeconds": 58.60000000000001,
+            "maxLevelViolation": 0.03510395007124467,
+            "overflow": 0.0,
+            "maxMassResidual": 4.574118861455645e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 5.539279166835816,
+            "maxSolveMs": 10.944899997411994,
+            "recovery": [
+              {
+                "time": 160,
+                "through": 240.0,
+                "settlingSeconds": 14.199999999999989
+              }
+            ]
+          },
+          "trajectorySha256": "49a1cbfd19ce632f43c6a696e41bad7508a4fce0f512407b5a7f93a252af8201",
+          "solverStatuses": {
+            "solved": 120
+          }
+        }
+      ]
+    },
+    {
+      "name": "sensor-bias",
+      "config": {
+        "fault": "sensor_bias",
+        "start": 70,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 240,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.4,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "0a85949f6fde71fb421c33414cbb3ff2c78961d2c3516f846fefcfed9033ed5e",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 40.91649671551614,
+            "physicalIae": 0.0,
+            "overshoot": 0.24577276755053945,
+            "settlingTime": null,
+            "pumpEffort": 240.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 0.0,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.003120833328769853,
+            "maxSolveMs": 0.02390000008745119,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "b11e2fd9b9a0c6aa339a7fa5633dbfd7d7f3ab44384b5e78e3015c847b8da92d",
+          "solverStatuses": {
+            "open-loop": 120
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 11.21826073751016,
+            "physicalIae": 32.58657891462907,
+            "overshoot": 0.24345816530679687,
+            "settlingTime": null,
+            "pumpEffort": 173.1495221788909,
+            "pumpVariation": 103.3823813461185,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 3.064215547965432e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.014818333329458255,
+            "maxSolveMs": 0.06310000026132911,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": null
+              }
+            ]
+          },
+          "trajectorySha256": "6a7f550059a1c8e7a8c6c49b282d94fc3705d9206ba84694e851460cb94357df",
+          "solverStatuses": {
+            "pi": 120
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 6.992537336371247,
+            "physicalIae": 34.599673195368595,
+            "overshoot": 0.24251939298055425,
+            "settlingTime": 119.0,
+            "pumpEffort": 187.15590373505268,
+            "pumpVariation": 506.97661142230794,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 7.904787935331115e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 1,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 5.055975833329285,
+            "maxSolveMs": 18.110600001818966,
+            "recovery": [
+              {
+                "time": 70,
+                "through": 240.0,
+                "settlingSeconds": 49.0
+              }
+            ]
+          },
+          "trajectorySha256": "873f1e2e523b55a2529e524dc3423c4f11a1825b9754f083614f927947a3f587",
+          "solverStatuses": {
+            "residual-check-failed": 1,
+            "solved": 119
+          }
+        }
+      ]
+    },
+    {
+      "name": "quiet-regulation",
+      "config": {
+        "fault": "healthy",
+        "start": 40.0,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 180,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.01,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 1.5625,
+        "initial2": 1.0,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.3,
+          "levelMin2": 0.0,
+          "levelMax2": 2.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "fc0df85cd05803cc132092cf0e53de44f0b5ad132479dcc203b9a98b47543ce5",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 1.4877654233760933,
+            "physicalIae": 0.0,
+            "overshoot": 0.028863837752697297,
+            "settlingTime": null,
+            "pumpEffort": 180.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 0.0,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.008038888861645117,
+            "maxSolveMs": 0.3152999997837469,
+            "recovery": []
+          },
+          "trajectorySha256": "230c097810bfd541bb5de7fcde9cd201ff5813daaecd404946d127b617e09fd3",
+          "solverStatuses": {
+            "open-loop": 90
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 1.5141665817554129,
+            "physicalIae": 0.24022831009714624,
+            "overshoot": 0.028730965700904276,
+            "settlingTime": null,
+            "pumpEffort": 180.0134348890538,
+            "pumpVariation": 187.95056276203175,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 7.283063041541027e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.024251110961712483,
+            "maxSolveMs": 0.09590000263415277,
+            "recovery": []
+          },
+          "trajectorySha256": "ca807a6c274a04898c65e4081aa2c97c4d2c49193a8e65a1eec62b20c63c321e",
+          "solverStatuses": {
+            "pi": 90
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 1.6423828700147043,
+            "physicalIae": 0.6346726454372107,
+            "overshoot": 0.03417962714353262,
+            "settlingTime": null,
+            "pumpEffort": 184.10230635438867,
+            "pumpVariation": 1061.3416990693054,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 0.0,
+            "maxLevelViolation": 0.0,
+            "overflow": 0.0,
+            "maxMassResidual": 7.549516567451064e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 1,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 7.22918333332119,
+            "maxSolveMs": 9.429599998838967,
+            "recovery": []
+          },
+          "trajectorySha256": "37efc27c403aa78364400524b8a2ccd242838fa2386eb2fc66ed99a575c3adec",
+          "solverStatuses": {
+            "residual-check-failed": 1,
+            "solved": 89
+          }
+        }
+      ]
+    },
+    {
+      "name": "initial-level-excursion",
+      "config": {
+        "fault": "healthy",
+        "start": 40.0,
+        "severity": 0.6,
+        "fault_duration": null,
+        "duration": 120,
+        "step": 0.2,
+        "integrationStep": 0.05,
+        "seed": 947,
+        "noise": 0.002,
+        "area1": 1.0,
+        "area2": 1.0,
+        "initial1": 2.6,
+        "initial2": 1.4,
+        "pumpRate": 0.03,
+        "pumpControl": 100.0,
+        "connection": 0.04,
+        "outlet": 0.03,
+        "valve": 1.0,
+        "outletValve": 1.0,
+        "leakCoefficient": 0.015,
+        "sensorBias": 0.3,
+        "tankHeight": 2.5,
+        "targetLevel": 1.0
+      },
+      "protocol": {
+        "sampleInterval": 2.0,
+        "reference": [
+          {
+            "time": 0.0,
+            "level": 1.0
+          }
+        ],
+        "constraints": {
+          "pumpMin": 0.0,
+          "pumpMax": 150.0,
+          "pumpRate": 10.0,
+          "valveMin": 0.01,
+          "valveMax": 1.0,
+          "valveRate": 0.1,
+          "levelMin1": 0.0,
+          "levelMax1": 2.0,
+          "levelMin2": 0.0,
+          "levelMax2": 1.3
+        },
+        "controllers": [
+          {
+            "kind": "open-loop"
+          },
+          {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false
+          }
+        ],
+        "disturbances": [],
+        "settlingBand": 0.02,
+        "settlingDwell": 20.0
+      },
+      "noiseFingerprint": "005112ad2fbb08cc51ecb5bbc6557b588935f6cf22979999b01ecb344b18bcd1",
+      "controllers": [
+        {
+          "controller": "open-loop",
+          "settings": {
+            "kind": "open-loop"
+          },
+          "metrics": {
+            "iae": 50.905450267988,
+            "physicalIae": 50.912198119702424,
+            "overshoot": 0.49494054981040336,
+            "settlingTime": null,
+            "pumpEffort": 120.0,
+            "pumpVariation": 0.0,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 120.0,
+            "maxLevelViolation": 0.6000000000000001,
+            "overflow": 0.00850760536823442,
+            "maxMassResidual": 8.620534841519145e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.0029000003147909106,
+            "maxSolveMs": 0.019999999494757503,
+            "recovery": []
+          },
+          "trajectorySha256": "a9e5d9ee5a9b5e9c29743def09a51ea6f079e16b26edb17f056f9ccb2f7f00b7",
+          "solverStatuses": {
+            "open-loop": 60
+          }
+        },
+        {
+          "controller": "pi",
+          "settings": {
+            "kind": "pi",
+            "kp": 180.0,
+            "ki": 2.0,
+            "actuateValve": false,
+            "valveKp": 0.5,
+            "valveBias": 1.0
+          },
+          "metrics": {
+            "iae": 23.92522700997215,
+            "physicalIae": 23.927562543795005,
+            "overshoot": 0.45274104018673955,
+            "settlingTime": null,
+            "pumpEffort": 50.270903496038855,
+            "pumpVariation": 160.37706234023742,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 35.8,
+            "maxLevelViolation": 0.6000000000000001,
+            "overflow": 0.005635980179277954,
+            "maxMassResidual": 2.1828025498216164e-14,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 0.01417499994810593,
+            "maxSolveMs": 0.04980000085197389,
+            "recovery": []
+          },
+          "trajectorySha256": "148080d72077cc594b1a8665625d926d42538d535f3b40253621502de16c5c9d",
+          "solverStatuses": {
+            "pi": 60
+          }
+        },
+        {
+          "controller": "mpc",
+          "settings": {
+            "kind": "mpc",
+            "predictionHorizon": 25,
+            "controlHorizon": 8,
+            "trackingWeight": 10.0,
+            "moveWeight": 0.08,
+            "effortWeight": 0.002,
+            "levelWeight": 1000.0,
+            "maxIterations": 1200,
+            "tolerance": 1e-05,
+            "preview": true,
+            "actuateValve": false,
+            "fallbackPI": {
+              "kind": "pi",
+              "kp": 180.0,
+              "ki": 2.0,
+              "actuateValve": false,
+              "valveKp": 0.5,
+              "valveBias": 1.0
+            }
+          },
+          "metrics": {
+            "iae": 17.58990233987126,
+            "physicalIae": 17.54075657840133,
+            "overshoot": 0.4526494926402935,
+            "settlingTime": 57.4,
+            "pumpEffort": 86.35539262214591,
+            "pumpVariation": 344.4711261945895,
+            "valveVariation": 0.0,
+            "levelViolationSeconds": 33.400000000000006,
+            "maxLevelViolation": 0.6000000000000001,
+            "overflow": 0.005635980179277955,
+            "maxMassResidual": 9.836749470526485e-15,
+            "actuatorViolations": 0,
+            "rateViolations": 0,
+            "solverFailures": 0,
+            "infeasibleSteps": 0,
+            "meanSolveMs": 4.029073333488971,
+            "maxSolveMs": 7.133300001441967,
+            "recovery": []
+          },
+          "trajectorySha256": "05c650aebd42929c6f19587cbe16a9d8f3e4df9f724282886e7aef2782b36e10",
+          "solverStatuses": {
+            "solved": 60
+          }
+        }
+      ]
+    }
+  ],
+  "solver": {
+    "name": "Dense convex QP / SciPy SLSQP with independent KKT checks",
+    "version": 1,
+    "scipyVersion": "1.16.2",
+    "numpyVersion": "2.3.5",
+    "model": "Analytic nominal hydraulic Jacobian with affine RK2 discretization and causal disturbance estimation",
+    "constraints": "Hard magnitude and slew limits; soft predicted level bounds with two penalized maximum-excursion slacks. No physical safety guarantee.",
+    "failure": "Reject unconverged iterates; use bounded, rate-limited PI fallback. This solver does not certify infeasibility; infeasibleSteps is zero, iteration limits count as solverFailures."
+  }
+}
