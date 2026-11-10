@@ -46,6 +46,8 @@ const { ExperimentLabels } = require('../src/workspace/ExperimentLabels.tsx');
 const { ExperimentReport } = require('../src/workspace/ExperimentReport.tsx');
 const { ExperimentComparison } = require('../src/workspace/ExperimentComparison.tsx');
 const { ModelWorkspace } = require('../src/workspace/ModelWorkspace.tsx');
+const { CalibrationWorkspace, observationReference } = require('../src/workspace/CalibrationWorkspace.tsx');
+const { CalibrationResults } = require('../src/workspace/CalibrationResults.tsx');
 const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
 const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
 const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
@@ -1485,9 +1487,81 @@ test('report generation uses the selected locale and discards responses from an 
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Old report/);
 });
 
+function twinFixture() {
+  const source={...dataset('tank-calibration',201),metadata:{...dataset('tank-calibration',201).metadata,
+    columns:['level1','level2','pump','valve','outlet'].map(name=>({name,missing:0,min:0,max:150}))}};
+  const reference={...observationReference(source),unitsConfirmed:true,datasetName:source.name};
+  const metric={samples:200,rmse:.002,mae:.0015,bias:.0001,std:.002,lag1:.01,quantiles:[-.003,0,.003],normalizedRmse:1,systematic:false,histogram:{edges:[-.004,0,.004],counts:[99,101]}};
+  const evaluation={reference,times:[0,100,200],observed:{level1:[1,1.1,1.2],level2:[.8,.9,1]},predicted:{level1:[1,1.101,1.201],level2:[.8,.901,1.001]},original:{level1:[1,1.3,1.5],level2:[.8,1.1,1.3]},residuals:{level1:[0,.001,.001],level2:[0,.001,.001]},metrics:{level1:metric,level2:metric},originalMetrics:{level1:{...metric,rmse:.2},level2:{...metric,rmse:.2}},initializationExcluded:false,numericalStepDifferenceRmse:{level1:1e-7,level2:1e-7},massBalanceError:1e-14,parameterEnvelope:null};
+  const parameters=Object.fromEntries(['pumpRate','connection','outlet'].map(k=>[k,{initial:.03,lower:.01,upper:.08,value:.035,unit:'m³/s'}]));
+  const identity={rank:2,parameterCount:3,status:'rank-deficient',conditionNumber:null,singularValues:[1000,100,1e-9],rankTolerance:.001,sensitivityNorms:{pumpRate:1,connection:1,outlet:1},sensitivityCosine:[[1,0,1],[0,1,0],[1,0,1]],correlation:null,weakCombinations:[{singularValue:1e-9,combination:{pumpRate:.7,connection:0,outlet:-.7}}],activeBounds:[]};
+  const uncertainty={available:false,standardErrors:null,covariance:null,method:'local-linearized-known-noise',assumptions:[]};
+  const run={id:'calibration-run',workspaceId:'test',name:'Frozen calibration',status:'completed',createdAt:'2026-11-10T00:00:00Z',progress:{stage:'completed',evaluations:8},error:null,
+    config:{calibration:reference,validation:{...reference,datasetId:'tank-validation'},parameters:Object.fromEntries(Object.entries(parameters).map(([k,p])=>[k,{initial:p.initial,lower:p.lower,upper:p.upper}])),nominal:{pumpRate:.03,connection:.04,outlet:.03},noise:{level1:.002,level2:.002},integrationStep:.05,maxEvaluations:80},
+    result:{parameters,optimizer:{converged:true,evaluations:8,simulationCalls:50,cost:200,optimality:1e-7,trace:[]},identifiability:identity,uncertainty,warnings:['rank-deficient'],reducedChiSquare:1,calibration:evaluation,validation:{...evaluation,reference:{...reference,datasetName:'Independent measurements',datasetId:'tank-validation'},initializationExcluded:true,multiStep:[]},durationMs:2000}};
+  return {source,run,identity,uncertainty};
+}
+
+test('calibration setup submits mapped observations and physical bounds, with an explicit independent validation source', async () => {
+  const {source,run}=twinFixture(),writes=[];
+  const validation={...source,id:'tank-validation',name:'Independent measurements'};
+  const catalog={parameters:Object.fromEntries(['pumpRate','connection','outlet'].map(key=>[key,{label:key,unit:'m³/s',min:.0001,max:.2,scale:.03}])),nominal:{pumpRate:.03,connection:.04,outlet:.03}};
+  globalThis.fetch=async(url,options={})=>{
+    if(options.method==='POST'){writes.push(JSON.parse(options.body));return response({...run,status:'queued',result:null});}
+    if(url.endsWith('/catalog'))return response(catalog);
+    return response(url.endsWith('/twins') ? {twins:[]} : {runs:[]});
+  };
+  await mount(React.createElement(CalibrationWorkspace,{workspaceId:'test',datasets:[source,validation]}));
+  await setField(container.querySelector('[aria-label="pumpRate upper"]'),.06);
+  await setField(container.querySelector('[aria-label="Calibration observations level2"]'),'outlet');
+  await setField(container.querySelector('[aria-label="Calibration observations level2"]'),'level2');
+  const check=text=>[...container.querySelectorAll('label')].find(n=>n.textContent.includes(text)).querySelector('input');
+  await click(check('I confirm the mapped signals'));
+  await click(check('Add independent validation'));
+  await setField(container.querySelector('[aria-label="Validation observations Dataset"]'),'tank-validation');
+  await click([...container.querySelectorAll('.twin-check')].at(-1).querySelector('input'));
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].config.parameters.pumpRate.upper,.06);
+  assert.equal(writes[0].config.calibration.mapping.level2,'level2');
+  assert.equal(writes[0].config.validation.datasetId,'tank-validation');
+  assert.equal(writes[0].config.validation.unitsConfirmed,true);
+  assert.match(window.location.hash,/calibration\/calibration-run/);
+  await act(async()=>setLocale('zh-CN'));
+  assert.match(container.textContent,/标定数字孪生/);
+  assert.equal(container.querySelector('[aria-label="pumpRate 上界"]').value,'0.06');
+});
+
+test('rank-deficient results withhold uncertainty, keep independent metrics and save append-only twin revisions', async () => {
+  const {source,run,identity,uncertainty}=twinFixture(),writes=[];
+  const twin={id:'saved-twin',workspaceId:'test',name:run.name,revision:2,runId:run.id,createdAt:run.createdAt,validated:true,identifiability:identity,uncertainty,warnings:run.result.warnings};
+  globalThis.fetch=async(url,options={})=>{
+    if(options.method==='PATCH'){writes.push({url,body:JSON.parse(options.body)});return response({...twin,revision:3});}
+    if(url.endsWith('/catalog'))return response({parameters:{},nominal:{}});
+    if(url.endsWith('/revisions'))return response({revisions:[twin]});
+    if(url.endsWith('/twins'))return response({twins:[twin]});
+    if(url.endsWith(`/${run.id}`))return response(run);
+    return response({runs:[run]});
+  };
+  await mount(React.createElement(CalibrationWorkspace,{workspaceId:'test',datasets:[source],runId:run.id}));
+  assert.match(container.textContent,/not a unique physical estimate/);
+  assert.match(container.textContent,/Independent measurements/);
+  assert.match(container.textContent,/Withheld/);
+  assert.equal(container.querySelectorAll('svg[aria-label="Residual histogram"]').length,2);
+  await setField(container.querySelector('[aria-label="Save twin target"]'),'saved-twin');
+  await click(button('Save next twin revision'));
+  assert.deepEqual(writes[0].body,{runId:run.id,name:run.name,expectedRevision:2});
+  assert.match(writes[0].url,/twins\/saved-twin$/);
+  await act(async()=>root.render(React.createElement(CalibrationResults,{run:{...run,result:{...run.result,optimizer:{...run.result.optimizer,converged:false},warnings:['optimizer-incomplete']}}})));
+  assert.match(container.textContent,/Optimizer incomplete/);
+  await act(async()=>setLocale('zh-CN'));
+  assert.match(container.textContent,/尚未收敛/);
+  assert.match(container.textContent,/独立验证/);
+});
+
 test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
   const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors', 'calibration']) {
     const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
     for (const property of source.statements[0].expression.properties) {
       const key = property.name.text;

@@ -85,6 +85,20 @@ def flows(c, heads, time, action, at, parameters):
     return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
 
 
+def euler_stage(c, state, dt, flux):
+    """Conservative donor-limited stage shared by simulation and offline twins."""
+    f = list(flux)
+    demand1 = max(0,f[1])+f[3]+f[4]
+    scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
+    demand2 = max(0,-f[1])+f[2]+f[5]
+    scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
+    f[1] *= scale1 if f[1] >= 0 else scale2
+    f[3] *= scale1; f[4] *= scale1
+    f[2] *= scale2; f[5] *= scale2
+    return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
+            max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+
+
 def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
@@ -97,16 +111,7 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
 
     def stage(state, when, dt):
         f, _, _, _ = flows(c,state,when,action,at,p)
-        # Joint donor limiting keeps transfer, leak and overflow conservative.
-        demand1 = max(0,f[1])+f[3]+f[4]
-        scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
-        demand2 = max(0,-f[1])+f[2]+f[5]
-        scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
-        f[1] *= scale1 if f[1] >= 0 else scale2
-        f[3] *= scale1; f[4] *= scale1
-        f[2] *= scale2; f[5] *= scale2
-        return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
-                max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+        return euler_stage(c,state,dt,f)
 
     count = math.ceil(c['duration']/c['step'])
     targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}

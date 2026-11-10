@@ -1,0 +1,802 @@
+{
+  "Digital twins": [
+    "数字孪生",
+    "Digital twins"
+  ],
+  "Calibrate a model from observed data ↗": [
+    "从观测数据标定模型 ↗",
+    "Calibrate a model from observed data ↗"
+  ],
+  "12 / SYSTEM IDENTIFICATION": [
+    "12 / 系统辨识",
+    "12 / SYSTEM IDENTIFICATION"
+  ],
+  "Calibrate a digital twin": [
+    "标定数字孪生",
+    "Calibrate a digital twin"
+  ],
+  "Infer tank physics from observations. Test on independent data. Preserve every calibrated revision.": [
+    "从观测推断水箱物理参数，用独立数据检验，并保存每次标定版本。",
+    "Infer tank physics from observations. Test on independent data. Preserve every calibrated revision."
+  ],
+  "OFFLINE · LOCAL": [
+    "离线 · 本地",
+    "OFFLINE · LOCAL"
+  ],
+  "Loading calibration workspace…": [
+    "正在加载标定工作区…",
+    "Loading calibration workspace…"
+  ],
+  "Start with observed data": [
+    "从观测数据开始",
+    "Start with observed data"
+  ],
+  "Import a tank CSV or save a coupled-tank simulation as a Dataset, then return here.": [
+    "导入水箱 CSV，或将耦合水箱仿真保存为数据集，然后返回此处。",
+    "Import a tank CSV or save a coupled-tank simulation as a Dataset, then return here."
+  ],
+  "Open Models ↗": [
+    "打开模型 ↗",
+    "Open Models ↗"
+  ],
+  "Identification setup": [
+    "辨识配置",
+    "Identification setup"
+  ],
+  "COUPLED TANKS / OUTPUT ERROR": [
+    "耦合水箱 / 输出误差法",
+    "COUPLED TANKS / OUTPUT ERROR"
+  ],
+  "Calibration name": [
+    "标定名称",
+    "Calibration name"
+  ],
+  "Coupled-tank identification": [
+    "耦合水箱辨识",
+    "Coupled-tank identification"
+  ],
+  "Calibration observations": [
+    "标定观测",
+    "Calibration observations"
+  ],
+  "Validation observations": [
+    "验证观测",
+    "Validation observations"
+  ],
+  "Add independent validation": [
+    "添加独立验证",
+    "Add independent validation"
+  ],
+  "Interval start (s)": [
+    "区间起点（秒）",
+    "Interval start (s)"
+  ],
+  "Interval end (s)": [
+    "区间终点（秒）",
+    "Interval end (s)"
+  ],
+  "Model signal / SI unit": [
+    "模型信号 / SI 单位",
+    "Model signal / SI unit"
+  ],
+  "Observed column": [
+    "观测列",
+    "Observed column"
+  ],
+  "Noise σ": [
+    "噪声 σ",
+    "Noise σ"
+  ],
+  "Use fixed command": [
+    "使用固定指令",
+    "Use fixed command"
+  ],
+  "Not observed": [
+    "未观测",
+    "Not observed"
+  ],
+  "I confirm the mapped signals use the SI units shown above.": [
+    "我确认映射信号使用上方所示的 SI 单位。",
+    "I confirm the mapped signals use the SI units shown above."
+  ],
+  "Timestamps are dataset seconds. Commands are held until the next observation. Missing outputs are omitted; missing inputs and interpolated samples are rejected.": [
+    "时间使用数据集秒数；执行器指令保持到下一次观测。缺失输出不参与拟合；缺失输入及插值样本不被接受。",
+    "Timestamps are dataset seconds. Commands are held until the next observation. Missing outputs are omitted; missing inputs and interpolated samples are rejected."
+  ],
+  "Open original dataset ↗": [
+    "打开原始数据集 ↗",
+    "Open original dataset ↗"
+  ],
+  "Physical parameters to estimate": [
+    "待估计物理参数",
+    "Physical parameters to estimate"
+  ],
+  "Estimate": [
+    "估计",
+    "Estimate"
+  ],
+  "Physical parameter": [
+    "物理参数",
+    "Physical parameter"
+  ],
+  "Initial guess": [
+    "初始猜测",
+    "Initial guess"
+  ],
+  "Lower bound": [
+    "下界",
+    "Lower bound"
+  ],
+  "Upper bound": [
+    "上界",
+    "Upper bound"
+  ],
+  "initial": [
+    "初始值",
+    "initial"
+  ],
+  "lower": [
+    "下界",
+    "lower"
+  ],
+  "upper": [
+    "上界",
+    "upper"
+  ],
+  "Pump efficiency factor": [
+    "泵效率系数",
+    "Pump efficiency factor"
+  ],
+  "Pump capacity × efficiency is a single identifiable product in this model. Estimate one factor while fixing the other. Selecting both demonstrates the ambiguity.": [
+    "本模型中泵容量与效率只能辨识其乘积。请固定其中一个并估计另一个；同时选择可展示这一歧义。",
+    "Pump capacity × efficiency is a single identifiable product in this model. Estimate one factor while fixing the other. Selecting both demonstrates the ambiguity."
+  ],
+  "Original model and fixed physics": [
+    "原始模型与固定物理量",
+    "Original model and fixed physics"
+  ],
+  "Original predictions use these nominal coefficients. Unselected initial levels use the first mapped measurement, otherwise these fixed values. Selected initial levels are fitted only on calibration.": [
+    "原始预测使用此处标称系数。未估计的初始液位采用首个映射观测，否则使用此处固定值；选择估计的初始液位仅在标定集拟合。",
+    "Original predictions use these nominal coefficients. Unselected initial levels use the first mapped measurement, otherwise these fixed values. Selected initial levels are fitted only on calibration."
+  ],
+  "Nominal": [
+    "标称",
+    "Nominal"
+  ],
+  "Numerical settings and noise assumptions": [
+    "数值设置与噪声假设",
+    "Numerical settings and noise assumptions"
+  ],
+  "Bounded nonlinear least squares assumes independent Gaussian output noise and exact actuator inputs. Noise σ weights the objective; it is not fitted from validation residuals.": [
+    "有界非线性最小二乘假设输出噪声为独立高斯噪声、执行器输入精确。噪声 σ 用于目标加权，不从验证残差估计。",
+    "Bounded nonlinear least squares assumes independent Gaussian output noise and exact actuator inputs. Noise σ weights the objective; it is not fitted from validation residuals."
+  ],
+  "Maximum integration step (s)": [
+    "最大积分步长（秒）",
+    "Maximum integration step (s)"
+  ],
+  "Optimizer evaluation budget": [
+    "优化器评估次数上限",
+    "Optimizer evaluation budget"
+  ],
+  "Starting identification…": [
+    "正在启动辨识…",
+    "Starting identification…"
+  ],
+  "Run numerical identification ↗": [
+    "运行数值辨识 ↗",
+    "Run numerical identification ↗"
+  ],
+  "Identification progress": [
+    "辨识进度",
+    "Identification progress"
+  ],
+  "Reuse this setup": [
+    "复用此配置",
+    "Reuse this setup"
+  ],
+  "Save twin target": [
+    "孪生保存目标",
+    "Save twin target"
+  ],
+  "New calibrated twin": [
+    "新建标定孪生",
+    "New calibrated twin"
+  ],
+  "Save next twin revision": [
+    "保存孪生新版本",
+    "Save next twin revision"
+  ],
+  "Save calibrated twin": [
+    "保存标定孪生",
+    "Save calibrated twin"
+  ],
+  "Source simulation ↗": [
+    "来源仿真 ↗",
+    "Source simulation ↗"
+  ],
+  "Linked experiment ↗": [
+    "关联实验 ↗",
+    "Linked experiment ↗"
+  ],
+  "Model experiments ↗": [
+    "模型实验 ↗",
+    "Model experiments ↗"
+  ],
+  "Calibration history": [
+    "标定历史",
+    "Calibration history"
+  ],
+  "Completed requests and numerical results are saved locally.": [
+    "执行请求和数值结果保存在本地。",
+    "Completed requests and numerical results are saved locally."
+  ],
+  "Digital twin library": [
+    "数字孪生库",
+    "Digital twin library"
+  ],
+  "Saved digital twin": [
+    "已保存数字孪生",
+    "Saved digital twin"
+  ],
+  "Choose a saved twin": [
+    "选择已保存孪生",
+    "Choose a saved twin"
+  ],
+  "Independently evaluated": [
+    "已独立评估",
+    "Independently evaluated"
+  ],
+  "Not independently validated": [
+    "尚未独立验证",
+    "Not independently validated"
+  ],
+  "Open calibration evidence ↗": [
+    "打开标定证据 ↗",
+    "Open calibration evidence ↗"
+  ],
+  "Create reusable model scenario": [
+    "创建可复用模型场景",
+    "Create reusable model scenario"
+  ],
+  "Calibrated scenario saved. Select it in Models to simulate or export observations for experiments.": [
+    "标定场景已保存。可在模型中选择它进行仿真，或导出观测用于实验。",
+    "Calibrated scenario saved. Select it in Models to simulate or export observations for experiments."
+  ],
+  "Observed output": [
+    "观测输出",
+    "Observed output"
+  ],
+  "Original RMSE": [
+    "原始 RMSE",
+    "Original RMSE"
+  ],
+  "Calibrated RMSE": [
+    "标定 RMSE",
+    "Calibrated RMSE"
+  ],
+  "MAE": [
+    "MAE",
+    "MAE"
+  ],
+  "Residual bias": [
+    "残差偏差",
+    "Residual bias"
+  ],
+  "Lag-1 correlation": [
+    "一阶自相关",
+    "Lag-1 correlation"
+  ],
+  "Systematic residual": [
+    "系统性残差",
+    "Systematic residual"
+  ],
+  "Independent validation": [
+    "独立验证",
+    "Independent validation"
+  ],
+  "Calibration fit": [
+    "标定拟合",
+    "Calibration fit"
+  ],
+  "Validation output": [
+    "验证输出",
+    "Validation output"
+  ],
+  "Calibration output": [
+    "标定输出",
+    "Calibration output"
+  ],
+  "Fresh measured initial state; first observation excluded from metrics.": [
+    "从新的实测初态开始；首个观测不计入指标。",
+    "Fresh measured initial state; first observation excluded from metrics."
+  ],
+  "Free trajectory fitted only to calibration observations.": [
+    "自由轨迹仅使用标定观测拟合。",
+    "Free trajectory fitted only to calibration observations."
+  ],
+  "Calibrated": [
+    "标定",
+    "Calibrated"
+  ],
+  "Original": [
+    "原始",
+    "Original"
+  ],
+  "Local parameter envelope (±1.96σ)": [
+    "局部参数包络（±1.96σ）",
+    "Local parameter envelope (±1.96σ)"
+  ],
+  "Local lower envelope": [
+    "局部下包络",
+    "Local lower envelope"
+  ],
+  "Local upper envelope": [
+    "局部上包络",
+    "Local upper envelope"
+  ],
+  "Residual diagnostics": [
+    "残差诊断",
+    "Residual diagnostics"
+  ],
+  "Prediction minus observation": [
+    "预测减观测",
+    "Prediction minus observation"
+  ],
+  "Zero residual": [
+    "零残差",
+    "Zero residual"
+  ],
+  "Residual distribution": [
+    "残差分布",
+    "Residual distribution"
+  ],
+  "Residual histogram": [
+    "残差直方图",
+    "Residual histogram"
+  ],
+  "5 / 50 / 95 percentiles": [
+    "5 / 50 / 95 百分位数",
+    "5 / 50 / 95 percentiles"
+  ],
+  "Residual standard deviation": [
+    "残差标准差",
+    "Residual standard deviation"
+  ],
+  "Step-halving RMSE difference": [
+    "步长减半 RMSE 差异",
+    "Step-halving RMSE difference"
+  ],
+  "Mass conservation error (m³)": [
+    "质量守恒误差（m³）",
+    "Mass conservation error (m³)"
+  ],
+  "Residual bias and serial correlation can indicate model mismatch, input errors or a wrong noise model; they are diagnostics, not fault labels.": [
+    "残差偏差和序列相关可能指向模型失配、输入误差或噪声假设错误；它们是诊断线索，并非故障标签。",
+    "Residual bias and serial correlation can indicate model mismatch, input errors or a wrong noise model; they are diagnostics, not fault labels."
+  ],
+  "Rolling multi-step prediction": [
+    "滚动多步预测",
+    "Rolling multi-step prediction"
+  ],
+  "Each origin uses only its measured initial levels and subsequent actuator commands. Parameters stay frozen. Horizons use the first sample at or after the requested time; origins may overlap.": [
+    "每个起点只使用当时实测初始液位及后续执行器指令，参数保持冻结。终点取请求时刻及其后的首个样本；起点区间可能重叠。",
+    "Each origin uses only its measured initial levels and subsequent actuator commands. Parameters stay frozen. Horizons use the first sample at or after the requested time; origins may overlap."
+  ],
+  "origins": [
+    "预测起点",
+    "origins"
+  ],
+  "Numerical identification": [
+    "数值辨识",
+    "Numerical identification"
+  ],
+  "Converged": [
+    "已收敛",
+    "Converged"
+  ],
+  "Optimizer incomplete": [
+    "优化尚未完成",
+    "Optimizer incomplete"
+  ],
+  "Local sensitivity rank": [
+    "局部灵敏度秩",
+    "Local sensitivity rank"
+  ],
+  "Optimizer evaluations": [
+    "优化器评估次数",
+    "Optimizer evaluations"
+  ],
+  "Reduced χ²": [
+    "约化 χ²",
+    "Reduced χ²"
+  ],
+  "Elapsed time": [
+    "耗时",
+    "Elapsed time"
+  ],
+  "Fitted value": [
+    "拟合值",
+    "Fitted value"
+  ],
+  "Bounds": [
+    "边界",
+    "Bounds"
+  ],
+  "Local standard error": [
+    "局部标准误",
+    "Local standard error"
+  ],
+  "Withheld": [
+    "不予报告",
+    "Withheld"
+  ],
+  "Convergence trace": [
+    "收敛轨迹",
+    "Convergence trace"
+  ],
+  "Weighted cost": [
+    "加权代价",
+    "Weighted cost"
+  ],
+  "First-order optimality": [
+    "一阶最优性",
+    "First-order optimality"
+  ],
+  "objective simulations": [
+    "次目标仿真",
+    "objective simulations"
+  ],
+  "Parameter identifiability": [
+    "参数可辨识性",
+    "Parameter identifiability"
+  ],
+  "Sensitivity uses output noise weights and fixed engineering parameter scales. Numerical rank is local and does not prove global uniqueness.": [
+    "灵敏度使用输出噪声权重和固定工程参数尺度。数值秩仅描述局部性质，不能证明全局唯一性。",
+    "Sensitivity uses output noise weights and fixed engineering parameter scales. Numerical rank is local and does not prove global uniqueness."
+  ],
+  "Rank tolerance": [
+    "秩判定阈值",
+    "Rank tolerance"
+  ],
+  "Condition number": [
+    "条件数",
+    "Condition number"
+  ],
+  "Poorly constrained combinations": [
+    "约束不足的参数组合",
+    "Poorly constrained combinations"
+  ],
+  "Local parameter correlation": [
+    "局部参数相关性",
+    "Local parameter correlation"
+  ],
+  "Sensitivity column cosine (covariance unavailable)": [
+    "灵敏度列余弦（协方差不可用）",
+    "Sensitivity column cosine (covariance unavailable)"
+  ],
+  "Uncertainty and scope": [
+    "不确定性与适用范围",
+    "Uncertainty and scope"
+  ],
+  "Local linearized parameter uncertainty is available under the stated noise model. The envelope is an approximation, not a universal confidence guarantee.": [
+    "在所述噪声模型下可给出局部线性化参数不确定性。包络只是近似，并非通用置信保证。",
+    "Local linearized parameter uncertainty is available under the stated noise model. The envelope is an approximation, not a universal confidence guarantee."
+  ],
+  "Parameter covariance and envelopes are withheld because local uncertainty assumptions are not supported by this fit.": [
+    "当前拟合不支持局部不确定性假设，因此不报告参数协方差与包络。",
+    "Parameter covariance and envelopes are withheld because local uncertainty assumptions are not supported by this fit."
+  ],
+  "Measurement noise: user-specified independent Gaussian output standard deviations.": [
+    "测量噪声：用户指定的独立高斯输出标准差。",
+    "Measurement noise: user-specified independent Gaussian output standard deviations."
+  ],
+  "Model mismatch: inspect residual bias, autocorrelation and independent validation.": [
+    "模型失配：检查残差偏差、自相关及独立验证。",
+    "Model mismatch: inspect residual bias, autocorrelation and independent validation."
+  ],
+  "Numerical error: step-halving differences are reported separately; they are not statistical intervals.": [
+    "数值误差：单独报告步长减半差异，不将其视为统计区间。",
+    "Numerical error: step-halving differences are reported separately; they are not statistical intervals."
+  ],
+  "No independent validation was selected. This fit has not been independently validated.": [
+    "未选择独立验证。本次拟合尚未经独立验证。",
+    "No independent validation was selected. This fit has not been independently validated."
+  ],
+  "pumpRate": [
+    "泵额定流量",
+    "Pump capacity"
+  ],
+  "pumpEfficiency": [
+    "泵效率因子",
+    "Pump efficiency"
+  ],
+  "connection": [
+    "罐间流量系数",
+    "Connection coefficient"
+  ],
+  "initial1": [
+    "罐 1 初始液位",
+    "Initial tank 1 level"
+  ],
+  "initial2": [
+    "罐 2 初始液位",
+    "Initial tank 2 level"
+  ],
+  "pump": [
+    "泵指令",
+    "Pump command"
+  ],
+  "valve": [
+    "连接阀开度",
+    "Connection valve"
+  ],
+  "area1": [
+    "罐 1 面积",
+    "Tank 1 area"
+  ],
+  "area2": [
+    "罐 2 面积",
+    "Tank 2 area"
+  ],
+  "pumpControl": [
+    "固定泵指令",
+    "Fixed pump command"
+  ],
+  "outletValve": [
+    "出口阀开度",
+    "Outlet valve"
+  ],
+  "tankHeight": [
+    "溢流高度",
+    "Overflow height"
+  ],
+  "twin.status.rank-deficient": [
+    "秩亏：参数不唯一",
+    "Rank deficient: parameters not unique"
+  ],
+  "twin.status.weak": [
+    "参数约束较弱",
+    "Weakly constrained"
+  ],
+  "twin.status.locally-identifiable": [
+    "局部可辨识",
+    "Locally identifiable"
+  ],
+  "twin.warning.rank-deficient": [
+    "数据无法独立辨识全部所选参数；当前数值解不是唯一的物理解。",
+    "The data cannot identify all selected parameters independently; this numerical solution is not a unique physical estimate."
+  ],
+  "twin.warning.weak": [
+    "至少一个参数组合相对于噪声约束较弱；应增加激励或固定部分参数。",
+    "At least one parameter combination is weak relative to noise; add excitation or fix some parameters."
+  ],
+  "twin.warning.pump-product-confounding": [
+    "泵容量与效率仅以乘积出现，无法从本模型的观测中分别确定。",
+    "Pump capacity and efficiency appear only as a product and cannot be determined separately from this model's observations."
+  ],
+  "twin.warning.active-bounds": [
+    "解位于参数边界附近，常规内部最优点协方差不适用。",
+    "The solution lies near a parameter bound; ordinary interior-optimum covariance is not appropriate."
+  ],
+  "twin.warning.residual-mismatch": [
+    "残差不符合所设噪声假设：检查系统性偏差、自相关或未建模物理过程。",
+    "Residuals do not support the noise assumptions: inspect systematic bias, autocorrelation or unmodeled physics."
+  ],
+  "twin.warning.integration-error": [
+    "积分步长减半的差异不可忽略，请减小步长并重新辨识。",
+    "Step-halving differences are material; reduce the integration step and repeat identification."
+  ],
+  "twin.warning.optimizer-incomplete": [
+    "优化器尚未收敛；不得将当前值作为已完成标定保存。",
+    "The optimizer has not converged; the current values cannot be saved as a completed calibration."
+  ],
+  "twin.job.queued": [
+    "排队中",
+    "Queued"
+  ],
+  "twin.job.running": [
+    "运行中",
+    "Running"
+  ],
+  "twin.job.completed": [
+    "已完成",
+    "Completed"
+  ],
+  "twin.job.failed": [
+    "失败",
+    "Failed"
+  ],
+  "twin.job.interrupted": [
+    "已中断",
+    "Interrupted"
+  ],
+  "twin.stage.queued": [
+    "等待本地求解器",
+    "Waiting for local solver"
+  ],
+  "twin.stage.fitting": [
+    "拟合标定观测",
+    "Fitting calibration observations"
+  ],
+  "twin.stage.diagnostics": [
+    "计算可辨识性与残差",
+    "Computing identifiability and residuals"
+  ],
+  "twin.stage.validation": [
+    "独立验证冻结模型",
+    "Validating frozen parameters"
+  ],
+  "twin.stage.completed": [
+    "数值结果已保存",
+    "Numerical results saved"
+  ],
+  "Hide setup": [
+    "收起配置",
+    "Hide setup"
+  ],
+  "Edit setup": [
+    "编辑配置",
+    "Edit setup"
+  ],
+  "Choose a dataset": [
+    "选择数据集",
+    "Choose a dataset"
+  ],
+  "Identification configuration must be an object.": [
+    "辨识配置必须为对象。",
+    "Identification configuration must be an object."
+  ],
+  "Unknown identification configuration option.": [
+    "未知辨识配置选项。",
+    "Unknown identification configuration option."
+  ],
+  "Choose supported fixed physical parameters.": [
+    "请选择受支持的固定物理参数。",
+    "Choose supported fixed physical parameters."
+  ],
+  "Fixed physical parameters are outside their physical bounds.": [
+    "固定物理参数超出了物理边界。",
+    "Fixed physical parameters are outside their physical bounds."
+  ],
+  "Select supported physical parameters to estimate.": [
+    "请选择受支持的待估计物理参数。",
+    "Select supported physical parameters to estimate."
+  ],
+  "Initial guesses and bounds must lie inside physical parameter limits.": [
+    "初始猜测与边界必须在物理参数允许范围内。",
+    "Initial guesses and bounds must lie inside physical parameter limits."
+  ],
+  "Specify output measurement noise standard deviations.": [
+    "请指定输出测量噪声标准差。",
+    "Specify output measurement noise standard deviations."
+  ],
+  "Noise standard deviations must be positive finite values between 1e-8 and 10.": [
+    "噪声标准差必须为 1e-8 到 10 之间的正有限值。",
+    "Noise standard deviations must be positive finite values between 1e-8 and 10."
+  ],
+  "Integration step must be between 0.005 and 0.25 seconds.": [
+    "积分步长须在 0.005 到 0.25 秒之间。",
+    "Integration step must be between 0.005 and 0.25 seconds."
+  ],
+  "Use 1–200 optimizer evaluations.": [
+    "优化器评估次数须为 1–200。",
+    "Use 1–200 optimizer evaluations."
+  ],
+  "Each output needs finite observations after initialization.": [
+    "每个输出在初始化后须有有限观测值。",
+    "Each output needs finite observations after initialization."
+  ],
+  "Calibration needs more finite output observations than estimated parameters.": [
+    "标定的有限输出观测数量须多于待估计参数数量。",
+    "Calibration needs more finite output observations than estimated parameters."
+  ],
+  "Confirm signal units before calibration: levels in m, flows in m³/s, pump in %, valve in fraction.": [
+    "请确认标定单位：液位为 m、流量为 m³/s、泵指令为 %、阀开度为比例。",
+    "Confirm signal units before calibration: levels in m, flows in m³/s, pump in %, valve in fraction."
+  ],
+  "Calibration datasets must belong to this workspace.": [
+    "标定数据集必须属于当前工作区。",
+    "Calibration datasets must belong to this workspace."
+  ],
+  "Choose an observation interval inside the dataset time range.": [
+    "请选择数据集时间范围内的观测区间。",
+    "Choose an observation interval inside the dataset time range."
+  ],
+  "Map unique dataset columns to model inputs and at least one observed output.": [
+    "请将不同数据列映射到模型输入及至少一个观测输出。",
+    "Map unique dataset columns to model inputs and at least one observed output."
+  ],
+  "Mapped signal units are incompatible. Convert units in Transformations first.": [
+    "映射信号的单位不兼容，请先在数据变换中转换单位。",
+    "Mapped signal units are incompatible. Convert units in Transformations first."
+  ],
+  "Observation source changed. Select the dataset again.": [
+    "观测来源已改变，请重新选择数据集。",
+    "Observation source changed. Select the dataset again."
+  ],
+  "Use 6–2000 strictly increasing observations and at most 60,000 integration substeps.": [
+    "请使用 6–2000 个时间严格递增的观测，且积分子步不超过 60,000。",
+    "Use 6–2000 strictly increasing observations and at most 60,000 integration substeps."
+  ],
+  "Observation interval contains acquisition gaps. Select a continuous run.": [
+    "观测区间含采集缺口，请选择连续记录。",
+    "Observation interval contains acquisition gaps. Select a continuous run."
+  ],
+  "Identification requires observed samples. Processed or interpolated values are not measurements.": [
+    "辨识需要实测样本，处理或插值值不属于测量。",
+    "Identification requires observed samples. Processed or interpolated values are not measurements."
+  ],
+  "Actuator commands must be complete and inside physical limits.": [
+    "执行器指令必须完整且在物理范围内。",
+    "Actuator commands must be complete and inside physical limits."
+  ],
+  "Each mapped output needs at least five finite observations after initialization.": [
+    "每个映射输出在初始化后须至少有五个有限观测。",
+    "Each mapped output needs at least five finite observations after initialization."
+  ],
+  "Calibration and validation observations must not overlap, including duplicated datasets.": [
+    "标定与验证观测不得重叠，包括重复导入的数据集。",
+    "Calibration and validation observations must not overlap, including duplicated datasets."
+  ],
+  "Derived datasets share source observations. Use independent original runs for validation.": [
+    "派生数据集共享源观测，请使用独立原始记录验证。",
+    "Derived datasets share source observations. Use independent original runs for validation."
+  ],
+  "Independent validation requires both initial measured tank levels.": [
+    "独立验证需要两个水箱的初始实测液位。",
+    "Independent validation requires both initial measured tank levels."
+  ],
+  "Linked experiment must use the calibration dataset in this workspace.": [
+    "关联实验须使用当前工作区的标定数据集。",
+    "Linked experiment must use the calibration dataset in this workspace."
+  ],
+  "A local identification is already running. Wait for it to finish.": [
+    "已有本地辨识任务运行，请等待完成。",
+    "A local identification is already running. Wait for it to finish."
+  ],
+  "Calibration run not found.": [
+    "未找到标定记录。",
+    "Calibration run not found."
+  ],
+  "Calibrated twin not found.": [
+    "未找到标定孪生。",
+    "Calibrated twin not found."
+  ],
+  "Save a twin only after numerical convergence.": [
+    "数值收敛后才可保存孪生。",
+    "Save a twin only after numerical convergence."
+  ],
+  "Twin revision changed. Reopen the latest revision.": [
+    "孪生版本已改变，请重新打开最新版本。",
+    "Twin revision changed. Reopen the latest revision."
+  ],
+  "Choose an integer twin revision.": [
+    "请选择整数孪生版本。",
+    "Choose an integer twin revision."
+  ],
+  "Calibrated twin revision not found.": [
+    "未找到标定孪生版本。",
+    "Calibrated twin revision not found."
+  ],
+  "Identification interrupted by service restart.": [
+    "辨识因服务重启而中断。",
+    "Identification interrupted by service restart."
+  ],
+  "Parameter uncertainty: local sensitivity only; unestimated initial-state and input uncertainty excluded.": [
+    "参数不确定性：仅局部灵敏度，不含未估计初态及输入的不确定性。",
+    "Parameter uncertainty: local sensitivity only; unestimated initial-state and input uncertainty excluded."
+  ],
+  "twin.warning.sensitivity-unstable": [
+    "灵敏度对差分步长敏感，局部线性化不确定性不可靠。",
+    "Sensitivities change materially with the finite-difference step; local linearized uncertainty is unreliable."
+  ],
+  "Validation must be disjoint from calibration and include every calibrated output and both initial measured levels. Its future observations never enter the fitting objective.": [
+    "验证与标定区间须无重叠，并包含每个标定输出及两个初始实测液位。后续验证观测不进入拟合目标。",
+    "Validation must be disjoint from calibration and include every calibrated output and both initial measured levels. Its future observations never enter the fitting objective."
+  ],
+  "Validation must include every calibrated output.": [
+    "验证须包含每个已标定输出。",
+    "Validation must include every calibrated output."
+  ]
+}

@@ -27,7 +27,10 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if len(parts)>=4 and parts[1]=='workspaces' and parts[3] in ('calibrations','twins'):
+            from .calibration_routes import route
+            result,status=route(store,method,parts,body)
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL
