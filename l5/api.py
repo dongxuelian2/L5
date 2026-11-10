@@ -27,7 +27,39 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'control':
+            workspace_id=parts[2]
+            if len(parts) == 4:
+                if method == 'GET':
+                    result = dict(experiments=store.control.list(workspace_id))
+                elif method == 'POST':
+                    result, status = store.control.create(workspace_id, body), 201
+            elif len(parts) == 5 and method == 'GET':
+                result = store.control.get(workspace_id, parts[4])
+            elif len(parts) == 6:
+                if parts[5] == 'dataset' and method == 'POST':
+                    result, status = store.control.dataset(workspace_id, parts[4], body.get('controller')), 201
+                elif parts[5] in ('report.html','results.csv') and method == 'GET':
+                    saved = store.control.get(workspace_id, parts[4])
+                    if parts[5] == 'report.html':
+                        from .control_reports import render_control_report
+                        content = render_control_report(saved, locale=parse_qs(url.query).get('lang',[None])[0])
+                        mime = 'text/html; charset=utf-8'
+                    else:
+                        from .control_service import csv_result
+                        content = csv_result(saved)
+                        mime = 'text/csv; charset=utf-8'
+                    payload = content.encode('utf-8')
+                    handler.send_response(200)
+                    handler.send_header('Content-Type',mime)
+                    handler.send_header('Content-Length',str(len(payload)))
+                    handler.send_header('Cache-Control','no-store')
+                    if parse_qs(url.query).get('download') == ['1']:
+                        handler.send_header('Content-Disposition',f'attachment; filename="l5-control-{parts[4]}-{parts[5]}"')
+                    handler.end_headers()
+                    handler.wfile.write(payload)
+                    return True
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL

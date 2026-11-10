@@ -1,5 +1,7 @@
 # Model & Scenario Workspace
 
+For measured-feedback PI, receding-horizon MPC, control constraints and saved controller comparisons, see the [Closed-loop Control Workspace](control-workspace.md). It shares the conservative tank integrator and exports ordinary model Datasets; one-time intervention forecasts remain a separate workflow.
+
 L5 uses two explicit model implementations behind a shared runtime. The registry is an in-process dictionary; there is no dynamic third-party code loader. `l5.models.base.ProcessModel` documents the small implementation contract. `l5.models` resolves a stable Model ID. Descriptors supply version, category, source, capabilities, ordered signals and units, configuration fields, fault templates, tools and intervention parameters.
 
 `SimulationService` owns session identity, causal observation windows, bounded observation caching, run records and Dataset export. A model validates its configuration, computes its trajectory, observes a window, executes supported tools and calculates interventions. Capability checks happen before dispatch. Unsupported operations return a client error. The assistant's diagnosis entry point requires a model that declares diagnosis support.

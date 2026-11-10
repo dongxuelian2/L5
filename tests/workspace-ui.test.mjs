@@ -46,6 +46,9 @@ const { ExperimentLabels } = require('../src/workspace/ExperimentLabels.tsx');
 const { ExperimentReport } = require('../src/workspace/ExperimentReport.tsx');
 const { ExperimentComparison } = require('../src/workspace/ExperimentComparison.tsx');
 const { ModelWorkspace } = require('../src/workspace/ModelWorkspace.tsx');
+const { ControlWorkspace } = require('../src/workspace/ControlWorkspace.tsx');
+const { ControlResults } = require('../src/workspace/ControlResults.tsx');
+const { defaultProtocol } = require('../src/workspace/controlTypes.ts');
 const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
 const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
 const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
@@ -1582,4 +1585,72 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
+});
+
+function controlFixture(){
+  const protocol=defaultProtocol();protocol.reference=[{time:0,level:1},{time:2,level:1.2}];
+  const rows=[0,2,4].map(t=>({t,level1:1.5625+t*.01,level2:1+t*.02,reference:t<2?1:1.2,error:t<2?0:.2-t*.02,pump:100+t*2,valve:1,inlet:.03,transfer:.03,outlet:.03}));
+  return {id:'control-run',name:'Control comparison evidence',workspaceId:'test',createdAt:'2026-11-09T00:00:00Z',format:'tank-control-1',modelId:'coupled-tanks',modelVersion:'1.0.0',scenarioSnapshot:null,config:{fault:'healthy',duration:4,start:2,step:.2,seed:3,tankHeight:2.5},protocol,datasets:{},noiseFingerprint:'fixed-common-noise',solver:{name:'QP'},
+    results:['open-loop','pi','mpc'].map((controller,i)=>({controller,settings:{kind:controller},rows,physical:rows,metrics:{iae:10-i,solverFailures:0,maxLevelViolation:0,recovery:[]},decisions:rows.slice(0,2).map(r=>({time:r.t,measurement:r,command:{pump:r.pump,valve:1},reference:r.reference,durationMs:1,solver:{status:controller==='mpc'?'solved':controller,iterations:4,primalResidual:1e-9,stationarityResidual:1e-9,...(controller==='mpc'?{prediction:[[1.6,1.1],[1.7,1.2]],targets:[1.2,1.2],plan:[[1.1,1],[1.2,1]]}:{})}}))})),metricDefinitions:[{key:'iae',label:'Measured tracking IAE',unit:'m·s'}]};
+}
+
+test('Control editor sends selected scenario version, reference, constraints and controller parameters',async()=>{
+  const {model,scenario}=modelFixture('coupled-tanks');model.defaults.tankHeight=2.5;
+  const requests=[];
+  globalThis.fetch=async(url,options)=>{
+    if(options?.method==='POST'){requests.push(JSON.parse(options.body));return response(controlFixture());}
+    return response(url==='/api/models/coupled-tanks'?model:url.endsWith('/scenarios')?{scenarios:[scenario]}:{experiments:[]});
+  };
+  await mount(React.createElement(ControlWorkspace,{workspaceId:'test',onSaved(){}}));
+  await setField(inputFor('Tank scenario'),scenario.id);
+  await setField(inputFor('Proportional gain (%/m)'),210);
+  await setField(inputFor('Control interval (s)'),3);
+  await setField(inputFor('Maximum pump (%)'),130);
+  await setField(inputFor('Experiment name'),'Specific control run');
+  await click(button('+ Setpoint change'));
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].scenarioId,scenario.id);assert.equal(requests[0].scenarioVersion,1);
+  assert.equal(requests[0].config,undefined);
+  assert.equal(requests[0].protocol.controllers.find(c=>c.kind==='pi').kp,210);
+  assert.equal(requests[0].protocol.constraints.pumpMax,130);
+  assert.equal(requests[0].protocol.sampleInterval,3);
+  assert.equal(requests[0].protocol.reference.length,3);
+  assert.ok(container.textContent.includes('Control comparison evidence'));
+  assert.equal(container.querySelectorAll('.control-results > figure svg').length,5);
+});
+
+test('Control saved results share cursor, retain evidence, export and connect Dataset workflow in both languages',async()=>{
+  const experiment=controlFixture(),before=JSON.stringify(experiment),saved=[];
+  globalThis.fetch=async(url,options)=>{assert.equal(JSON.parse(options.body).controller,'mpc');return response({...dataset('control-dataset'),metadata:{...dataset('control-dataset').metadata,model:{simulationId:'control-session'}}});};
+  await mount(React.createElement(ControlResults,{experiment,onSaved:(d,kind)=>saved.push([d.id,kind])}));
+  await setField(container.querySelector('input[type=range]'),1);
+  assert.match(container.querySelector('.control-readout').textContent,/1.2/);
+  assert.deepEqual([...container.querySelectorAll('.control-results > figure [data-selected-time]')].map(n=>n.getAttribute('data-selected-time')),['2','2','2','2','2']);
+  assert.ok(container.textContent.includes('2 s / 4 s'));
+  await click(button('Save selected controller as Dataset'));
+  assert.deepEqual(saved,[['control-dataset','mpc']]);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/control-dataset"]'));
+  assert.ok(button('Link Dataset to Incident'));
+  const report=container.querySelector('a[href*="report.html"]');assert.ok(report.href.endsWith('lang=en'));
+  await act(async()=>setLocale('zh-CN'));
+  assert.match(container.textContent,/测量跟踪绝对误差积分|将数据集关联至事件/);
+  assert.ok(container.querySelector('a[href*="report.html"]').href.endsWith('lang=zh-CN'));
+  assert.equal(JSON.stringify(experiment),before);
+});
+
+test('Control reopening drops stale responses and restores the saved protocol',async()=>{
+  const {model}=modelFixture('coupled-tanks'),fixture=controlFixture();let resolveOld;
+  globalThis.fetch=async url=>{
+    if(url.endsWith('/old'))return new Promise(resolve=>{resolveOld=resolve;});
+    if(url.endsWith('/new'))return response({...fixture,id:'new',name:'New saved control'});
+    return response(url==='/api/models/coupled-tanks'?model:url.endsWith('/scenarios')?{scenarios:[]}:{experiments:[]});
+  };
+  await mount(React.createElement(ControlWorkspace,{workspaceId:'test',experimentId:'old',onSaved(){}}));
+  await act(async()=>root.render(React.createElement(ControlWorkspace,{workspaceId:'test',experimentId:'new',onSaved(){}})));
+  await act(async()=>resolveOld(response({...fixture,id:'old',name:'Stale control result'})));
+  assert.ok(container.textContent.includes('New saved control'));
+  assert.ok(!container.textContent.includes('Stale control result'));
+  assert.equal(inputFor('Control interval (s)').value,'2');
+  assert.equal(container.querySelectorAll('.control-summary-cards button').length,3);
 });
