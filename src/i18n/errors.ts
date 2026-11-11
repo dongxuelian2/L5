@@ -1,10 +1,12 @@
 import { t } from "./index";
 
 /** Localize known service errors at display time; retain unknown diagnostics. */
-export function errorMessage(value: string) {
+export function errorMessage(value: string): string {
   const raw = value.replace(/^'(.+)'$/, "$1"); // Python KeyError representation.
   const exact = t(raw);
   if (exact !== raw) return exact;
+  const live = raw.match(/^(OPC UA connection|OPC UA browse|OPC UA read|Starting acquisition|Stopping acquisition) failed: (.+)$/s);
+  if (live) return t(`${live[1]} failed: {0}`, {0: errorMessage(live[2])});
   const patterns: [RegExp, string][] = [
     [/^Request failed \((\d+)\)\.$/, "Request failed ({0})."],
     [/^(.+) must be a finite number\.$/, "{0} must be a finite number."],

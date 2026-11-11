@@ -17,6 +17,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | Module | What you can do |
 |---|---|
 | **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
+| **Live Data** | Browse and subscribe to read-only OPC UA sources. Save measurements, quality and interruptions in local acquisition sessions, then turn a recorded interval into a Dataset. |
 | **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
 | **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
 | **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
@@ -100,6 +101,8 @@ Open **http://127.0.0.1:8787**, create a workspace and import a CSV. The reposit
 
 The interface supports English and Chinese, with a language switch in the top-right corner. Your selection also applies to newly generated offline reports.
 
+To try **Live Data** without hardware, start the [coupled-tank OPC UA demo](docs/live-data.md) in a second terminal. Open a workspace, select **Live Data**, and connect to `opc.tcp://127.0.0.1:4840/l5/tanks/`.
+
 For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
 
 Projects live in `data/` by default: SQLite stores metadata and investigation records; CSV, NumPy arrays and result files retain numerical evidence. Restart with the same directory to continue. Set `L5_DATA_DIR` or choose a directory explicitly:
@@ -113,6 +116,7 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 | Start here | Further details |
 |---|---|
 | [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
+| [Live Data: OPC UA demo and setup](docs/live-data.md) | [Session storage, data quality and consumer API](docs/live-data.md#session-evidence-and-datasets) |
 | [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
 | [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
 | [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |

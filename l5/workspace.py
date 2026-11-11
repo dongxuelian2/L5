@@ -55,6 +55,11 @@ class WorkspaceStore:
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
         self.tep_studies = TEPStudyService(self)
+        from .live import LiveGateway
+        self.live = LiveGateway(self)
+
+    def close(self):
+        self.live.close()
 
     @contextmanager
     def connect(self):
@@ -103,7 +108,7 @@ class WorkspaceStore:
         self.workspace(identity)
         simulations = {s['id'] for s in self.runtime.list(identity)}
         simulations.update(d['metadata']['model']['simulationId'] for d in self.datasets(identity) if d['metadata'].get('model'))
-        with self.connect() as db:
+        with self.live.workspace_removal(identity), self.connect() as db:
             db.execute('DELETE FROM workspaces WHERE id=?', (identity,))
             remaining = [self.dataset_row(r) for r in db.execute('SELECT * FROM datasets')]
         folder = self.root / identity  # identity has been resolved against an existing generated ID.

@@ -33,6 +33,7 @@ dom.window.scrollTo = () => {};
 dom.window.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 const { createRoot } = await import('react-dom/client');
 const { Plot, SignalPlots } = require('../src/workspace/Charts.tsx');
+const { LiveEvidence } = require('../src/workspace/LiveEvidence.tsx');
 const { ResultView } = require('../src/workspace/Results.tsx');
 const { ImportDataset, AnalysisPage } = require('../src/workspace/WorkspaceApp.tsx');
 const App = require('../src/App.tsx').default;
@@ -79,6 +80,72 @@ async function mount(element) {
 afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); root = null; setLocale('en'); });
 function curve(name) { return [...container.querySelectorAll('svg')].find(svg => svg.getAttribute('aria-label')?.startsWith(name + ' time series')); }
 async function click(node) { assert.ok(node, 'control exists'); await act(async () => node.click()); }
+
+test('live display can pause without writing to the gateway and bad values remain raw evidence', async () => {
+  const mappings = [
+    { signal_id: 'tank-level', display_name: 'Tank level', node_id: 'ns=2;s=Level', unit: 'm' },
+    { signal_id: 'pump', display_name: 'Pump running', node_id: 'ns=2;s=Pump', unit: '' },
+  ];
+  const session = {
+    id: 'tanks', workspace_id: 'test', name: 'Coupled tanks', state: 'recording',
+    config: { endpoint: 'opc.tcp://127.0.0.1:4840/l5/tanks/' }, mappings,
+    started_at: '2026-01-01T00:00:00.000000+00:00', stopped_at: null,
+  };
+  function observation(id, time, mapping, value, quality = 'good') {
+    const stamp = `2026-01-01T00:00:0${time}.123456+00:00`;
+    return { id, signal_id: mapping.signal_id, node_id: mapping.node_id, value, quality,
+      status_code: quality === 'good' ? 0 : 0x80000000, status_name: quality === 'good' ? 'Good' : 'Bad',
+      timestamp: stamp, timestamp_origin: 'source', source_timestamp: stamp, server_timestamp: stamp, received_at: stamp };
+  }
+  const good = observation(2, 1, mappings[0], 1.25);
+  const bad = observation(3, 2, mappings[0], 98765, 'bad');
+  const recovered = observation(4, 3, mappings[0], 1.3);
+  const quiet = observation(1, 0, mappings[1], true);
+  const writes = [], reads = [], datasets = [];
+  const converted = dataset('captured-tanks');
+  let samples = [good, bad];
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('/dataset')) {
+      writes.push({ url, body: JSON.parse(options.body) });
+      return response(converted);
+    }
+    assert.equal(options.method, 'GET');
+    reads.push({ url, signal: options.signal });
+    return response({ samples, latest: [samples.at(-1), quiet],
+      events: [{ id: 1, kind: 'sampling_gap', timestamp: bad.timestamp, detail: 'No recent data changes. A steady signal may also be quiet.', node_id: bad.node_id }] });
+  };
+  const props = { prefix: '/workspaces/test/live', session, onDataset: data => datasets.push(data) };
+  await mount(React.createElement(LiveEvidence, props));
+  const levelPlot = curve('Tank level (m)');
+  assert.ok(levelPlot);
+  assert.equal(levelPlot.querySelectorAll('circle').length, 1, 'the bad value does not extend the line or create a plotted point');
+  assert.match(container.querySelector('.live-quality[data-quality="bad"]').closest('tr').textContent, /98765.*Bad.*00:00:02\.123456Z/);
+  assert.match([...container.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Pump running')).textContent, /On.*Good/);
+  assert.match(container.querySelector('.live-event-log').textContent, /Sampling gap.*ns=2;s=Level/);
+  await click(button('Pause display'));
+  assert.equal(reads[0].signal.aborted, true);
+  assert.equal(writes.length, 0);
+  assert.match(container.textContent, /Display paused\. Acquisition continues\./);
+  samples = [...samples, recovered];
+  assert.equal(reads.length, 1);
+  await click(button('Resume display'));
+  assert.equal(reads.length, 2);
+  assert.equal(curve('Tank level (m)').querySelectorAll('circle').length, 2);
+  assert.equal(writes.length, 0);
+  await act(async () => root.render(React.createElement(LiveEvidence, {
+    ...props, session: { ...session, state: 'completed', stopped_at: recovered.received_at },
+  })));
+  await click(button('Use displayed time range'));
+  const query = new URL(reads.at(-1).url, 'http://localhost').searchParams;
+  assert.equal(query.get('start'), good.timestamp);
+  assert.equal(query.get('end'), recovered.timestamp);
+  await click(button('Create dataset'));
+  assert.deepEqual(writes, [{ url: '/api/workspaces/test/live/sessions/tanks/dataset',
+    body: { name: 'Coupled tanks', start: good.timestamp, end: recovered.timestamp } }]);
+  assert.deepEqual(datasets, [converted]);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/captured-tanks"]'));
+});
+
 function Controls({ data }) {
   const [selected, setSelected] = useState(names.slice(0, 3));
   return React.createElement(React.Fragment, null,
