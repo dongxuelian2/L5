@@ -173,11 +173,13 @@ def investigation(store, identity, selected=None):
             event(f'interval:{analysis_id}:{index}', 'alarm', result['algorithmLabel'] + ' · 异常区间', clock,
                   interval['start'], interval['end'], peakTime=normalized['peakTime'], peakScore=interval['peakScore'],
                   analysisId=analysis_id, intervalIndex=index, linkId=link['id'], recordedAt=result['createdAt'],
-                  signals=interval['signals'], target='source')
+                  signals=interval['signals'], target='source',
+                  **({'rawPeakScore': interval['rawPeakScore']} if 'rawPeakScore' in interval else {}))
+        gap = result['config'].get('gapThreshold', datasets[result['datasetId']]['metadata']['quality']['gapThreshold'])
         analyses.append(dict(id=analysis_id, result=result, axisId=clock['axisId'], offset=clock['offset'],
             datasetId=result['datasetId'], datasetName=datasets[result['datasetId']]['name'],
             scope='完整分析' if full else '已关联区间', linkId=(full or links[0])['id'], intervals=intervals,
-            observedSpans=observed_spans(result, clock['offset'], datasets[result['datasetId']]['metadata']['quality']['gapThreshold'])))
+            observedSpans=observed_spans(result, clock['offset'], gap)))
 
     for entry in incident['entries']:
         link = link_by_id.get(entry['source_link_id'])

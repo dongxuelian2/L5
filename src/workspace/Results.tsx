@@ -12,6 +12,7 @@ const metrics: Record<ContributionMetric, { label: string; description: string }
   "absolute-robust-z": { get label() { return tr("Absolute robust z-score"); }, get description() { return tr("Absolute distance from the normal center, divided by the fitted robust scale. The largest value is the Max-Z score."); } },
   "squared-residual": { get label() { return tr("PCA-Q squared residual"); }, get description() { return tr("Each signal’s squared standardized residual outside the PCA model. Contributions sum to the Q score."); } },
   "model-leverage": { get label() { return tr("PCA-T² model-space leverage"); }, get description() { return tr("Absolute back-projection of the variance-scaled PCA scores. These descriptive values rank signals and do not sum to T²."); } },
+  "regime-detector-specific": { get label() { return tr("Regime detector contributions"); }, get description() { return tr("Signal contributions use the detector fitted for the scoring mode. The comparison score is log1p(score) − log1p(threshold), with a limit of zero."); } },
 };
 export function Contributions({ values, signals, metric, label = (name: string) => name }: { values?: Contribution[]; signals: string[]; metric?: ContributionMetric; label?: (name: string) => string }) {
   useLocale();

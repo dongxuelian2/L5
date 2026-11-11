@@ -51,6 +51,8 @@ class WorkspaceStore:
         self.transformations = TransformationService(self)
         from .experiments import ExperimentService
         self.experiments = ExperimentService(self)
+        from .regime_workspace import RegimeService
+        self.regimes = RegimeService(self)
         from .tep_import import TEPImportService
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
@@ -266,7 +268,9 @@ class WorkspaceStore:
 
     def result(self, identity: str) -> dict:
         with self.connect() as db:
-            row = db.execute('SELECT workspace_id FROM jobs WHERE id=?', (identity,)).fetchone()
+            row = db.execute('SELECT workspace_id,config FROM jobs WHERE id=?', (identity,)).fetchone()
         if row is None:
             raise KeyError('Analysis not found.')
+        if json.loads(row['config']).get('regimeRunId') == identity:
+            return self.regimes.analysis(identity)
         return json.loads((self.root / row['workspace_id'] / 'results' / f'{identity}.json').read_text(encoding='utf-8'))

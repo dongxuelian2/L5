@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external', 'regime-runs'):
         return False
     store = handler.server.workspace_store
     try:
@@ -90,6 +90,12 @@ def dispatch(handler, method: str) -> bool:
         elif parts[1] in ('experiments', 'experiment-runs'):
             from .experiment_routes import route
             result, status = route(store, method, parts, body)
+        elif (len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'regimes') or parts[1] == 'regime-runs':
+            from .regime_routes import route
+            routed = route(handler, store.regimes, method, parts, body, url.query)
+            if routed is None:
+                return True
+            result, status = routed
         elif parts == ['api', 'units'] and method == 'GET':
             from .units import catalog
             result = {'units': catalog()}

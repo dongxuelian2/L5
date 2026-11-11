@@ -71,7 +71,7 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
           <ol className="incident-event-list">{measured.map(event => <li key={event.id} data-event-id={event.id} className={selection?.eventId === event.id ? "incident-selected" : ""}>
             <button onClick={() => activate(event)} aria-pressed={selection?.eventId === event.id}>
               <span className="ws-kicker">{kinds[event.kind]}{" "}{tr("· 实际观察")}{" "}{timeLabel(incidentAxis(axis), event.start!)}{event.end !== event.start && ` → ${timeLabel(incidentAxis(axis), event.end!)}`}</span>
-              <strong>{event.title}</strong>{event.peakTime != null && <span>{tr("峰值")}{" "}{timeLabel(incidentAxis(axis), event.peakTime)}{" "}{tr("· 原始分数")}{" "}{number(event.peakScore!)}</span>}
+              <strong>{event.title}</strong>{event.peakTime != null && <span>{tr("峰值")}{" "}{timeLabel(incidentAxis(axis), event.peakTime)}{" "}{tr("· 原始分数")}{" "}{number(event.rawPeakScore ?? event.peakScore!)}</span>}
               {event.content && <span>{event.content.slice(0, 180)}</span>}{event.stance && <span>{tr("证据关系：")}{{ support: tr("支持"), oppose: tr("反对"), neutral: tr("待判断") }[event.stance]}</span>}
               {event.observationWindow && <span>{tr("观察窗口")}{" "}{event.observationWindow.join("–")} s{event.actionAt != null ? tr(" · 干预 {0} s", {0: event.actionAt}) : ""}</span>}
               {event.recordedAt && <small>{tr("记录创建：")}{dateLabel(event.recordedAt)}{event.updatedAt && event.updatedAt !== event.recordedAt ? tr(" · 更新：{0}", {0: dateLabel(event.updatedAt)}) : ""}</small>}
