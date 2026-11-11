@@ -54,6 +54,7 @@ const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
+const { RegimeWorkspace } = require('../src/workspace/RegimeWorkspace.tsx');
 const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
 const copy = require('../src/i18n/messages.json');
 const { errorMessage } = require('../src/i18n/errors.ts');
@@ -358,6 +359,86 @@ function inputFor(label, within = container) {
 function matchesLabel(content, source) {
   return content.startsWith(t(source)) || Object.keys(copy).some(key => key.startsWith(source) && content.startsWith(t(key)));
 }
+
+test('regime workspace freezes selected context, reopens the evaluation, and links a transition alarm', async () => {
+  const fitA = dataset('Reduced-load normal'), fitB = dataset('Rated-load normal'), evaluation = dataset('Production replay');
+  const datasets = [fitA, fitB, evaluation], endpoint = '/api/workspaces/test/regimes';
+  const createdAt = '2026-11-11T00:00:00Z';
+  const behavior = { validSamples: 4, totalSamples: 4, alarmSamples: 1, alarmIntervalCount: 1, alarmFraction: .25 };
+  const comparison = { behavior, detection: { windows: null }, labelled: null };
+  const detector = { algorithm: 'robust-maxz', alpha: .01, variance: .9, threshold: 0 };
+  const fittedMode = { center: [1], covariance: [[.5]], regularizedCovariance: [[.4]], distanceThreshold: 5, fitSamples: 50, calibrationSamples: 40, detector };
+  let model, run, incidentLink;
+  globalThis.fetch = async (url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    if (url === endpoint + '/models') return response({ models: model ? [model] : [] });
+    if (url === endpoint + '/runs' && !body) return response({ runs: run ? [run] : [] });
+    if (url === endpoint + '/fit' && body) {
+      assert.deepEqual(body.recognition.recognitionSignals, [names[0]]);
+      assert.deepEqual(body.signals, names);
+      assert.equal(body.modes.length, 2);
+      assert.equal(body.modes[0].fit[0].datasetId, fitA.id);
+      assert.ok(body.modes[0].fit[0].range[1] < body.modes[0].calibration[0].range[0]);
+      model = { id: 'model-1', createdAt, name: body.name, config: body, sources: { [fitA.id]: fitA, [fitB.id]: fitB }, referenceDatasetId: fitA.id,
+        model: { version: '1', modes: { 'mode-1': fittedMode, 'mode-2': fittedMode }, comparisons: [], globalDetector: detector, singleDetector: detector } };
+      return response(model);
+    }
+    if (url === endpoint + '/models/model-1') return response(model);
+    if (url === endpoint + '/runs' && body) {
+      assert.equal(body.modelId, model.id);
+      assert.equal(body.evaluation.datasetId, evaluation.id);
+      const times = [0, 1, 2, 3];
+      const decisions = times.map((time, i) => ({
+        time, mode: i === 0 ? 'mode-1' : i === 3 ? 'mode-2' : null, activeMode: i === 3 ? 'mode-2' : 'mode-1',
+        candidateMode: i > 1 ? 'mode-2' : null, scoringMode: i > 1 ? 'mode-2' : 'mode-1',
+        recognition: i === 1 ? 'unknown' : 'supported', evidence: { 'mode-1': { distance: 1, threshold: 4, discriminant: 1.5, supported: true } },
+        margin: null, status: ['normal', 'unknown', 'abnormal', 'normal'][i], transition: i === 2, candidateSamples: i === 2 ? 1 : 0,
+        alarm: i === 2, score: i === 2 ? 9 : 0, threshold: 0, globalScore: 1, globalThreshold: 2, globalAlarm: false,
+        singleScore: i === 2 ? 9 : 0, singleThreshold: 4, singleAlarm: i === 2,
+      }));
+      run = { id: 'run-1', analysisId: 'run-1', modelId: model.id, datasetId: evaluation.id, name: body.name, createdAt, evaluation: body.evaluation, model,
+        source: evaluation, gapThreshold: 5, labelSet: null, protocol: 'distinct-dataset', times, decisions,
+        series: { time: times, values: { [names[0]]: [10, 11, 12, 13] } },
+        intervals: [{ start: 2, end: 2, peakTime: 2, peakScore: 9, samples: 1, kind: 'transition', mode: 'mode-2', signals: [names[0]], contributions: [{ signal: names[0], value: 9 }] }],
+        transitions: [{ fromMode: 'mode-1', toMode: 'mode-2', startTime: 1, candidateTime: 2, confirmedTime: 3, endTime: 3, resolvedTime: 3, outcome: 'confirmed', initialMargin: null }],
+        metrics: { regime: comparison, global: comparison, single: comparison } };
+      return response(run);
+    }
+    if (url === endpoint + '/runs/run-1') return response(run);
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [emptyIncident()] });
+    if (url === '/api/incidents/event-one/links') { incidentLink = body; return response(emptyIncident()); }
+    throw new Error(`Unexpected request ${url}`);
+  };
+  const page = props => React.createElement(RegimeWorkspace, { workspaceId: 'test', datasets, ...props });
+  await mount(page());
+  await setField(inputFor('Model name'), 'Reactor regimes');
+  const modes = container.querySelectorAll('.regime-mode');
+  await setField(inputFor('Operating-mode label', modes[0]), 'Low load');
+  await setField(inputFor('Operating-mode label', modes[1]), 'High load');
+  assert.ok(button('Fit and save model').disabled, 'an explicit context signal is required');
+  await click(container.querySelector(`[aria-label="Recognize using ${names[0]}"]`));
+  await click(button('Fit and save model'));
+  assert.equal(window.location.hash, '#/workspaces/test/regimes/models/model-1');
+  await act(async () => root.render(page({ section: 'models', itemId: 'model-1' })));
+  assert.match(container.textContent, /Frozen model evidence/);
+  await setField(inputFor('Run name'), 'Shift replay');
+  await click(button('Run and save evaluation'));
+  assert.equal(window.location.hash, '#/workspaces/test/regimes/runs/run-1');
+  await act(async () => root.render(page({ section: 'runs', itemId: 'run-1' })));
+  assert.match(container.textContent, /Detector comparison.*Global detector.*Single-mode detector/s);
+  await click(button('Inspect transition'));
+  assert.match(container.querySelector('.regime-cursor output').textContent, /2 s.*Sample 3/);
+  assert.match(container.querySelector('.regime-evidence').textContent, /Abnormal.*Candidate modeHigh load/s);
+  assert.match(container.textContent, /Alarm peak evidence/);
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.textContent, /运行工况监测.*检测器比较/s);
+  assert.match(container.textContent, /Low load.*High load/s, 'mode labels remain user-owned');
+  await click(button('Link to incident'));
+  await click(button('添加到已有事件'));
+  await click(button('添加并打开事件'));
+  assert.deepEqual(incidentLink, { kind: 'interval', datasetId: evaluation.id, analysisId: 'run-1', intervalIndex: 0 });
+  assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
+});
 
 test('result interval cards and complete record create or join a persistent incident with editable event fields', async () => {
   const result = incidentResult(), writes = [], saved = emptyIncident();

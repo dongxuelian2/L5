@@ -20,6 +20,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
 | **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
 | **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
+| **Operating Regimes** | Fit named healthy operating modes from separate fit and calibration windows. Replay a held-out Dataset, inspect uncertain assignments and transition evidence, compare regime-aware, global and single-mode alarms, and link intervals to Incidents. |
 | **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
 | **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
 | **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
@@ -84,6 +85,8 @@ On the same normal test data, Page CUSUM produced **0, 739 and 1,833** alarm sam
 
 Results use TEP mode 1 and three test runs per fault. [Original 72-task case](docs/tep-case-study.md) · [Data preparation and reproduction](examples/tep/README.md)
 
+A separate regime-recognition evaluation uses six healthy THUFDD trajectories with their native 53-channel schema. It compares all three monitoring approaches on chronological holdouts, withheld modes and synthetic transition and fault cases. [Protocol and results](docs/regime-monitoring.md#evaluation)
+
 ## Quick Start
 
 Install **Node.js 20.19+ or 22.12+, npm and Python 3.12+**. From the repository root:
@@ -114,6 +117,7 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 |---|---|
 | [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
 | [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
+| [Operating regimes](docs/regime-monitoring.md) | [Model and alarm semantics](docs/regime-monitoring.md#recognition-and-alarm-semantics) · [Reproducible comparison](docs/regime-monitoring.md#evaluation) |
 | [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
 | [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
 | [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |

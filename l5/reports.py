@@ -19,7 +19,8 @@ KINDS = {'alarm': '报警', 'note': '调查笔记', 'evidence': '证据', 'hypot
          'investigation': '工具调查', 'status': '状态变更', 'conclusion': '结论更新', 'incident': '事件范围'}
 STANCE = {'support': '支持', 'oppose': '反对', 'neutral': '待判断'}
 METRIC = {'absolute-robust-z': '稳健 Z 分数绝对值', 'squared-residual': 'PCA-Q 标准化残差平方',
-          'model-leverage': 'PCA-T² 模型空间贡献（描述性排序，不加和为 T²）', 'history-contribution': '历史序列贡献度'}
+          'model-leverage': 'PCA-T² 模型空间贡献（描述性排序，不加和为 T²）', 'history-contribution': '历史序列贡献度',
+          'regime-detector-specific': 'Regime detector contributions'}
 
 
 def e(value):
@@ -195,6 +196,10 @@ def render_report(store, identity):
     def signal_label(dataset_id, name):
         column = next((c for c in datasets[dataset_id]['metadata']['columns'] if c['name'] == name), {})
         return (column.get('displayName') or name) + (f" ({column['unit']})" if column.get('unit') else '')
+    def peak_stat(analysis):
+        peak = max(analysis['intervals'], key=lambda i: i['peakScore'], default={})
+        threshold = analysis['result']['threshold'] if not analysis['result'].get('regimeRunId') else None
+        return n(peak.get('rawPeakScore', peak.get('peakScore'))) + ' / ' + n(peak.get('threshold', threshold))
     primary = axes[view['primaryAxisId']]
     from .incident_timeline import incident_clock
     offset = incident_clock(store, incident)['offset']
@@ -215,7 +220,7 @@ def render_report(store, identity):
         for item in events:
             detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
             if item['kind'] == 'alarm':
-                detail = f"{r('峰值 ')}{timestamp(item['peakTime'], axis)}{r('；原始分数 ')}{n(item['peakScore'])}{r('；变量：')}" + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
+                detail = f"{r('峰值 ')}{timestamp(item['peakTime'], axis)}{r('；原始分数 ')}{n(item.get('rawPeakScore', item['peakScore']))}{r('；变量：')}" + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
             if item.get('observationWindow'):
                 detail = r('观察窗口 ') + ' - '.join(n(v) for v in item['observationWindow']) + ' s；' + report_text(item.get('hypothesis') or '')
                 if item.get('actionAt') is not None:
@@ -244,7 +249,7 @@ def render_report(store, identity):
             [f"""<a href="#analysis-{a['id']}">{e(a['result']['name'])}</a><br>{e(a['datasetName'])}<br>{e(report_text(a['result']['algorithmLabel']))}""", e(report_text(a['scope'])),
              e(timestamp(min((i['start'] for i in a['intervals']), default=None), axis)) + '<br>' + e(timestamp(max(a['intervals'], key=lambda i: i['peakScore'])['peakTime'], axis) if a['intervals'] else r('未检出')),
              str(len(a['intervals'])) + ' / ' + n(sum(i['end']-i['start'] for i in a['intervals'])) + ' s',
-             n(max((i['peakScore'] for i in a['intervals']), default=None)) + ' / ' + n(a['result']['threshold']),
+             peak_stat(a),
              e(', '.join(signal_label(a['datasetId'], s) for s in a['result']['relatedSignals'][:5]))] for a in members]))
         spread = n(group['firstAlarmSpread']) + ' s' if group['firstAlarmSpread'] is not None else r('不适用（需要两个有报警的分析）')
         parts.append(f"{r('<p>首次报警：')}{e(timestamp(group['firstDetection'], axis))}{r('；有报警的分析间首次报警时间差：')}{e(spread)}。</p>")
@@ -273,18 +278,21 @@ def render_report(store, identity):
                     parts.append(r('<h4>保存的实验评价（标签与候选解释分离）</h4>')+technical(task['metrics']))
         times = [t + a['offset'] for t in result['times']]
         scores = [None if result.get('states', [])[i:i+1] == ['abstain'] else v for i, v in enumerate(result['scores'])]
-        segments = segment_ids(np.asarray(times), np.asarray([np.nan if v is None else v for v in scores]), datasets[a['datasetId']]['metadata']['quality']['gapThreshold']).tolist()
+        gap = result['config'].get('gapThreshold', datasets[a['datasetId']]['metadata']['quality']['gapThreshold'])
+        segments = segment_ids(np.asarray(times), np.asarray([np.nan if v is None else v for v in scores]), gap).tolist()
+        score_unit = result['model']['score'] if result.get('regimeRunId') else r('算法原始分数（各方法尺度独立）')
         parts.append(chart(r('异常分数与固定阈值 · ') + a['datasetName'], times, [dict(label=report_text(result['algorithmLabel']), values=scores, segmentIds=segments, color='#b45742')],
-                           axis=axis, threshold=result['threshold'], intervals=a['intervals'], markers=markers, unit=r('算法原始分数（各方法尺度独立）')))
+                           axis=axis, threshold=result['threshold'], intervals=a['intervals'], markers=markers, unit=score_unit))
         summary = result['summary']
         parts.append(f"""{r('<p class="muted">拟合 ')}{summary['fitSamples']}{r(' 样本；校准 ')}{summary['calibrationSamples']}{r(' 样本；分析 ')}{summary['analysisSamples']}{r(' 样本；报警 ')}{summary['flaggedSamples']}{r(' 样本；abstain ')}{summary.get('abstainedSamples', 0)}{r(' 样本。以上为完整分析指标。</p>')}""")
         parts.append(table([r('关联区间开始'), r('结束'), r('峰值时间'), r('峰值分数 / 样本数')], [
-            [e(timestamp(i['start'], axis)), e(timestamp(i['end'], axis)), e(timestamp(i['peakTime'], axis)), n(i['peakScore']) + ' / ' + str(i['samples'])] for i in a['intervals']]))
+            [e(timestamp(i['start'], axis)), e(timestamp(i['end'], axis)), e(timestamp(i['peakTime'], axis)), n(i.get('rawPeakScore', i['peakScore'])) + ' / ' + str(i['samples'])] for i in a['intervals']]))
         peak = max(a['intervals'], key=lambda i: i['peakScore']) if a['intervals'] else None
         contributions = (peak or {}).get('contributions') or result.get('signalContributions', [])
         parts.append(r('<h4>关键变量 · ') + e(report_text(METRIC.get(result.get('contributionMetric'), r('已保存变量排序')))) + '</h4>')
         parts.append(table([r('变量'), r('贡献（保留本算法含义）')], [[e(signal_label(a['datasetId'], c['signal'])), n(c['value'])] for c in contributions[:10]]))
-        parts.append(r('<p class="muted">贡献值来自最高原始分数的关联峰值；没有关联报警时使用完整分析峰值。不同方法的贡献值不直接相加或排序比较。</p>'))
+        if not result.get('regimeRunId'):
+            parts.append(r('<p class="muted">贡献值来自最高原始分数的关联峰值；没有关联报警时使用完整分析峰值。不同方法的贡献值不直接相加或排序比较。</p>'))
         native_range = result['config']['analysisRange']
         if a['intervals'] and a['scope'] != '完整分析':
             lo, hi = min(i['start'] for i in a['intervals'])-a['offset'], max(i['end'] for i in a['intervals'])-a['offset']

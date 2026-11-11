@@ -12,7 +12,7 @@ _locale = ContextVar('report_locale', default=None)
 def messages():
     root = Path(__file__).resolve().parents[1] / 'src' / 'i18n'
     result = {}
-    for name in ('messages', 'common', 'catalog', 'service-errors'):
+    for name in ('messages', 'common', 'catalog', 'service-errors', 'regimes'):
         result.update(json.loads((root / f'{name}.json').read_text(encoding='utf-8')))
     english = {}
     for pair in result.values():

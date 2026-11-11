@@ -12,6 +12,7 @@ import { TransformationWorkspace, TransformationLineage } from "./Transformation
 import { TEPWorkspace, ExternalProvenance } from "./TEPWorkspace";
 import { ExperimentWorkspace } from "./ExperimentWorkspace";
 const ModelWorkspace = lazy(() => import("./ModelWorkspace").then(m => ({ default: m.ModelWorkspace })));
+const RegimeWorkspace = lazy(() => import("./RegimeWorkspace").then(m => ({ default: m.RegimeWorkspace })));
 import { dateLabel, number, signalLabel, timeLabel, type AnalysisResult, type Config, type Dataset, type Job, type Metadata, type Series, type Signal, type Workspace } from "./types";
 import "./workspace.css";
 
@@ -178,12 +179,16 @@ export function AnalysisPage({ workspaceId, datasets, selected, setSelected, pre
   useEffect(() => {
     if (jobId && result?.id === jobId) resultPanel.current?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [jobId, result?.id]);
+  useEffect(() => {
+    if (result?.regimeRunId) window.location.replace(`#/workspaces/${workspaceId}/regimes/runs/${result.regimeRunId}${intervalIndex !== undefined ? `/${intervalIndex}` : ""}`);
+  }, [workspaceId, result?.regimeRunId, intervalIndex]);
   async function run(e: FormEvent) {
     e.preventDefault(); if (!config) return; const request = context.current; setBusy(true); setError("");
     try { const data = await api<AnalysisResult>(`/workspaces/${workspaceId}/analyses`, config); if (request !== context.current) return; setResult(data); refresh(); go(`workspaces/${workspaceId}/analysis/${data.id}`); }
     catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
   }
   function set<K extends keyof Config>(key: K, value: Config[K]) { setConfig(c => c ? { ...c, [key]: value } : c); }
+  if (result?.regimeRunId) return <p role="status">{tr("Opening saved regime session…")}</p>;
   if (!dataset) return <Empty title={tr("Import data to start analyzing")}><a className="ws-link" href={`#/workspaces/${workspaceId}/datasets`}>{tr("Go to datasets →")}</a></Empty>;
   const resultDataset = result && datasets.find(d => d.id === result.datasetId);
   return <>
@@ -205,7 +210,7 @@ function HistoryPage({ jobs, datasets, workspaceId }: { jobs: Job[]; datasets: D
   useLocale();
   return <><div className="ws-page-title"><div><div className="ws-kicker">{tr("03 / HISTORY")}</div><h1>{tr("Every run, retained")}<span className="ws-accent">.</span></h1><p>{tr("Reopen a result or use its saved parameters for another analysis.")}</p></div><span className="ws-badge">{jobs.length}{" "}{tr("SAVED RUNS")}</span></div>
     {jobs.length > 1 && <AnalysisComparison jobs={jobs} datasets={datasets} />}
-    {jobs.length === 0 ? <Empty title={tr("Your analyses will appear here")}><a className="ws-link" href={`#/workspaces/${workspaceId}/analysis`}>{tr("Start an analysis →")}</a></Empty> : <div className="ws-history">{jobs.map(job => <a href={`#/workspaces/${workspaceId}/analysis/${job.id}`} className="ws-history-row" key={job.id}><div><span className="ws-kicker">{job.config.algorithm} / {dateLabel(job.created_at)}</span><h2>{job.name}</h2><p>{datasets.find(d => d.id === job.dataset_id)?.name} · {job.config.signals.length}{" "}{tr("signals ·")}{" "}{number(job.config.analysisRange[0])}–{number(job.config.analysisRange[1])} s</p></div><div><strong className={job.summary.flaggedSamples ? "ws-coral" : "ws-accent"}>{job.summary.flaggedSamples.toLocaleString()}{" "}{tr("flagged")}</strong><span>{tr("Open result ↗")}</span></div></a>)}</div>}
+    {jobs.length === 0 ? <Empty title={tr("Your analyses will appear here")}><a className="ws-link" href={`#/workspaces/${workspaceId}/analysis`}>{tr("Start an analysis →")}</a></Empty> : <div className="ws-history">{jobs.map(job => <a href={`#/workspaces/${workspaceId}/${job.config.regimeRunId ? `regimes/runs/${job.config.regimeRunId}` : `analysis/${job.id}`}`} className="ws-history-row" key={job.id}><div><span className="ws-kicker">{job.config.regimeRunId ? tr("Regime-aware monitoring") : job.config.algorithm} / {dateLabel(job.created_at)}</span><h2>{job.name}</h2><p>{datasets.find(d => d.id === job.dataset_id)?.name} · {job.config.signals.length}{" "}{tr("signals ·")}{" "}{number(job.config.analysisRange[0])}–{number(job.config.analysisRange[1])} s</p></div><div><strong className={job.summary.flaggedSamples ? "ws-coral" : "ws-accent"}>{job.summary.flaggedSamples.toLocaleString()}{" "}{tr("flagged")}</strong><span>{tr("Open result ↗")}</span></div></a>)}</div>}
   </>;
 }
 
@@ -245,6 +250,7 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
   const dataMode = tab === "signals" || tab === "quality" || tab === "explorer" ? tab : null;
   const content = loading ? <p role="status">{tr("Opening workspace…")}</p> : !workspace ? null :
     tab === "experiments" ? <ExperimentWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} experimentId={jobId} initialDatasetId={path[4]} initialSignals={routeContext.signals} onChanged={refresh} /> :
+    tab === "regimes" ? <Suspense fallback={<p role="status">{tr("Opening regime monitoring…")}</p>}><RegimeWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} section={jobId} itemId={path[4]} intervalIndex={path[5] === undefined ? undefined : Number(path[5])} /></Suspense> :
     tab === "transformations" ? <TransformationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} definitionId={jobId} initialSignalIds={path[4]} onGenerated={dataset => { setSelected(dataset.id); refresh(); }} /> :
     dataMode ? <SignalWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} jobs={jobs} mode={dataMode} initialSignalIds={jobId} onChanged={refresh} onAnalyze={(datasetId, signals, range) => {
       setSelected(datasetId); setPreferences(p => ({ ...p, [datasetId]: signals })); go(analysisPath(workspaceId!, datasetId, signals, range));
@@ -255,7 +261,7 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
     <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   return <div className="ws-shell notranslate" translate="no">
     <header className="ws-header"><a className="ws-brand" href="#/"><b>L5</b><span>{tr("WORKSPACE")}</span><small>2.0</small></a><nav aria-label={tr("Application")}><a href="#/" className="ws-active">{tr("Workspaces")}</a><a href="#/examples">{tr("TripLens examples ↗")}</a></nav><span className="ws-connection"><i />{tr("LOCAL ENGINE")}</span><LanguageSwitch /></header>
-    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">{tr("← All workspaces")}</a><span className="ws-kicker">{tr("CURRENT PROJECT")}</span><h2>{workspace?.name || tr("Opening…")}</h2><nav aria-label={tr("Workspace")}>{[["datasets", "01", tr("Datasets"), datasets.length], ["signals", "02", tr("Signal catalog"), "↗"], ["quality", "03", tr("Data quality"), "↗"], ["explorer", "04", tr("Signal Explorer"), "↗"], ["transformations", "05", tr("Transformations"), "↗"], ["analysis", "06", tr("Analysis"), "↗"], ["experiments", "07", tr("Experiments"), "↗"], ["history", "08", tr("History"), jobs.length], ["models", "09", tr("Models"), "↗"], ["incidents", "10", tr("事件"), "↗"], ["tep", "11", tr("TEP case study"), "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key || key === "models" && tab === "simulations" ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}${key === "datasets" && selected ? `/${selected}` : ""}`} aria-current={tab === key || key === "models" && tab === "simulations" ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">{tr("A durable place for your data and the questions you ask of it.")}</div></aside>
+    {workspaceId ? <div className="ws-layout"><aside className="ws-sidebar"><a href="#/" className="ws-back">{tr("← All workspaces")}</a><span className="ws-kicker">{tr("CURRENT PROJECT")}</span><h2>{workspace?.name || tr("Opening…")}</h2><nav aria-label={tr("Workspace")}>{[["datasets", "01", tr("Datasets"), datasets.length], ["signals", "02", tr("Signal catalog"), "↗"], ["quality", "03", tr("Data quality"), "↗"], ["explorer", "04", tr("Signal Explorer"), "↗"], ["transformations", "05", tr("Transformations"), "↗"], ["analysis", "06", tr("Analysis"), "↗"], ["experiments", "07", tr("Experiments"), "↗"], ["history", "08", tr("History"), jobs.length], ["models", "09", tr("Models"), "↗"], ["incidents", "10", tr("事件"), "↗"], ["tep", "11", tr("TEP case study"), "↗"], ["regimes", "12", tr("Regime monitoring"), "↗"]].map(([key, index, title, count]) => <a key={key} className={tab === key || key === "models" && tab === "simulations" ? "ws-active" : ""} href={`#/workspaces/${workspaceId}/${key}${key === "datasets" && selected ? `/${selected}` : ""}`} aria-current={tab === key || key === "models" && tab === "simulations" ? "page" : undefined}><span>{index}</span>{title}<small>{count}</small></a>)}</nav><div className="ws-sidebar-note">{tr("A durable place for your data and the questions you ask of it.")}</div></aside>
       <main className="ws-main"><ErrorText error={error} />{content}</main>
     </div> : <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>{tr("Reconnect")}</button>}</div>{loading ? <main className="ws-main" role="status">{tr("Loading workspaces…")}</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
     <footer className="ws-footer"><span>{tr("L5 / OPEN INDUSTRIAL ANALYSIS")}</span><span>{tr("DATA → EXPERIMENT → EVIDENCE → INVESTIGATION")}</span></footer>
