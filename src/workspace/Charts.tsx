@@ -21,8 +21,8 @@ function plotIndexes(values: (number | null)[]) {
 }
 
 type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [], showIsolatedPoints = false }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[]; showIsolatedPoints?: boolean;
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);
@@ -37,6 +37,7 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
   const [first, last] = timeDomain || [times[0], times[times.length - 1]], span = last - first || 1;
   const x = (t: number) => L + (t - first) / span * (W - L - R);
   const y = (v: number) => T + (high - v) / (high - low) * (H - T - B);
+  const crossesGap = (start: number, end: number) => gaps.some(gap => gap.end > start && gap.start < end);
   function pathFor(ts: number[], vs: (number | null)[], ids?: number[]) {
     let connected = false, previousSegment: number | undefined, previousTime = -Infinity;
     return plotIndexes(vs).map(i => {
@@ -44,8 +45,8 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       if (value == null) { connected = false; return ""; }
       // Overlay shading can include another source's gaps; each line's own
       // full-resolution segment identities determine whether it connects.
-      const crossesGap = !ids && gaps.some(g => g.end > previousTime && g.start < ts[i]);
-      const point = `${connected && !crossesGap && (!ids || previousSegment === ids[i]) ? "L" : "M"}${x(ts[i]).toFixed(2)},${y(value).toFixed(2)}`;
+      const separated = !ids && crossesGap(previousTime, ts[i]);
+      const point = `${connected && !separated && (!ids || previousSegment === ids[i]) ? "L" : "M"}${x(ts[i]).toFixed(2)},${y(value).toFixed(2)}`;
       connected = true; previousSegment = ids?.[i]; previousTime = ts[i]; return point;
     }).join(" ");
   }
@@ -67,6 +68,13 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       {markers.filter(m => m.time >= first && m.time <= last).map(m => <g key={m.time} data-truth-onset={m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
       <path d={pathFor(times, values, segmentIds)} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
+      {showIsolatedPoints && values.map((value, index) => {
+        if (value == null) return null;
+        const connected = (a: number, b: number) => values[a] != null && values[b] != null &&
+          (segmentIds ? segmentIds[a] === segmentIds[b] : !crossesGap(times[a], times[b]));
+        return connected(index - 1, index) || connected(index, index + 1) ? null :
+          <circle key={index} cx={x(times[index])} cy={y(value)} r="2.7" fill={color} />;
+      })}
       {overlays.map(line => <path key={line.title} d={pathFor(line.times, line.values, line.segmentIds)} fill="none" stroke={line.color} strokeWidth="1.7" vectorEffect="non-scaling-stroke"><title>{line.title}</title></path>)}
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
       {selectedTime !== undefined && selectedTime >= first && selectedTime <= last && <line data-selected-time={selectedTime} x1={x(selectedTime)} x2={x(selectedTime)} y1={T} y2={H - B} stroke="#e2bc75" strokeDasharray="4 3" />}

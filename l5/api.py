@@ -7,6 +7,7 @@ import traceback
 from urllib.parse import parse_qs, urlparse
 
 from .datasets import prepare_csv, series_preview
+from .live import LiveConflict, LiveUnavailable
 
 
 def dispatch(handler, method: str) -> bool:
@@ -15,11 +16,19 @@ def dispatch(handler, method: str) -> bool:
     if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
         return False
     store = handler.server.workspace_store
+    is_live = len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'live'
+    if is_live:
+        from . import live_routes
+        if not live_routes.allowed(handler, method):
+            handler.send_json(403, {'error': 'Live data requires a local browser or API client and JSON requests.'})
+            return True
     try:
         body = {}
         if method in ('POST', 'PATCH'):
             length = int(handler.headers.get('Content-Length', '0'))
             limit = int(os.environ.get('L5_MAX_REQUEST_BYTES', 256 * 1024 * 1024))
+            if is_live:
+                limit = min(limit, 256 * 1024)
             if not 0 < length <= limit:
                 handler.send_json(413, {'error': f'Request exceeds the configured {limit}-byte server budget (L5_MAX_REQUEST_BYTES).'})
                 return True
@@ -27,7 +36,9 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if is_live:
+            result, status = live_routes.route(store.live, method, parts[2], parts[4:], body, url.query)
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL
@@ -278,6 +289,10 @@ def dispatch(handler, method: str) -> bool:
         handler.send_json(status if result is not None else 404, result if result is not None else {'error': 'Unknown workspace endpoint.'})
     except KeyError as error:
         handler.send_json(404, {'error': str(error.args[0])})
+    except LiveConflict as error:
+        handler.send_json(409, {'error': str(error)})
+    except LiveUnavailable as error:
+        handler.send_json(502, {'error': str(error)})
     except (ValueError, TypeError, OverflowError) as error:
         handler.send_json(400, {'error': str(error)})
     except Exception:
