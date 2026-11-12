@@ -2,19 +2,20 @@ import { errorMessage } from "../i18n/errors";
 import { t as tr, useLocale } from "../i18n";
 import { TransformationLineage } from "./TransformationWorkspace";
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
-import { api, message } from "./api";
+import { api, message, prognosticSessionHref } from "./api";
 import { Plot, SignalPlots } from "./Charts";
 import { intervalWindow } from "./findings";
 import { IncidentLinkDialog, incidentStatuses } from "./IncidentLinkDialog";
 import { Contributions } from "./Results";
 import { IncidentTimeline } from "./IncidentTimeline";
 import { IncidentReport } from "./IncidentReport";
+import { forecastStatus } from "./prognosticLabels";
 import { dateLabel, datasetClock, datasetTimeLabel, namedSignal, number, signalLabel, timeLabel, type AnalysisResult, type Dataset, type Incident, type IncidentEntry, type IncidentLink, type IncidentSource, type IncidentSummary, type Job, type RuntimeRun, type TimeAxis, type IncidentSelection } from "./types";
 
 const SavedRunView = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.SavedRunView })));
 const entryKinds = { get note() { return tr("调查笔记"); }, get evidence() { return tr("证据"); }, get hypothesis() { return tr("候选解释"); } };
 const stances = { get neutral() { return tr("待判断"); }, get support() { return tr("支持"); }, get oppose() { return tr("反对"); } };
-const linkKinds = { get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); } };
+const linkKinds = { get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); }, get prognostic() { return tr("Prognostic forecast"); } };
 const runKinds: Record<string, string> = { get tools() { return tr("工具调查"); }, get tool() { return tr("工具调查"); }, get assistant() { return tr("助手调查"); }, get intervention() { return tr("干预实验"); } };
 const numericAxis: TimeAxis = { kind: "numeric", column: null, origin: null, start: 0, end: 0 };
 function eventTime(incident: IncidentSummary, value: number | null, datasets: Dataset[] = []) {
@@ -142,7 +143,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
     </form>
 
     <IncidentTimeline incident={incident} selection={selection} onSelect={selectWindow} onRecord={event => { const entry = incident.entries.find(e => e.id === event.entryId); if (entry) setEditing(entry); }} onSection={id => document.getElementById(id)?.scrollIntoView()} />
-    <div ref={preview} id="incident-window" className="incident-preview-anchor">{link ? <SourcePreview key={link.id} source={link} datasets={datasets} selection={selection} onSelection={setSelection} /> : selection && <p className="ws-notice">{tr("此时间轴尚未关联可显示的原始测量。可在数据与分析中关联相应来源。")}</p>}</div>
+    <div ref={preview} id="incident-window" className="incident-preview-anchor">{link ? <SourcePreview key={link.id} source={link} workspaceId={incident.workspace_id} datasets={datasets} selection={selection} onSelection={setSelection} /> : selection && <p className="ws-notice">{tr("此时间轴尚未关联可显示的原始测量。可在数据与分析中关联相应来源。")}</p>}</div>
 
     <section id="incident-sources"><div className="ws-section-heading"><h2>{tr("相关数据、分析与模拟实验")}</h2><button className="ws-outlined" onClick={() => setAdding(!adding)}>{adding ? tr("收起关联选择") : tr("＋ 关联已有记录")}</button></div>
       {adding && <SourcePicker incident={incident} datasets={datasets} jobs={jobs} busy={busy} attach={source => mutate("/links", source)} />}
@@ -150,10 +151,11 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
       <div className="incident-source-grid">{incident.links.map(source => <article className={`ws-panel incident-source ${source.id === focused ? "incident-selected" : ""}`} key={source.id}>
         <div className="ws-inline ws-between"><span className="ws-kicker">{linkKinds[source.kind]}</span><button className="ws-danger" disabled={busy} onClick={() => void mutate(`/links/${source.id}`, undefined, "DELETE")} aria-label={tr("解除关联 {0}", {0: source.details.title})}>{tr("解除关联")}</button></div>
         <h3>{source.details.title}</h3><SourceSummary source={source} datasets={datasets} />{datasets.find(d => d.id === source.details.datasetId)?.metadata.transformation && <TransformationLineage dataset={datasets.find(d => d.id === source.details.datasetId)!} />}
-        <div className="ws-inline incident-actions">{source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
+        <div className="ws-inline incident-actions">{source.kind !== "prognostic" && source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
           {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开原始分析 ↗")}</a>}
           {source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("返回模拟会话 ↗")}</a>}
           {source.kind === "run" && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看已保存结果")}</button>}
+          <PrognosticSourceLink source={source} workspaceId={incident.workspace_id} />
           <button onClick={() => { setFocused(source.id); begin("evidence"); }}>{tr("记录来源证据")}</button>
         </div>
       </article>)}</div>
@@ -190,7 +192,7 @@ function EntryHeading({ entry, busy, edit, remove }: { entry: IncidentEntry; bus
 function EntrySource({ entry, incident }: { entry: IncidentEntry; incident: Incident }) {
   useLocale();
   const source = incident.links.find(l => l.id === entry.source_link_id);
-  return source ? <p className="ws-muted">{tr("来源：")}{source.details.title} · {linkKinds[source.kind]} {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开分析 ↗")}</a>}{source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("打开模拟 ↗")}</a>}</p> : null;
+  return source ? <p className="ws-muted">{tr("来源：")}{source.details.title} · {linkKinds[source.kind]} {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开分析 ↗")}</a>}{source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("打开模拟 ↗")}</a>}<PrognosticSourceLink source={source} workspaceId={incident.workspace_id} /></p> : null;
 }
 
 function EntryEditor({ entry, kind, incident, sourceId, busy, error, onClose, save }: { entry?: IncidentEntry; kind: IncidentEntry["kind"]; incident: Incident; sourceId: string; busy: boolean; error: string; onClose: () => void; save: (value: Partial<IncidentEntry>) => Promise<void> }) {
@@ -221,15 +223,32 @@ function simulationHref(workspaceId: string, source: IncidentLink) {
   const context = source.details.observationWindow;
   return `#/workspaces/${workspaceId}/simulations/${source.details.simulationId}${source.details.run ? `/${source.details.run.id}` : context ? `/window/${context.windowStart}/${context.asOf}/${context.hypothesis || ""}` : ""}`;
 }
+function PrognosticSourceLink({ workspaceId, source }: { workspaceId: string; source: IncidentLink }) {
+  return source.details.sessionId ? <a className="ws-link" href={prognosticSessionHref(workspaceId, source.details.sessionId)}>{tr("Open saved forecast ↗")}</a> : null;
+}
 function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: Dataset[] }) {
   useLocale();
   const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = d.interval;
   const experiment = d.experiment;
+  if (source.kind === "prognostic") return <>
+    <p>{[d.assetName, dataset?.name].filter(Boolean).join(" · ")}
+      {d.cutoff != null && <> · {tr("Forecast cutoff")} {timeLabel(dataset?.metadata.time || numericAxis, d.cutoff)}</>}
+    </p>
+    {d.status && <p>{forecastStatus(d.status)}</p>}
+    {d.rulMedian != null && <p>{tr("Median time to failure threshold")} · {number(d.rulMedian)} s</p>}
+  </>;
   if (experiment) return <><p><a className="ws-link" href={`#/workspaces/${dataset?.workspace_id}/experiments/${experiment.experimentId}`}>{tr("返回来源实验 ↗")}</a>{" "}{tr("· run")}{" "}{experiment.runId}{" "}{tr("· task")}{" "}{experiment.taskId}</p><SourceSummary source={{ ...source, details: { ...d, experiment: undefined } }} datasets={datasets} /></>;
   return <>{d.modelName && <p>{d.modelName} v{d.modelVersion}{" "}{tr("· scenario")}{" "}{d.scenarioId || tr("legacy / direct configuration")}{d.scenarioVersion ? ` v${d.scenarioVersion}` : ""}</p>}<p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>{tr("峰值时间")}{" "}{dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`}{" "}{tr("· 分数")}{" "}{number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.map(s => dataset ? namedSignal(dataset, s) : s).join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? tr("干预实验") : tr("工具调查")}{" "}{tr("· 观察至")}{" "}{String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>{tr("观察窗口")}{" "}{number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)}{" "}{tr("s · 工作假设")}{" "}{d.observationWindow.hypothesis}</p>}</>;
 }
 
-function SourcePreview({ source, datasets, selection, onSelection }: { source: IncidentLink; datasets: Dataset[]; selection: IncidentSelection | null; onSelection: (value: IncidentSelection) => void }) {
+function SourcePreview({ source, workspaceId, datasets, selection, onSelection }: { source: IncidentLink; workspaceId: string; datasets: Dataset[]; selection: IncidentSelection | null; onSelection: (value: IncidentSelection) => void }) {
+  if (source.kind === "prognostic") return <section className="ws-panel incident-preview" aria-label={tr("Prognostic forecast")}>
+    <h2>{source.details.title}</h2><SourceSummary source={source} datasets={datasets} /><PrognosticSourceLink source={source} workspaceId={workspaceId} />
+  </section>;
+  return <MeasurementSourcePreview source={source} datasets={datasets} selection={selection} onSelection={onSelection} />;
+}
+
+function MeasurementSourcePreview({ source, datasets, selection, onSelection }: { source: IncidentLink; datasets: Dataset[]; selection: IncidentSelection | null; onSelection: (value: IncidentSelection) => void }) {
   useLocale();
   const [result, setResult] = useState<AnalysisResult | null>(null), [error, setError] = useState("");
   const dataset = datasets.find(d => d.id === source.details.datasetId);

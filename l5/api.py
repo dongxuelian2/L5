@@ -87,6 +87,11 @@ def dispatch(handler, method: str) -> bool:
             from .experiment_routes import report
             report(handler, store, parts[2], url.query)
             return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'prognostics':
+            from .prognostic_routes import dispatch_prognostics
+            result, status = dispatch_prognostics(handler, store, method, parts[2], parts[4:], body)
+            if status is None:
+                return True
         elif parts[1] in ('experiments', 'experiment-runs'):
             from .experiment_routes import route
             result, status = route(store, method, parts, body)

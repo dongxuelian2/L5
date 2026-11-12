@@ -16,10 +16,16 @@ from .data_quality import segment_ids
 
 STATUS = {'open': '待调查', 'investigating': '调查中', 'resolved': '已形成结论', 'archived': '已归档'}
 KINDS = {'alarm': '报警', 'note': '调查笔记', 'evidence': '证据', 'hypothesis': '候选解释', 'experiment': '干预实验',
-         'investigation': '工具调查', 'status': '状态变更', 'conclusion': '结论更新', 'incident': '事件范围'}
+         'investigation': '工具调查', 'status': '状态变更', 'conclusion': '结论更新', 'incident': '事件范围',
+         'prognostic': 'Prognostic forecast'}
 STANCE = {'support': '支持', 'oppose': '反对', 'neutral': '待判断'}
 METRIC = {'absolute-robust-z': '稳健 Z 分数绝对值', 'squared-residual': 'PCA-Q 标准化残差平方',
           'model-leverage': 'PCA-T² 模型空间贡献（描述性排序，不加和为 T²）', 'history-contribution': '历史序列贡献度'}
+PROGNOSTIC_STATUS = {'ok': 'Forecast available', 'insufficient_data': 'There are too few usable measurements to fit this model.',
+                     'not_identifiable': 'This model is not identifiable from the selected history.',
+                     'numerical_failure': 'The model could not complete the numerical fit.',
+                     'threshold_reached': 'The failure threshold has already been reached at the cutoff.',
+                     'beyond_horizon': 'The median first-passage time exceeds the forecast horizon.'}
 
 
 def e(value):
@@ -301,8 +307,10 @@ def render_report(store, identity):
             parts.append(f"""<p class="muted">{e(a['datasetName'])}{r('；显示 ')}{series['displayRows']} / {series['sourceRows']}{r(' 个样本，长序列使用保留极值的显示采样；检测结果使用完整数据。</p>')}""")
     # Standalone dataset links still contribute genuine observed charts to a report without analyses.
     analyzed = {a['datasetId'] for a in view['analyses']}
+    observed_sources = {l['details']['datasetId'] for l in incident['links']
+                        if l['kind'] != 'prognostic' and l['details'].get('datasetId')}
     for dataset in view['datasets']:
-        if dataset['id'] in analyzed:
+        if dataset['id'] in analyzed or dataset['id'] not in observed_sources:
             continue
         from .incident_timeline import clock_for_key
         clock = clock_for_key(store, 'dataset:' + dataset['id'])
@@ -328,6 +336,29 @@ def render_report(store, identity):
                 parts.append('<p>' + e(report_text(STANCE[stance])) + r('证据：') + ('、'.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>""" for v in related) or r('尚未记录')) + '</p>')
     if not entries:
         parts.append(r('<p>尚未保存调查证据或候选解释。</p>'))
+    for link in incident['links']:
+        if link['kind'] != 'prognostic':
+            continue
+        session = store.prognostics.get(incident['workspace_id'], link['reference_id'])
+        forecast, config = session['forecast'], session['config']
+        indicator, rul = config['indicator'], forecast['rul']
+        missing_bound = r('Beyond forecast horizon') if forecast['distribution'] else r('Unavailable')
+
+        def bound(key):
+            return n(rul[key]) if rul[key] is not None else missing_bound
+
+        parts.append(f"""<h3 id="source-{link['id']}">{r('Prognostic forecast')} · {e(session['name'])}</h3>""")
+        parts.append(prose(r('Threshold forecasts are conditional on the saved model and operating assumptions.')))
+        parts.append(table([r('参数'), r('保存值')], [
+            [r('Asset'), e(config['assetName'])], [r('Condition indicator'), e(indicator['definition'])],
+            [r('Failure threshold'), e(f"{n(indicator['failure_threshold'])} {indicator['unit']}")],
+            [r('Forecast status'), e(report_text(PROGNOSTIC_STATUS[forecast['status']]))],
+            [r('Median RUL (s)'), e(bound('median'))], [r('RUL prediction interval (s)'), e(' – '.join(bound(k) for k in ('lower', 'upper')))],
+            [r('Prognostic session ID'), e(session['id'])]]))
+        if forecast['distribution']:
+            parts.append(chart(r('First-passage probability'), [d['time'] for d in forecast['distribution']],
+                [dict(label=r('First-passage probability'), values=[d['probability'] for d in forecast['distribution']])],
+                unit=r('Probability'), domain=(0, 1)))
     simulation_links = [l for l in incident['links'] if l['kind'] in ('simulation', 'run')]
     if simulation_links:
         parts.append(r('<h2>5. 模拟调查与干预方案比较</h2>'))

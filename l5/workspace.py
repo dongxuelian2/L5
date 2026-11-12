@@ -51,6 +51,8 @@ class WorkspaceStore:
         self.transformations = TransformationService(self)
         from .experiments import ExperimentService
         self.experiments = ExperimentService(self)
+        from .prognostic_sessions import PrognosticSessions
+        self.prognostics = PrognosticSessions(self)
         from .tep_import import TEPImportService
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
