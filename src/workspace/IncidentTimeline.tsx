@@ -1,11 +1,11 @@
 import { errorMessage } from "../i18n/errors";
 import { t as tr, useLocale } from "../i18n";
 import { useEffect, useState } from "react";
-import { api, message } from "./api";
+import { api, message, prognosticSessionHref } from "./api";
 import { axisLabel, timelineTitle, incidentAxis, dateLabel, number, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
 import { IncidentComparison } from "./IncidentComparison";
 
-const kinds: Record<string, string> = { get truth() { return tr("数据集已知故障"); }, get incident() { return tr("事件范围"); }, get alarm() { return tr("算法报警"); }, get note() { return tr("调查笔记"); }, get evidence() { return tr("调查证据"); }, get hypothesis() { return tr("候选解释"); }, get investigation() { return tr("工具调查"); }, get experiment() { return tr("干预实验"); }, get status() { return tr("状态变更"); }, get conclusion() { return tr("结论更新"); } };
+const kinds: Record<string, string> = { get truth() { return tr("数据集已知故障"); }, get incident() { return tr("事件范围"); }, get alarm() { return tr("算法报警"); }, get note() { return tr("调查笔记"); }, get evidence() { return tr("调查证据"); }, get hypothesis() { return tr("候选解释"); }, get investigation() { return tr("工具调查"); }, get experiment() { return tr("干预实验"); }, get status() { return tr("状态变更"); }, get conclusion() { return tr("结论更新"); }, get prognostic() { return tr("Prognostic forecast"); } };
 export function selectTimelineEvent(event: TimelineEvent, axis: IncidentAxis): IncidentSelection | null {
   if (event.start == null) return null;
   const duration = (event.end ?? event.start) - event.start;
@@ -68,16 +68,19 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
         <p className="ws-muted">{tr("当前时间轴：")}{axis.label}。{axis.origin ? tr("已按各数据集 UTC 起点换算为绝对时间。") : tr("仅同一数据集／模拟会话共享此时间轴。")}{tr("实际观察时间与记录创建时间分开显示。")}</p>
         {invalidRange ? <p role="alert" className="ws-error">{tr("筛选终点不能早于起点。")}</p> : <>
           <TimelineLanes events={measured} axis={axis} selection={selection} activate={activate} />
-          <ol className="incident-event-list">{measured.map(event => <li key={event.id} data-event-id={event.id} className={selection?.eventId === event.id ? "incident-selected" : ""}>
+          <ol className="incident-event-list">{measured.map(event => {
+            const source = incident.links.find(link => link.id === event.linkId);
+            return <li key={event.id} data-event-id={event.id} className={selection?.eventId === event.id ? "incident-selected" : ""}>
             <button onClick={() => activate(event)} aria-pressed={selection?.eventId === event.id}>
-              <span className="ws-kicker">{kinds[event.kind]}{" "}{tr("· 实际观察")}{" "}{timeLabel(incidentAxis(axis), event.start!)}{event.end !== event.start && ` → ${timeLabel(incidentAxis(axis), event.end!)}`}</span>
+              <span className="ws-kicker">{kinds[event.kind]}{" "}{event.kind === "prognostic" ? tr("Forecast cutoff") : tr("· 实际观察")}{" "}{timeLabel(incidentAxis(axis), event.start!)}{event.end !== event.start && ` → ${timeLabel(incidentAxis(axis), event.end!)}`}</span>
               <strong>{event.title}</strong>{event.peakTime != null && <span>{tr("峰值")}{" "}{timeLabel(incidentAxis(axis), event.peakTime)}{" "}{tr("· 原始分数")}{" "}{number(event.peakScore!)}</span>}
               {event.content && <span>{event.content.slice(0, 180)}</span>}{event.stance && <span>{tr("证据关系：")}{{ support: tr("支持"), oppose: tr("反对"), neutral: tr("待判断") }[event.stance]}</span>}
               {event.observationWindow && <span>{tr("观察窗口")}{" "}{event.observationWindow.join("–")} s{event.actionAt != null ? tr(" · 干预 {0} s", {0: event.actionAt}) : ""}</span>}
               {event.recordedAt && <small>{tr("记录创建：")}{dateLabel(event.recordedAt)}{event.updatedAt && event.updatedAt !== event.recordedAt ? tr(" · 更新：{0}", {0: dateLabel(event.updatedAt)}) : ""}</small>}
             </button>
-            {event.linkId && incident.links.find(l => l.id === event.linkId)?.details.simulationId && <a className="ws-link" href={simulationEventHref(incident, event)}>{tr("恢复观察窗口与实验参数 ↗")}</a>}
-          </li>)}</ol>
+            {source?.details.simulationId && <a className="ws-link" href={simulationEventHref(incident, event)}>{tr("恢复观察窗口与实验参数 ↗")}</a>}
+            {source?.details.sessionId && <a className="ws-link" href={prognosticSessionHref(incident.workspace_id, source.details.sessionId)}>{tr("Open saved forecast ↗")}</a>}
+          </li>; })}</ol>
           {!measured.length && <p className="ws-notice">{tr("当前条件下没有实际观察记录。可选择其他时间轴或关联分析。")}</p>}
         </>}
         <details className="incident-recorded"><summary>{tr("调查操作与未标注观察时间的记录（")}{recorded.length}）</summary><p className="ws-muted">{tr("下列时间表示记录操作时间，不表示设备异常发生时间。实际观察范围筛选不作用于此列表。")}</p>

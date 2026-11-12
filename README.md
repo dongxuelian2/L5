@@ -1,6 +1,6 @@
 # L5 — Industrial Process Analysis & Investigation Workspace
 
-**Industrial time-series analysis, anomaly detection, process experiments and incident investigation.**
+**Industrial time-series analysis, anomaly detection, equipment prognostics, process experiments and incident investigation.**
 
 [Quick Start](#quick-start) · [Features](#core-features) · [TEP Case Study](#tennessee-eastman-case-study) · [Architecture](docs/architecture.md) · [Documentation](#examples--documentation)
 
@@ -23,6 +23,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
 | **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
 | **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
+| **Predictive Maintenance** | Fit equipment condition trends, estimate remaining useful life and compare expected maintenance costs. Load a coupled-tank pump benchmark or use a measured condition signal from your Dataset. Save forecasts and link them to Incidents. |
 | **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
 
 ## Workflows & Screenshots
@@ -66,6 +67,8 @@ flowchart LR
 </details>
 
 [More screenshots and example data](docs/images/README.md).
+
+**Pump condition → failure-time forecast → maintenance comparison.** Open **Predictive Maintenance** and load the coupled-tank benchmark. Fit the observed capacity loss, inspect the first-passage distribution and compare intervention times. The benchmark runs on synthetic measurements. [Workflow, equations and held-out results](docs/predictive-maintenance.md).
 
 ## Tennessee Eastman Case Study
 
@@ -115,6 +118,7 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 | [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
 | [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
 | [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
+| [Predictive Maintenance and RUL](docs/predictive-maintenance.md) | [Pump degradation benchmark and retrospective evaluation](docs/predictive-maintenance.md#retrospective-evaluation) |
 | [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
 | [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
 | [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |

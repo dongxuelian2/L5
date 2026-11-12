@@ -179,6 +179,8 @@ class IncidentService:
         kind, reference = source['kind'], source['reference_id']
         if kind in ('simulation', 'run'):
             return 'simulation:' + reference
+        if kind == 'prognostic':
+            return 'dataset:' + source['datasetId']
         did = self.store.result(reference)['datasetId'] if kind in ('analysis', 'interval') else reference
         dataset = self.store.dataset(did)
         simulation = dataset['metadata'].get('model', {}).get('simulationId')
@@ -209,6 +211,7 @@ class IncidentService:
         if not isinstance(body, dict):
             raise ValueError('请选择要关联的已有记录。')
         kind, selector = body.get('kind'), ''
+        prognostic_dataset = None
         if kind == 'dataset':
             identity = body.get('datasetId', '')
             dataset = self.store.dataset(identity)
@@ -232,6 +235,9 @@ class IncidentService:
             if kind == 'run':
                 selector = body.get('runId', '')
                 self.store.runtime.run(identity, selector)
+        elif kind == 'prognostic':
+            identity = body.get('sessionId', '')
+            prognostic_dataset = self.store.prognostics.get(workspace_id, identity)['config']['datasetId']
         else:
             raise ValueError('未知的事件关联类型。')
         hypothesis = body.get('hypothesis')
@@ -244,7 +250,7 @@ class IncidentService:
         if kind == 'simulation' and ('asOf' in body or 'windowStart' in body):
             _, rows = self.store.runtime.window(identity, body)
             selector = json.dumps(dict(windowStart=rows[0]['t'], asOf=rows[-1]['t'], hypothesis=hypothesis), sort_keys=True)
-        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis,
+        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis, datasetId=prognostic_dataset,
                     hypothesisTitle=faults[hypothesis] if hypothesis else None)
 
     @staticmethod
@@ -370,6 +376,13 @@ class IncidentService:
                 if kind == 'interval':
                     index = int(link['selector'])
                     link['details'].update(intervalIndex=index, interval=result['intervals'][index])
+            elif kind == 'prognostic':
+                session = self.store.prognostics.get(incident['workspace_id'], reference)
+                forecast, config = session['forecast'], session['config']
+                link['details'] = dict(sessionId=reference, datasetId=config['datasetId'], title=session['name'],
+                                       assetName=config['assetName'], cutoff=forecast['cutoff'], status=forecast['status'],
+                                       rulMedian=forecast['rul']['median'], method=forecast['method'], horizon=forecast['horizon'],
+                                       trainingStart=config['start'])
             else:
                 if reference not in sessions:
                     sessions[reference] = self.store.runtime.get(reference)

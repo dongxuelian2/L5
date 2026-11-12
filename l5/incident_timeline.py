@@ -144,6 +144,10 @@ def investigation(store, identity, selected=None):
                   clock, external['faultOnsetSeconds'], linkId=link['id'], content=external['timeConvention'], target='source')
         if detail.get('analysisId'):
             grouped.setdefault(detail['analysisId'], []).append(link)
+        if detail.get('sessionId'):
+            event('prognostic:' + link['id'], 'prognostic', detail['title'], clock, detail['cutoff'],
+                  linkId=link['id'], recordedAt=link['created_at'], observationWindow=[detail['trainingStart'], detail['cutoff']],
+                  target='source')
         if detail.get('simulationId'):
             run, window = detail.get('run'), detail.get('observationWindow')
             if run:

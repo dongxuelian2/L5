@@ -1583,3 +1583,99 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
 });
+
+test('predictive maintenance fits the generated measurements, localizes results, saves and links a snapshot', async () => {
+  const { PrognosticWorkspace } = require('../src/workspace/PrognosticWorkspace.tsx');
+  const pump = dataset('pump-data', 101);
+  pump.metadata.columns = [
+    { name: 'capacity_loss', unit: 'fraction', missing: 1, min: .05, max: .3 },
+    { name: 'pump', unit: '%', missing: 0, min: 45, max: 55 },
+  ];
+  const base = '/api/workspaces/test/prognostics';
+  const config = {
+    datasetId: pump.id, assetId: 'pump-1', assetName: 'Pump 1', loadSignal: 'pump',
+    indicator: { signal: 'capacity_loss', definition: 'Measured fractional loss of capacity', unit: 'fraction',
+      direction: 'increasing', failure_threshold: .4, operating_threshold: .3 },
+    start: 0, cutoff: 60, horizon: 20, method: 'stochastic', seed: 35, endStatus: 'censored',
+    events: [{ time: 20, action: 'restore' }], operatingPeriods: [[0, 100]],
+    maintenance: { preventive_cost: 50, corrective_cost: 250, downtime_cost: 1,
+      preventive_duration: 30, corrective_duration: 90, failure_consequence: 50,
+      replacement_cost: 130, replacement_duration: 40, planning_horizon: 20, scheduled_time: 10 },
+  };
+  const scheduled = { action: 'schedule', time: 10, failure_probability: .1, expected_cost: 117,
+    expected_failure_cost: 39, expected_intervention_cost: 78 };
+  const snapshot = {
+    config, source: { datasetId: pump.id, datasetName: pump.name, loadSignal: { name: 'pump', displayName: 'Pump', unit: '%' } },
+    forecast: { status: 'ok', method: 'stochastic', model_version: '1.0.0', cutoff: 60, horizon: 20,
+      history: [{ time: 0, value: .05, load: 55, fitted: null }, { time: 20, value: .10, load: 50, fitted: .11 },
+        { time: 60, value: .3, load: 45, fitted: .31 }],
+      trajectory: [{ time: 60, offset: 0, lower: .22, median: .31, upper: .39 },
+        { time: 80, offset: 20, lower: .35, median: .44, upper: .53 }],
+      distribution: [{ time: 0, probability: 0 }, { time: 10, probability: .1 }, { time: 20, probability: .75 }],
+      rul: { median: 16, lower: 8, upper: null, confidence: .9,
+        probability_not_reached_by_horizon: .25, probability_never_reached_under_model: .01,
+        probabilities: [{ horizon: 20, probability: .75 }] },
+      diagnostics: { operating_periods: [[20, 60]], latest_maintenance: { time: 20, action: 'restore' } },
+      assumptions: ['A fixed operating regime'], assumption_keys: ['elapsed_time'] },
+    maintenance: { status: 'ok', horizon: 20, recommended: scheduled, options: [scheduled], curve: [scheduled], assumptions: [] },
+  };
+  const session = { ...snapshot, id: 'pump-session', name: 'Pump forecast', created_at: '2026-10-24T00:00:00Z' };
+  const writes = [];
+  let delaySave = false, finishSave;
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.body) writes.push({ url, body: JSON.parse(options.body) });
+    if (url === base + '/benchmark') return response({ dataset: pump, defaults: config });
+    if (url === base + '/fit') return response(snapshot);
+    if (url === base + '/sessions' && options.method === 'POST') {
+      if (delaySave) return new Promise(resolve => { finishSave = () => resolve(response(session)); });
+      return response(session);
+    }
+    if (url === base + '/sessions') return response({ sessions: [{ ...session, assetName: 'Pump 1', status: 'ok' }] });
+    if (url === base + '/sessions/pump-session') return response(session);
+    if (url === '/api/workspaces/test/incidents' && options.method === 'POST') return response(emptyIncident());
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [] });
+    throw new Error(`Unexpected URL ${url}`);
+  };
+  let generated;
+  await mount(React.createElement(PrognosticWorkspace, { workspaceId: 'test', datasets: [],
+    benchmarkScenario: { id: 'tank-scenario', version: 2 }, onGenerated: data => { generated = data; },
+  }));
+  assert.match(container.textContent, /The selected coupled-tank scenario supplies the hydraulic settings/);
+  await click(button('Generate pump dataset'));
+  assert.equal(generated.id, pump.id);
+  assert.deepEqual(writes[0].body, { scenarioId: 'tank-scenario', scenarioVersion: 2 });
+  assert.equal(inputFor('Degradation signal').value, 'capacity_loss');
+  await click(button('Fit model and compare strategies'));
+  assert.equal(writes.find(item => item.url.endsWith('/fit')).body.cutoff, 60);
+  assert.match(container.querySelector('#pm-rul').parentElement.parentElement.textContent, /16 s/);
+  assert.match(container.textContent, /Restoration · 20 s/);
+  assert.match(container.textContent, /20 – 60/);
+  assert.ok(container.querySelector('.pm-workspace svg polygon'));
+  await setField(inputFor('Shared chart cursor'), 3);
+  assert.ok(container.querySelector('.pm-workspace svg [data-selected-time="70"]'));
+  assert.ok(container.querySelector('.pm-workspace svg [data-selected-time="10"]'));
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.textContent, /预测时域内未达到阈值/);
+  assert.match(container.textContent, /已记录的运行负载（%）/);
+  assert.match(container.textContent, /期望总成本/);
+  await act(async () => setLocale('en'));
+  await setField(inputFor('Session name'), 'Pump forecast');
+  await click(button('Save session'));
+  assert.equal(window.location.hash, '#/workspaces/test/maintenance/pump-session');
+  await act(async () => root.render(React.createElement(PrognosticWorkspace, {
+    key: session.id, workspaceId: 'test', datasets: [pump], sessionId: session.id, onGenerated() {},
+  })));
+  assert.equal(inputFor('Forecast cutoff (dataset s)').value, '60');
+  assert.equal(container.querySelector('a[href$="/forecast.csv"]').getAttribute('href'), base + '/sessions/pump-session/forecast.csv');
+  await click(button('Link saved forecast to an incident'));
+  await click(button('创建并打开事件'));
+  assert.deepEqual(writes.at(-1).body.source, { kind: 'prognostic', sessionId: session.id });
+  delaySave = true;
+  await click(button('Save as new session'));
+  assert.ok(finishSave);
+  await act(async () => root.render(React.createElement('div')));
+  window.location.hash = '#/workspaces/test/datasets';
+  await act(async () => finishSave());
+  assert.equal(window.location.hash, '#/workspaces/test/datasets');
+  window.location.hash = '#/';
+});

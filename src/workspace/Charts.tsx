@@ -20,15 +20,19 @@ function plotIndexes(values: (number | null)[]) {
   return [...result].sort((a, b) => a - b);
 }
 
-type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string; dash?: string };
+type Band = { times: number[]; lower: number[]; upper: number[]; title: string; color: string };
+type Marker = { time: number; label: string; annotation?: boolean };
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [], band }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: Marker[]; band?: Band;
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);
   if (!times.length) return null;
   let low = Infinity, high = -Infinity;
-  for (const line of [{ values }, ...overlays]) for (const value of line.values) if (value != null) { low = Math.min(low, value); high = Math.max(high, value); }
+  for (const line of [values, ...overlays.map(item => item.values), ...(band ? [band.lower, band.upper] : [])]) {
+    for (const value of line) if (value != null) { low = Math.min(low, value); high = Math.max(high, value); }
+  }
   if (!Number.isFinite(low)) return <div className="ws-notice">{title}{tr(": no measured values in this window.")}</div>;
   if (domain) [low, high] = domain;
   if (threshold !== undefined) { low = Math.min(domain ? low : 0, low, threshold); high = Math.max(high, threshold); }
@@ -50,6 +54,10 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
     }).join(" ");
   }
   const active = hover != null && hover < times.length ? hover : null;
+  const bandPoints = band ? [
+    ...band.times.map((t, i) => `${x(t).toFixed(2)},${y(band.upper[i]).toFixed(2)}`),
+    ...band.times.map((t, i) => `${x(t).toFixed(2)},${y(band.lower[i]).toFixed(2)}`).reverse(),
+  ].join(" ") : "";
   return <figure className="ws-plot">
     <figcaption><span><i style={{ background: color }} />{title}</span><span className="ws-muted">{active == null ? tr("{0} displayed points", {0: times.length.toLocaleString()}) : `${timeLabel(axis, times[active])} · ${values[active] == null ? tr("missing") : number(values[active]!)}`}</span></figcaption>
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr("{0} time series{1}", {0: title, 1: threshold === undefined ? "" : tr(", threshold {0}", {0: number(threshold)})})} onClick={() => { if (hover != null && onSelectTime) onSelectTime(times[hover]); }}
@@ -65,9 +73,10 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       {intervals.filter(i => i.end >= first && i.start <= last).map((interval, i) => <rect key={i} x={x(Math.max(first, interval.start))} width={Math.max(2, x(Math.min(last, interval.end)) - x(Math.max(first, interval.start)))} y={T} height={H - T - B} fill="#e9927d" opacity=".14" />)}
       {gaps.filter(g => g.end >= first && g.start <= last).map((gap, i) => <rect key={`gap-${i}`} data-quality-gap="true" x={x(Math.max(first, gap.start))} width={Math.max(2, x(Math.min(last, gap.end)) - x(Math.max(first, gap.start)))} y={T} height={H - T - B} fill="#e2bc75" opacity=".13"><title>{tr("Sampling gap")}</title></rect>)}
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
-      {markers.filter(m => m.time >= first && m.time <= last).map(m => <g key={m.time} data-truth-onset={m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
+      {markers.filter(m => m.time >= first && m.time <= last).map((m, index) => <g key={`${m.time}-${index}`} data-truth-onset={m.annotation ? undefined : m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
+      {band && <polygon points={bandPoints} fill={band.color} opacity=".20"><title>{band.title}</title></polygon>}
       <path d={pathFor(times, values, segmentIds)} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
-      {overlays.map(line => <path key={line.title} d={pathFor(line.times, line.values, line.segmentIds)} fill="none" stroke={line.color} strokeWidth="1.7" vectorEffect="non-scaling-stroke"><title>{line.title}</title></path>)}
+      {overlays.map(line => <path key={line.title} d={pathFor(line.times, line.values, line.segmentIds)} fill="none" stroke={line.color} strokeWidth="1.7" strokeDasharray={line.dash} vectorEffect="non-scaling-stroke"><title>{line.title}</title></path>)}
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
       {selectedTime !== undefined && selectedTime >= first && selectedTime <= last && <line data-selected-time={selectedTime} x1={x(selectedTime)} x2={x(selectedTime)} y1={T} y2={H - B} stroke="#e2bc75" strokeDasharray="4 3" />}
       <text x={L} y={H - 5}>{timeLabel(axis, first)}</text><text x={W - R} y={H - 5} textAnchor="end">{timeLabel(axis, last)}</text>

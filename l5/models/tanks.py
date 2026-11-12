@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import random
 import secrets
+from bisect import bisect_right
 from .base import field, finite, ground_truth, validate_fields
 
 FAULTS = dict(healthy='Healthy operation', pump_degradation='Inlet pump degradation',
@@ -59,12 +60,14 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
-def flows(c, heads, time, action, at, parameters):
+def flows(c, heads, time, action, at, parameters, pump_profile=None):
     h1, h2 = heads
     active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
     s = c['severity'] if active else 0.
     pump, opening = c['pumpControl'], c['valve']
     efficiency = 1 - .7*s if c['fault'] == 'pump_degradation' else 1.
+    if pump_profile is not None:
+        efficiency, pump = pump_profile(time)
     if action and time >= at:
         if action == 'adjust_pump':
             pump = parameters['pumpControl']
@@ -85,7 +88,9 @@ def flows(c, heads, time, action, at, parameters):
     return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
 
 
-def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
+def integrate(config, action=None, at=0., parameters=None, *, include_at=False,
+              pump_profile=None, pump_boundaries=(), sample_times=None):
+    """Integrate hydraulics, optionally using a time-varying inlet pump profile."""
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
     rng = random.Random(c['seed'])
@@ -93,10 +98,15 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     initial_volume = c['area1']*heads[0]+c['area2']*heads[1]
     totals = [0.]*6
     physical, rows = [], []
-    boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
+    boundaries = {c['duration'], c['start'], *pump_boundaries}
+    if c['fault_duration'] is not None:
+        boundaries.add(c['start']+c['fault_duration'])
+    if action:
+        boundaries.add(at)
+    boundaries = sorted(boundaries)
 
     def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
+        f, _, _, _ = flows(c,state,when,action,at,p,pump_profile)
         # Joint donor limiting keeps transfer, leak and overflow conservative.
         demand1 = max(0,f[1])+f[3]+f[4]
         scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
@@ -108,13 +118,17 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
         return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
                 max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
 
-    count = math.ceil(c['duration']/c['step'])
-    targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
+    if sample_times is None:
+        count = math.ceil(c['duration']/c['step'])
+        targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
+    else:
+        targets = set(sample_times)
     if include_at:
         targets.add(at)
     for target in sorted(targets):
         while t < target-1e-10:
-            next_boundary = next((b for b in boundaries if b > t+1e-10),target)
+            boundary_index = bisect_right(boundaries, t+1e-10)
+            next_boundary = boundaries[boundary_index] if boundary_index < len(boundaries) else target
             dt = min(c['integrationStep'],target-t,next_boundary-t)
             # Both SSP stages use the same side of a discontinuity. The next
             # substep begins at the event with the new fault/action inputs.
@@ -123,7 +137,7 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
             heads = [(a+b)/2 for a,b in zip(heads,right)]
             totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
             t = round(t+dt,12)
-        f,pump,opening,s = flows(c,heads,target,action,at,p)
+        f,pump,opening,s = flows(c,heads,target,action,at,p,pump_profile)
         bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.
         rows.append(dict(t=target,level1=heads[0]+rng.gauss(0,c['noise']),
                          level2=heads[1]+bias+rng.gauss(0,c['noise']),
