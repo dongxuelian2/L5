@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import messages from "./messages.json";
 import common from "./common.json";
 import catalog from "./catalog.json";
+import alarms from "./alarms.json";
 import serviceErrors from "./service-errors.json";
 import "./language.css";
 
@@ -40,7 +41,7 @@ export function useLocale() {
   return current;
 }
 /** Source keys refer only to application-owned copy. Never pass user data here. */
-const copy: Record<string, readonly string[]> = { ...messages, ...common, ...catalog, ...serviceErrors };
+const copy: Record<string, readonly string[]> = { ...messages, ...common, ...catalog, ...alarms, ...serviceErrors };
 // Source keys win. Only unambiguous English labels may stand in for a source key;
 // Chinese translations and rendered messages are never parsed back into keys.
 const english = new Map<string, readonly string[] | null>();

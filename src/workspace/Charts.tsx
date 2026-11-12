@@ -21,8 +21,8 @@ function plotIndexes(values: (number | null)[]) {
 }
 
 type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
-  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [], stepAfter = false }: {
+  times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[]; stepAfter?: boolean;
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);
@@ -39,13 +39,16 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
   const y = (v: number) => T + (high - v) / (high - low) * (H - T - B);
   function pathFor(ts: number[], vs: (number | null)[], ids?: number[]) {
     let connected = false, previousSegment: number | undefined, previousTime = -Infinity;
-    return plotIndexes(vs).map(i => {
+    const indexes = stepAfter ? vs.map((_, index) => index) : plotIndexes(vs);
+    return indexes.map(i => {
       const value = vs[i];
       if (value == null) { connected = false; return ""; }
       // Overlay shading can include another source's gaps; each line's own
       // full-resolution segment identities determine whether it connects.
       const crossesGap = !ids && gaps.some(g => g.end > previousTime && g.start < ts[i]);
-      const point = `${connected && !crossesGap && (!ids || previousSegment === ids[i]) ? "L" : "M"}${x(ts[i]).toFixed(2)},${y(value).toFixed(2)}`;
+      const canJoin = connected && !crossesGap && (!ids || previousSegment === ids[i]);
+      const px = x(ts[i]).toFixed(2), py = y(value).toFixed(2);
+      const point = canJoin && stepAfter ? `H${px} V${py}` : `${canJoin ? "L" : "M"}${px},${py}`;
       connected = true; previousSegment = ids?.[i]; previousTime = ts[i]; return point;
     }).join(" ");
   }
@@ -58,7 +61,7 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
         const t = first + Math.max(0, Math.min(1, ((e.clientX - rect.left) / rect.width * W - L) / (W - L - R))) * span;
         let a = 0, b = times.length - 1;
         while (a < b) { const m = (a + b) >> 1; if (times[m] < t) a = m + 1; else b = m; }
-        setHover(a); onHoverTime?.(t);
+        setHover(stepAfter && times[a] > t ? Math.max(0, a - 1) : a); onHoverTime?.(t);
       }}>
       <title>{title}{threshold !== undefined ? ` — ${thresholdLabel} ${number(threshold)}` : ""}</title>
       {[0, .5, 1].map(f => <g key={f}><line x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} stroke="#30392d" strokeDasharray="3 5" /><text x={L - 10} y={T + f * (H - T - B) + 4} textAnchor="end">{number(high - f * (high - low))}</text></g>)}

@@ -68,8 +68,11 @@ class IncidentService:
             ''')
             if 'model_hypothesis' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
                 db.execute('ALTER TABLE incident_entries ADD COLUMN model_hypothesis TEXT')
-            if 'time_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incidents)')}:
+            incident_columns = {r['name'] for r in db.execute('PRAGMA table_info(incidents)')}
+            if 'time_axis_key' not in incident_columns:
                 db.execute('ALTER TABLE incidents ADD COLUMN time_axis_key TEXT')
+            if 'time_axis_snapshot' not in incident_columns:
+                db.execute('ALTER TABLE incidents ADD COLUMN time_axis_snapshot TEXT')
             if 'observed_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
                 db.execute('ALTER TABLE incident_entries ADD COLUMN observed_axis_key TEXT')
 
@@ -78,7 +81,14 @@ class IncidentService:
             row = db.execute('SELECT * FROM incidents WHERE id=?', (identity,)).fetchone()
         if row is None:
             raise KeyError('事件不存在。')
-        return dict(row)
+        return self.decode_row(row)
+
+    @staticmethod
+    def decode_row(row):
+        result = dict(row)
+        if snapshot := result.pop('time_axis_snapshot'):
+            result['time_axis_snapshot'] = json.loads(snapshot)
+        return result
 
     def list(self, workspace_id, *, status=None, start=None, end=None, q=''):
         self.store.workspace(workspace_id)
@@ -97,7 +107,7 @@ class IncidentService:
             where.append("(instr(lower(i.title),lower(?))>0 OR instr(lower(i.description),lower(?))>0)")
             args.extend([q, q])
         with self.store.connect() as db:
-            return [dict(r) for r in db.execute(f'''SELECT i.*,
+            return [self.decode_row(r) for r in db.execute(f'''SELECT i.*,
                 (SELECT COUNT(DISTINCT reference_id) FROM incident_links
                  WHERE incident_id=i.id AND kind IN ('analysis','interval')) AS analysis_count,
                 (SELECT COUNT(*) FROM incident_links WHERE incident_id=i.id AND kind='interval') AS interval_count
@@ -140,17 +150,21 @@ class IncidentService:
         if prepared and not values['time_axis_key']:
             values['time_axis_key'] = self.prepared_axis(prepared)
         self.validate_axis(workspace_id, values['time_axis_key'])
-        identity, stamp = uuid4().hex, now()
         with self.store.connect() as db:
-            db.execute('''INSERT INTO incidents
-                (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (identity, workspace_id, *values.values(), stamp, stamp))
+            identity = self.insert_incident(db, workspace_id, values)
             if prepared:
                 self.insert_link(db, identity, prepared)
-            self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
             self.touch(db, identity, workspace_id)
         return self.get(identity)
+
+    def insert_incident(self, db, workspace_id, values, *, time_axis_snapshot=None):
+        identity, stamp = uuid4().hex, now()
+        db.execute('''INSERT INTO incidents
+            (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,time_axis_snapshot,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', (identity, workspace_id, *values.values(),
+                json.dumps(time_axis_snapshot, ensure_ascii=False) if time_axis_snapshot else None, stamp, stamp))
+        self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
+        return identity
 
     def update(self, identity, body):
         incident = self.row(identity)
@@ -159,6 +173,8 @@ class IncidentService:
         with self.store.connect() as db:
             db.execute(f"UPDATE incidents SET {','.join(k+'=?' for k in values)} WHERE id=?", (*values.values(), identity))
             changes = {k: {'before': incident.get(k), 'after': v} for k, v in values.items() if incident.get(k) != v}
+            if incident.get('time_axis_snapshot') and changes.keys() & {'time_origin', 'time_axis_key'}:
+                db.execute('UPDATE incidents SET time_axis_snapshot=NULL WHERE id=?', (identity,))
             if changes:
                 self.record_change(db, identity, changes)
             self.touch(db, identity, incident['workspace_id'])
@@ -325,16 +341,22 @@ class IncidentService:
             values['observed_axis_key'] = (previous.get('observed_axis_key') if entry_id
                 and previous.get('source_link_id') == values['source_link_id']
                 and previous.get('observed_at') == values['observed_at'] else None) or clock['key']
-            stamp = now()
             if entry_id:
                 db.execute(f"UPDATE incident_entries SET {','.join(k+'=?' for k in values)},updated_at=? WHERE id=? AND incident_id=?",
-                           (*values.values(), stamp, entry_id, identity))
+                           (*values.values(), now(), entry_id, identity))
             else:
-                db.execute('''INSERT INTO incident_entries
-                    (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,observed_axis_key,created_at,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, *values.values(), stamp, stamp))
+                self.insert_entry(db, identity, **values)
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
+
+    @staticmethod
+    def insert_entry(db, identity, *, kind, title, content, hypothesis_id=None, stance='neutral',
+                     source_link_id=None, observed_at=None, observed_axis_key=None):
+        stamp = now()
+        db.execute('''INSERT INTO incident_entries
+            (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,observed_axis_key,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, kind, title, content, hypothesis_id, stance,
+                                                 source_link_id, observed_at, observed_axis_key, stamp, stamp))
 
     def remove_entry(self, identity, entry_id):
         incident = self.row(identity)
