@@ -34,6 +34,14 @@ def source_clock(store, source):
 
 
 def incident_clock(store, incident):
+    snapshot = incident.get('time_axis_snapshot')
+    if snapshot:
+        key = 'alarm-snapshot:' + incident['id']
+        for expected in snapshot['clocks']:
+            current = clock_for_key(store, expected['key'])
+            if (current['axisId'], current['offset']) != (expected['axisId'], expected['offset']):
+                return dict(key=key, axisId=key, offset=0, label=snapshot['label'])
+        return dict(key=key, axisId=snapshot['axisId'], offset=0, label=snapshot['axisLabel'])
     key = 'origin:' + incident['time_origin'] if incident.get('time_origin') else incident.get('time_axis_key') or 'incident:' + incident['id']
     return clock_for_key(store, key)
 
@@ -181,7 +189,8 @@ def investigation(store, identity, selected=None):
 
     for entry in incident['entries']:
         link = link_by_id.get(entry['source_link_id'])
-        clock = clock_for_key(store, entry['observed_axis_key']) if entry.get('observed_axis_key') else source_clock(store, link) if link else primary
+        key = entry.get('observed_axis_key')
+        clock = primary if key == primary['key'] else clock_for_key(store, key) if key else source_clock(store, link) if link else primary
         event('entry:' + entry['id'], entry['kind'], entry['title'], clock if entry['observed_at'] is not None else None,
               entry['observed_at'], entryId=entry['id'], linkId=entry['source_link_id'],
               recordedAt=entry['created_at'], updatedAt=entry['updated_at'], stance=entry['stance'],

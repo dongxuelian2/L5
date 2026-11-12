@@ -1583,3 +1583,58 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
 });
+
+test('alarm workspace reopens and acknowledges a saved alarm without clearing', async () => {
+  const { AlarmWorkspace } = require('../src/workspace/AlarmWorkspace.tsx');
+  const { defaultAlarmPolicy } = require('../src/workspace/alarmTypes.ts');
+  const result = incidentResult('reactor-alarm-run'), source = dataset(result.datasetId);
+  const axis = { id: 'dataset:' + source.id, label: source.name, origin: null, start: 200, end: 699 };
+  const first = { ...result.intervals[0], id: 'alarm-1', datasetId: source.id, datasetName: source.name,
+    analysisId: result.id, analysisName: 'Temperature monitor', detectorLabel: result.algorithmLabel,
+    axisId: axis.id, offset: 0, intervalIndex: 0, durationSeconds: 39,
+    nativeStart: 340, nativeEnd: 379, nativePeakTime: 350, nativeContributionTime: 350,
+    affectedSignals: [names[0]], threshold: 3, peakAboveThreshold: 27, peakMagnitude: 30,
+    measuredState: 'active', endReason: 'analysis-end', observedSpan: [200, 379], observedFraction: 1,
+    quality: { gapThreshold: 5, coverageFraction: 1, abstainedSamples: 0 },
+    provenance: { contributionMetric: result.contributionMetric },
+    priority: 'high', equipment: ['Reactor'], policyEligible: true,
+    operator: { acknowledgedAt: null, shelvedUntil: null, incidentIds: [], escalated: false } };
+  const second = { ...first, id: 'alarm-2', detectorLabel: 'EWMA', operator: { ...first.operator } };
+  const group = { id: 'alarm-group', axisId: axis.id, start: 340, end: 379,
+    eventIds: [first.id, second.id], priority: 'high', incidentIds: [], relationships: [] };
+  const stamp = new Date().toISOString();
+  const session = { id: 'reactor-review', name: 'Shift review', workspaceId: 'test', analysisIds: [result.id],
+    policy: defaultAlarmPolicy, createdAt: stamp, updatedAt: stamp, asOf: stamp,
+    events: [first, second], groups: [group], axes: [axis], audit: [],
+    flood: { rawEventCount: 2, groupCount: 1, axes: [] } };
+  const writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/series?')) return response(seriesFor(url));
+    if (url === '/api/analyses/' + result.id) return response(result);
+    if (url === '/api/workspaces/test/alarm-sessions') return response({ sessions: [session] });
+    if (url === '/api/alarm-sessions/' + session.id) return response(session);
+    if (url.endsWith('/events/alarm-1/actions')) {
+      const body = JSON.parse(options.body);
+      writes.push(body);
+      first.operator.acknowledgedAt = stamp;
+      session.audit.push({ id: 'audit-1', eventId: first.id, kind: body.kind, actor: body.actor, recordedAt: stamp });
+      return response(session);
+    }
+    assert.fail('unexpected request ' + url);
+  };
+  await mount(React.createElement(AlarmWorkspace, { workspaceId: 'test', datasets: [source], jobs: [], sessionId: session.id }));
+  assert.match(container.textContent, /Shift review/);
+  assert.match(container.textContent, /2 matching alarms in 1 groups/);
+  await click(container.querySelector('.alarm-event-button'));
+  assert.ok(curve(names[0]), 'measurement evidence renders for a source alarm');
+  assert.ok(curve('Detector score'));
+  await setField(inputFor('Operator name (optional)'), 'Shift lead');
+  await click(button('Acknowledge'));
+  assert.deepEqual(writes, [{ kind: 'acknowledge', actor: 'Shift lead' }]);
+  assert.match(container.querySelector('.alarm-operator').textContent, /Active at analysis end · Acknowledged/);
+  await setField(inputFor('Operator state'), 'Acknowledged');
+  assert.match(container.textContent, /1 matching alarms in 1 groups/);
+  assert.equal(container.querySelectorAll('.alarm-event-button').length, 2, 'filters retain every group member');
+  await act(async () => setLocale('zh-CN'));
+  assert.doesNotMatch(container.textContent, /Alarm timeline/);
+});
