@@ -11,6 +11,7 @@ import math
 from uuid import uuid4
 
 from .workspace import now
+from .safety import EVIDENCE_KINDS
 
 
 STATUSES = ('open', 'investigating', 'resolved', 'archived')
@@ -177,6 +178,8 @@ class IncidentService:
 
     def prepared_axis(self, source):
         kind, reference = source['kind'], source['reference_id']
+        if kind in EVIDENCE_KINDS:
+            return source['clockKey'] if kind == 'safety-observed' else None
         if kind in ('simulation', 'run'):
             return 'simulation:' + reference
         did = self.store.result(reference)['datasetId'] if kind in ('analysis', 'interval') else reference
@@ -232,6 +235,14 @@ class IncidentService:
             if kind == 'run':
                 selector = body.get('runId', '')
                 self.store.runtime.run(identity, selector)
+        elif kind in EVIDENCE_KINDS:
+            identity = body.get('assessmentId', '')
+            assessment = self.store.safety.get_assessment(workspace_id, identity)
+            constraint_id, index = body.get('constraintId'), body.get('intervalIndex')
+            raw = body.get('raw', False)
+            detail = self.store.safety.evidence(assessment, kind, constraint_id, index, raw)
+            selector = json.dumps(dict(intervalIndex=index, **detail), ensure_ascii=False, sort_keys=True, allow_nan=False)
+            return dict(kind=kind, reference_id=identity, selector=selector, clockKey=detail['clock']['key'])
         else:
             raise ValueError('未知的事件关联类型。')
         hypothesis = body.get('hypothesis')
@@ -269,6 +280,7 @@ class IncidentService:
         incident = self.row(identity)
         prepared = self.prepare_link(incident['workspace_id'], body)
         with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             self.insert_link(db, identity, prepared)
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
@@ -370,6 +382,8 @@ class IncidentService:
                 if kind == 'interval':
                     index = int(link['selector'])
                     link['details'].update(intervalIndex=index, interval=result['intervals'][index])
+            elif kind in EVIDENCE_KINDS:
+                link['details'] = json.loads(link['selector'])
             else:
                 if reference not in sessions:
                     sessions[reference] = self.store.runtime.get(reference)

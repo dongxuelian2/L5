@@ -29,6 +29,8 @@ def clock_for_key(store, key):
 
 def source_clock(store, source):
     detail = source['details']
+    if detail.get('safety'):
+        return detail['clock']
     key = 'dataset:' + detail['datasetId'] if detail.get('datasetId') else 'simulation:' + detail['simulationId']
     return clock_for_key(store, key)
 
@@ -134,8 +136,18 @@ def investigation(store, identity, selected=None):
     grouped = {}
     truth_datasets = set()
     for link in incident['links']:
-        clock = add_clock(source_clock(store, link))
         detail = link['details']
+        if detail.get('safety'):
+            evidence = detail['safety']
+            interval = evidence['interval']
+            predicted = evidence['kind'] == 'predicted'
+            event('safety:' + link['id'], link['kind'], evidence['constraintName'],
+                  None if predicted else source_clock(store, link),
+                  None if predicted else interval['start'], None if predicted else interval['end'],
+                  linkId=link['id'], recordedAt=link['created_at'], safety=evidence,
+                  assessmentId=detail['assessmentId'], target='source')
+            continue
+        clock = add_clock(source_clock(store, link))
         dataset_id = detail.get('datasetId')
         external = datasets.get(dataset_id, {}).get('metadata', {}).get('external')
         if external and dataset_id not in truth_datasets and external.get('faultOnsetSeconds') is not None:

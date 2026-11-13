@@ -16,7 +16,8 @@ from .data_quality import segment_ids
 
 STATUS = {'open': '待调查', 'investigating': '调查中', 'resolved': '已形成结论', 'archived': '已归档'}
 KINDS = {'alarm': '报警', 'note': '调查笔记', 'evidence': '证据', 'hypothesis': '候选解释', 'experiment': '干预实验',
-         'investigation': '工具调查', 'status': '状态变更', 'conclusion': '结论更新', 'incident': '事件范围'}
+         'investigation': '工具调查', 'status': '状态变更', 'conclusion': '结论更新', 'incident': '事件范围',
+         'safety-observed': 'Observed constraint violation', 'safety-predicted': 'Predicted constraint violation'}
 STANCE = {'support': '支持', 'oppose': '反对', 'neutral': '待判断'}
 METRIC = {'absolute-robust-z': '稳健 Z 分数绝对值', 'squared-residual': 'PCA-Q 标准化残差平方',
           'model-leverage': 'PCA-T² 模型空间贡献（描述性排序，不加和为 T²）', 'history-contribution': '历史序列贡献度'}
@@ -192,6 +193,18 @@ def render_report(store, identity):
             external = datasets[item['id'][6:]]['metadata']['external']
             return r('Published dataset fault ') + str(external['faultNumber']) + r(' · sample ') + str(external['faultOnsetSample'])
         return report_text(item['title']) if item['kind'] in ('status', 'conclusion', 'experiment', 'investigation') else item['title']
+
+    def safety_summary(safety):
+        interval = safety['interval']
+        label = report_text('Raw threshold breach') if safety['raw'] else report_text(KINDS['safety-' + safety['kind']])
+        fields = [label, f"{n(interval['start'])}–{n(interval['end'])} s",
+                  f"{report_text('Maximum exceedance')} {n(interval['maximumExceedance'])} {safety['unit']}"]
+        if safety['kind'] == 'predicted':
+            fields.extend((f"{report_text('Forecast observation cutoff (s)')} {n(safety['asOf'])}",
+                           f"{report_text('Forecast origin (s)')} {n(safety['forecastOrigin'])}",
+                           f"{report_text('Time to violation (s)')} {n(safety['timeToViolation'])}"))
+        return ' · '.join(fields)
+
     def signal_label(dataset_id, name):
         column = next((c for c in datasets[dataset_id]['metadata']['columns'] if c['name'] == name), {})
         return (column.get('displayName') or name) + (f" ({column['unit']})" if column.get('unit') else '')
@@ -216,6 +229,8 @@ def render_report(store, identity):
             detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
             if item['kind'] == 'alarm':
                 detail = f"{r('峰值 ')}{timestamp(item['peakTime'], axis)}{r('；原始分数 ')}{n(item['peakScore'])}{r('；变量：')}" + ', '.join(signal_label(analysis_datasets[item['analysisId']], s) for s in item['signals'])
+            if item.get('safety'):
+                detail = safety_summary(item['safety'])
             if item.get('observationWindow'):
                 detail = r('观察窗口 ') + ' - '.join(n(v) for v in item['observationWindow']) + ' s；' + report_text(item.get('hypothesis') or '')
                 if item.get('actionAt') is not None:
@@ -230,6 +245,8 @@ def render_report(store, identity):
     labels = {'status': r('状态'), 'conclusion': r('结论'), 'title': r('标题'), 'description': r('概述'), 'start_time': r('开始时间'), 'end_time': r('结束时间'), 'time_origin': r('时间原点'), 'time_axis_key': r('时间来源')}
     for item in recorded:
         detail = report_text(item.get('content', '')) if item['kind'] == 'truth' else item.get('content', '')
+        if item.get('safety'):
+            detail = safety_summary(item['safety'])
         if item.get('changes'):
             detail = '\n'.join(labels.get(k, k) + '：' + str(report_text(STATUS.get(v['before'], v['before'])) if k == 'status' and v['before'] is not None else v['before'] if v['before'] is not None else r('未设置')) + ' → ' + str(report_text(STATUS.get(v['after'], v['after'])) if k == 'status' else v['after']) for k, v in item['changes'].items())
         rows.append([e(recorded_time(item['recordedAt'])), e(event_title(item)), '<span class="prose">' + e(detail) + '</span>'])
@@ -301,8 +318,9 @@ def render_report(store, identity):
             parts.append(f"""<p class="muted">{e(a['datasetName'])}{r('；显示 ')}{series['displayRows']} / {series['sourceRows']}{r(' 个样本，长序列使用保留极值的显示采样；检测结果使用完整数据。</p>')}""")
     # Standalone dataset links still contribute genuine observed charts to a report without analyses.
     analyzed = {a['datasetId'] for a in view['analyses']}
+    observed_sources = {link['details'].get('datasetId') for link in incident['links'] if link['kind'] != 'safety-predicted'}
     for dataset in view['datasets']:
-        if dataset['id'] in analyzed:
+        if dataset['id'] in analyzed or dataset['id'] not in observed_sources:
             continue
         from .incident_timeline import clock_for_key
         clock = clock_for_key(store, 'dataset:' + dataset['id'])
@@ -326,8 +344,14 @@ def render_report(store, identity):
             for stance in STANCE:
                 related = [v for v in entries if v['hypothesis_id'] == entry['id'] and v['stance'] == stance]
                 parts.append('<p>' + e(report_text(STANCE[stance])) + r('证据：') + ('、'.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>""" for v in related) or r('尚未记录')) + '</p>')
-    if not entries:
+    if not entries and not any(link['details'].get('safety') for link in incident['links']):
         parts.append(r('<p>尚未保存调查证据或候选解释。</p>'))
+    for link in incident['links']:
+        detail = link['details']
+        if safety := detail.get('safety'):
+            parts.append(f"""<h3 id="source-{e(link['id'])}">{e(safety['constraintName'])}</h3>""")
+            parts.append(prose(safety_summary(safety)))
+            parts.append(prose(f"{report_text('Safety assessment')} {detail['title']} · {detail['assessmentId']}"))
     simulation_links = [l for l in incident['links'] if l['kind'] in ('simulation', 'run')]
     if simulation_links:
         parts.append(r('<h2>5. 模拟调查与干预方案比较</h2>'))

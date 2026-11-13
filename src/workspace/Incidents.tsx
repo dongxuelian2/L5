@@ -9,12 +9,12 @@ import { IncidentLinkDialog, incidentStatuses } from "./IncidentLinkDialog";
 import { Contributions } from "./Results";
 import { IncidentTimeline } from "./IncidentTimeline";
 import { IncidentReport } from "./IncidentReport";
-import { dateLabel, datasetClock, datasetTimeLabel, namedSignal, number, signalLabel, timeLabel, type AnalysisResult, type Dataset, type Incident, type IncidentEntry, type IncidentLink, type IncidentSource, type IncidentSummary, type Job, type RuntimeRun, type TimeAxis, type IncidentSelection } from "./types";
+import { dateLabel, datasetClock, datasetTimeLabel, namedSignal, number, safetyAssessmentHref, safetyEvidenceSummary, signalLabel, timeLabel, type AnalysisResult, type Dataset, type Incident, type IncidentEntry, type IncidentLink, type IncidentSource, type IncidentSummary, type Job, type RuntimeRun, type TimeAxis, type IncidentSelection } from "./types";
 
 const SavedRunView = lazy(() => import("./RuntimeWorkbench").then(m => ({ default: m.SavedRunView })));
 const entryKinds = { get note() { return tr("调查笔记"); }, get evidence() { return tr("证据"); }, get hypothesis() { return tr("候选解释"); } };
 const stances = { get neutral() { return tr("待判断"); }, get support() { return tr("支持"); }, get oppose() { return tr("反对"); } };
-const linkKinds = { get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); } };
+const linkKinds = { get dataset() { return tr("数据集"); }, get analysis() { return tr("分析结果"); }, get interval() { return tr("异常区间"); }, get simulation() { return tr("模拟会话"); }, get run() { return tr("调查工具 / 干预实验"); }, get "safety-observed"() { return tr("Observed constraint violation"); }, get "safety-predicted"() { return tr("Predicted constraint violation"); } };
 const runKinds: Record<string, string> = { get tools() { return tr("工具调查"); }, get tool() { return tr("工具调查"); }, get assistant() { return tr("助手调查"); }, get intervention() { return tr("干预实验"); } };
 const numericAxis: TimeAxis = { kind: "numeric", column: null, origin: null, start: 0, end: 0 };
 function eventTime(incident: IncidentSummary, value: number | null, datasets: Dataset[] = []) {
@@ -83,7 +83,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
   useLocale();
   const [incident, setIncident] = useState(initial), [draft, setDraft] = useState(initial), [conclusion, setConclusion] = useState(initial.conclusion);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false);
-  const [focused, setFocused] = useState(initial.links.find(l => l.kind === "interval")?.id || initial.links.find(l => l.details.datasetId)?.id || "");
+  const [focused, setFocused] = useState(initial.links.find(l => l.kind === "interval")?.id || initial.links.find(l => l.details.datasetId && l.kind !== "safety-predicted")?.id || "");
   const [editing, setEditing] = useState<IncidentEntry | "new" | null>(null), [newKind, setNewKind] = useState<IncidentEntry["kind"]>("note");
   const [adding, setAdding] = useState(false);
   const [selection, setSelection] = useState<IncidentSelection | null>(null);
@@ -113,7 +113,7 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
       const updated = await api<Incident>(`${base}${path}`, body, method);
       setIncident(updated); setNotice("已保存到 Workspace，可以在下次打开时继续调查。");
       if (focused && !updated.links.some(link => link.id === focused)) {
-        setFocused(updated.links.find(link => link.details.datasetId || link.details.run)?.id || ""); setSelection(null);
+        setFocused(updated.links.find(link => (link.details.datasetId && link.kind !== "safety-predicted") || link.details.run)?.id || ""); setSelection(null);
       }
       return true;
     } catch (e) { setError(message(e)); return false; } finally { setBusy(false); }
@@ -150,7 +150,8 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
       <div className="incident-source-grid">{incident.links.map(source => <article className={`ws-panel incident-source ${source.id === focused ? "incident-selected" : ""}`} key={source.id}>
         <div className="ws-inline ws-between"><span className="ws-kicker">{linkKinds[source.kind]}</span><button className="ws-danger" disabled={busy} onClick={() => void mutate(`/links/${source.id}`, undefined, "DELETE")} aria-label={tr("解除关联 {0}", {0: source.details.title})}>{tr("解除关联")}</button></div>
         <h3>{source.details.title}</h3><SourceSummary source={source} datasets={datasets} />{datasets.find(d => d.id === source.details.datasetId)?.metadata.transformation && <TransformationLineage dataset={datasets.find(d => d.id === source.details.datasetId)!} />}
-        <div className="ws-inline incident-actions">{source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
+        <div className="ws-inline incident-actions">{source.details.datasetId && !source.details.safety && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
+          {source.details.assessmentId && <a className="ws-link" href={safetyAssessmentHref(incident.workspace_id, source.details.assessmentId)}>{tr("Open safety assessment")} ↗</a>}
           {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开原始分析 ↗")}</a>}
           {source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("返回模拟会话 ↗")}</a>}
           {source.kind === "run" && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看已保存结果")}</button>}
@@ -225,6 +226,7 @@ function SourceSummary({ source, datasets }: { source: IncidentLink; datasets: D
   useLocale();
   const d = source.details, dataset = datasets.find(ds => ds.id === d.datasetId), interval = d.interval;
   const experiment = d.experiment;
+  if (d.safety) return <><p><strong>{d.safety.constraintName}</strong>{dataset && ` · ${dataset.name}`}</p><p>{safetyEvidenceSummary(d.safety)}</p></>;
   if (experiment) return <><p><a className="ws-link" href={`#/workspaces/${dataset?.workspace_id}/experiments/${experiment.experimentId}`}>{tr("返回来源实验 ↗")}</a>{" "}{tr("· run")}{" "}{experiment.runId}{" "}{tr("· task")}{" "}{experiment.taskId}</p><SourceSummary source={{ ...source, details: { ...d, experiment: undefined } }} datasets={datasets} /></>;
   return <>{d.modelName && <p>{d.modelName} v{d.modelVersion}{" "}{tr("· scenario")}{" "}{d.scenarioId || tr("legacy / direct configuration")}{d.scenarioVersion ? ` v${d.scenarioVersion}` : ""}</p>}<p>{dataset?.name}{d.algorithmLabel && ` · ${d.algorithmLabel}`}</p>{interval && <><p>{dataset ? `${timeLabel(dataset.metadata.time, interval.start)} → ${timeLabel(dataset.metadata.time, interval.end)}` : `${interval.start}–${interval.end} s`}</p><p>{tr("峰值时间")}{" "}{dataset ? timeLabel(dataset.metadata.time, interval.peakTime) : `${interval.peakTime}s`}{" "}{tr("· 分数")}{" "}{number(interval.peakScore)}</p><p className="ws-accent">{interval.signals.map(s => dataset ? namedSignal(dataset, s) : s).join(" · ")}</p></>}{d.run && <p>{d.run.kind === "intervention" ? tr("干预实验") : tr("工具调查")}{" "}{tr("· 观察至")}{" "}{String(d.run.request.asOf)} s · {dateLabel(d.run.createdAt)}</p>}{d.observationWindow && <p>{tr("观察窗口")}{" "}{number(d.observationWindow.windowStart)}–{number(d.observationWindow.asOf)}{" "}{tr("s · 工作假设")}{" "}{d.observationWindow.hypothesis}</p>}</>;
 }
@@ -240,7 +242,7 @@ function SourcePreview({ source, datasets, selection, onSelection }: { source: I
     api<AnalysisResult>(`/analyses/${source.details.analysisId}`, undefined, "GET", controller.signal).then(setResult).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();
   }, [source.details.analysisId]);
-  const clock = dataset ? datasetClock(dataset) : { axisId: `simulation:${source.details.simulationId}`, offset: 0 };
+  const clock = source.details.clock ?? (dataset ? datasetClock(dataset) : { axisId: `simulation:${source.details.simulationId}`, offset: 0 });
   const interval = selection?.analysisId === result?.id && selection?.intervalIndex != null ? result?.intervals[selection.intervalIndex] : source.details.interval;
   const savedWindow = source.details.run ? [Number(source.details.run.request.windowStart || 0), Number(source.details.run.request.asOf)] : source.details.observationWindow ? [source.details.observationWindow.windowStart, source.details.observationWindow.asOf] : undefined;
   const fallback = interval && source.details.analysisRange ? intervalWindow(interval, source.details.analysisRange) : source.details.analysisRange || savedWindow || (dataset && [dataset.metadata.time.start, dataset.metadata.time.end]);
