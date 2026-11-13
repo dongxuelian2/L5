@@ -2,10 +2,10 @@ import { errorMessage } from "../i18n/errors";
 import { t as tr, useLocale } from "../i18n";
 import { useEffect, useState } from "react";
 import { api, message } from "./api";
-import { axisLabel, timelineTitle, incidentAxis, dateLabel, number, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
+import { axisLabel, timelineTitle, incidentAxis, dateLabel, number, safetyAssessmentHref, safetyEvidenceSummary, timeLabel, type Incident, type IncidentAxis, type IncidentSelection, type IncidentView, type TimelineEvent } from "./types";
 import { IncidentComparison } from "./IncidentComparison";
 
-const kinds: Record<string, string> = { get truth() { return tr("数据集已知故障"); }, get incident() { return tr("事件范围"); }, get alarm() { return tr("算法报警"); }, get note() { return tr("调查笔记"); }, get evidence() { return tr("调查证据"); }, get hypothesis() { return tr("候选解释"); }, get investigation() { return tr("工具调查"); }, get experiment() { return tr("干预实验"); }, get status() { return tr("状态变更"); }, get conclusion() { return tr("结论更新"); } };
+const kinds: Record<string, string> = { get truth() { return tr("数据集已知故障"); }, get incident() { return tr("事件范围"); }, get alarm() { return tr("算法报警"); }, get note() { return tr("调查笔记"); }, get evidence() { return tr("调查证据"); }, get hypothesis() { return tr("候选解释"); }, get investigation() { return tr("工具调查"); }, get experiment() { return tr("干预实验"); }, get status() { return tr("状态变更"); }, get conclusion() { return tr("结论更新"); }, get "safety-observed"() { return tr("Observed constraint violation"); }, get "safety-predicted"() { return tr("Predicted constraint violation"); } };
 export function selectTimelineEvent(event: TimelineEvent, axis: IncidentAxis): IncidentSelection | null {
   if (event.start == null) return null;
   const duration = (event.end ?? event.start) - event.start;
@@ -37,7 +37,7 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [incident, selectedIds]);
-  const activeId = axisId || selection?.axisId || view?.events.find(e => e.start != null && e.kind === "alarm")?.axisId || view?.primaryAxisId;
+  const activeId = axisId || selection?.axisId || view?.events.find(e => e.start != null && (e.kind === "alarm" || e.kind === "safety-observed"))?.axisId || view?.primaryAxisId;
   const axis = view?.axes.find(a => a.id === activeId) || view?.axes[0];
   const measured = view?.events.filter(e => e.axisId === axis?.id && e.start != null && (!kind || kind === e.kind) && (!analysisId || e.analysisId === analysisId)
     && (start === "" || (e.end ?? e.start!) >= Number(start)) && (end === "" || e.start! <= Number(end))) || [];
@@ -73,15 +73,18 @@ export function IncidentTimeline({ incident, selection, onSelect, onRecord, onSe
               <span className="ws-kicker">{kinds[event.kind]}{" "}{tr("· 实际观察")}{" "}{timeLabel(incidentAxis(axis), event.start!)}{event.end !== event.start && ` → ${timeLabel(incidentAxis(axis), event.end!)}`}</span>
               <strong>{event.title}</strong>{event.peakTime != null && <span>{tr("峰值")}{" "}{timeLabel(incidentAxis(axis), event.peakTime)}{" "}{tr("· 原始分数")}{" "}{number(event.peakScore!)}</span>}
               {event.content && <span>{event.content.slice(0, 180)}</span>}{event.stance && <span>{tr("证据关系：")}{{ support: tr("支持"), oppose: tr("反对"), neutral: tr("待判断") }[event.stance]}</span>}
+              {event.safety && <span>{safetyEvidenceSummary(event.safety)}</span>}
               {event.observationWindow && <span>{tr("观察窗口")}{" "}{event.observationWindow.join("–")} s{event.actionAt != null ? tr(" · 干预 {0} s", {0: event.actionAt}) : ""}</span>}
               {event.recordedAt && <small>{tr("记录创建：")}{dateLabel(event.recordedAt)}{event.updatedAt && event.updatedAt !== event.recordedAt ? tr(" · 更新：{0}", {0: dateLabel(event.updatedAt)}) : ""}</small>}
             </button>
             {event.linkId && incident.links.find(l => l.id === event.linkId)?.details.simulationId && <a className="ws-link" href={simulationEventHref(incident, event)}>{tr("恢复观察窗口与实验参数 ↗")}</a>}
+            {event.assessmentId && <a className="ws-link" href={safetyAssessmentHref(incident.workspace_id, event.assessmentId)}>{tr("Open safety assessment")} ↗</a>}
           </li>)}</ol>
           {!measured.length && <p className="ws-notice">{tr("当前条件下没有实际观察记录。可选择其他时间轴或关联分析。")}</p>}
         </>}
         <details className="incident-recorded"><summary>{tr("调查操作与未标注观察时间的记录（")}{recorded.length}）</summary><p className="ws-muted">{tr("下列时间表示记录操作时间，不表示设备异常发生时间。实际观察范围筛选不作用于此列表。")}</p>
           {recorded.map(event => <div key={event.id}><button onClick={() => activate(event)}>{dateLabel(event.recordedAt!)} · {event.title}</button>
+            {event.safety && <p>{safetyEvidenceSummary(event.safety)}{" "}{event.assessmentId && <a className="ws-link" href={safetyAssessmentHref(incident.workspace_id, event.assessmentId)}>{tr("Open safety assessment")} ↗</a>}</p>}
             {event.changes && <div className="incident-change">{Object.entries(event.changes).map(([key, change]) => <p key={key}>{changeLabel(key)}：{changeText(key, change.before)} → {changeText(key, change.after)}</p>)}</div>}
           </div>)}
         </details>

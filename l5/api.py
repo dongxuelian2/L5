@@ -27,6 +27,9 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
+        if len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'safety':
+            from .safety_routes import route
+            return route(handler, store.safety, method, parts[2], parts[4:], body, parse_qs(url.query))
         if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':

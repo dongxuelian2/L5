@@ -21,8 +21,9 @@ function plotIndexes(values: (number | null)[]) {
 }
 
 type Overlay = { times: number[]; values: (number | null)[]; segmentIds?: number[]; title: string; color: string };
-export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [] }: {
+export const Plot = memo(function Plot({ times, values, title, axis, threshold, intervals = [], color = "#b5ed9a", domain, thresholdLabel = tr("Threshold"), selectedTime, onSelectTime, onHoverTime, timeDomain, segmentIds, overlays = [], gaps = [], markers = [], bands = [], showIsolatedSamples = false }: {
   times: number[]; values: (number | null)[]; title: string; axis: TimeAxis; threshold?: number; intervals?: Interval[]; color?: string; domain?: [number, number]; thresholdLabel?: string; selectedTime?: number; onSelectTime?: (time: number) => void; onHoverTime?: (time: number) => void; timeDomain?: [number, number]; segmentIds?: number[]; overlays?: Overlay[]; gaps?: { start: number; end: number }[]; markers?: { time: number; label: string }[];
+  bands?: { start: number; end: number; label: string; color: string }[]; showIsolatedSamples?: boolean;
 }) {
   useLocale();
   const [hover, setHover] = useState<number | null>(null);
@@ -64,9 +65,14 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
       {[0, .5, 1].map(f => <g key={f}><line x1={L} x2={W - R} y1={T + f * (H - T - B)} y2={T + f * (H - T - B)} stroke="#30392d" strokeDasharray="3 5" /><text x={L - 10} y={T + f * (H - T - B) + 4} textAnchor="end">{number(high - f * (high - low))}</text></g>)}
       {intervals.filter(i => i.end >= first && i.start <= last).map((interval, i) => <rect key={i} x={x(Math.max(first, interval.start))} width={Math.max(2, x(Math.min(last, interval.end)) - x(Math.max(first, interval.start)))} y={T} height={H - T - B} fill="#e9927d" opacity=".14" />)}
       {gaps.filter(g => g.end >= first && g.start <= last).map((gap, i) => <rect key={`gap-${i}`} data-quality-gap="true" x={x(Math.max(first, gap.start))} width={Math.max(2, x(Math.min(last, gap.end)) - x(Math.max(first, gap.start)))} y={T} height={H - T - B} fill="#e2bc75" opacity=".13"><title>{tr("Sampling gap")}</title></rect>)}
+      {bands.filter(band => band.end >= first && band.start <= last).map((band, i) => <rect key={`band-${i}`} x={x(Math.max(first, band.start))} width={Math.max(2, x(Math.min(last, band.end)) - x(Math.max(first, band.start)))} y={T} height={H - T - B} fill={band.color} opacity=".16"><title>{band.label}</title></rect>)}
       {threshold !== undefined && <><line x1={L} x2={W - R} y1={y(threshold)} y2={y(threshold)} stroke="#e2bc75" strokeDasharray="7 4" /><text x={W - R - 4} y={y(threshold) - 5} textAnchor="end" fill="#e2bc75">{thresholdLabel} {number(threshold)}</text></>}
       {markers.filter(m => m.time >= first && m.time <= last).map(m => <g key={m.time} data-truth-onset={m.time}><line x1={x(m.time)} x2={x(m.time)} y1={T} y2={H-B} stroke="#8cbfe8" strokeDasharray="3 3" /><text x={x(m.time)+4} y={T+10} fill="#8cbfe8">{m.label}</text></g>)}
       <path d={pathFor(times, values, segmentIds)} fill="none" stroke={color} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
+      {showIsolatedSamples && plotIndexes(values).filter(i => values[i] != null &&
+        (values[i - 1] == null || segmentIds?.[i - 1] !== segmentIds?.[i]) &&
+        (values[i + 1] == null || segmentIds?.[i + 1] !== segmentIds?.[i]))
+        .map(i => <circle key={i} cx={x(times[i])} cy={y(values[i]!)} r="2.3" fill={color} />)}
       {overlays.map(line => <path key={line.title} d={pathFor(line.times, line.values, line.segmentIds)} fill="none" stroke={line.color} strokeWidth="1.7" vectorEffect="non-scaling-stroke"><title>{line.title}</title></path>)}
       {active != null && <line x1={x(times[active])} x2={x(times[active])} y1={T} y2={H - B} stroke="#d5dace" opacity=".5" />}
       {selectedTime !== undefined && selectedTime >= first && selectedTime <= last && <line data-selected-time={selectedTime} x1={x(selectedTime)} x2={x(selectedTime)} y1={T} y2={H - B} stroke="#e2bc75" strokeDasharray="4 3" />}

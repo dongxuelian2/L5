@@ -1485,9 +1485,108 @@ test('report generation uses the selected locale and discards responses from an 
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Old report/);
 });
 
+test('process safety saves a versioned limit, evaluates it, and attaches raw observed evidence', async () => {
+  const source = dataset('tank-data', 3), createdAt = '2026-11-13T08:00:00Z';
+  const signal = { id: 'tank-level', name: 'level1', displayName: 'Tank level', unit: 'm', missing: 1, datasetId: source.id };
+  source.metadata.columns = [signal];
+  source.metadata.model = { id: 'coupled-tanks', name: 'Coupled-Tank Process' };
+  const incident = emptyIncident(), requests = [], configurations = [], assessments = [];
+  const base = '/api/workspaces/test/safety';
+  function assessment(body, saved) {
+    const constraint = body.constraints[0];
+    const interval = { state: 'violation', start: 1, end: 1, duration: 0, samples: 1, confirmedAt: 1, peakTime: 1, peakValue: 2.7, minimumMargin: -.2, maximumExceedance: .2 };
+    return {
+      ...(saved ? { id: 'safety-assessment' } : {}), workspaceId: 'test', datasetId: source.id, name: body.name, createdAt,
+      source: { datasetName: source.name, time: source.metadata.time, signals: [signal] },
+      configuration: { id: body.configurationId, revision: body.configurationRevision, name: configurations[0]?.name, constraints: [constraint] },
+      forecastOptions: body.forecast,
+      observed: [{ constraint, signalIds: [signal.id], marginUnit: 'm', sourceUnits: { [signal.id]: 'm' },
+        current: { time: 2, value: null, margin: null, state: 'unavailable', rawState: 'unavailable' },
+        coverage: { evaluatedSamples: 2, totalSamples: 3, sampleFraction: 2 / 3, observedDuration: 1, durationFraction: .5 },
+        quality: { missingSamples: 1, unobservedSamples: 0, duplicateCount: 0, rateUnavailableSamples: 0, numericalUnavailableSamples: 0, gaps: [] },
+        intervals: [interval], rawViolationIntervals: [interval], minimumMargin: -.2, maximumExceedance: .2, violationDuration: 0,
+        series: { times: [0, 1, 2], values: [2.4, 2.7, null], margins: [.1, -.2, null], measurements: { [signal.id]: [2.4, 2.7, null] },
+          states: ['normal', 'violation', 'unavailable'], rawStates: ['normal', 'violation', 'unavailable'], segmentIds: [0, 0, 1] },
+      }],
+      forecast: { status: 'unavailable', reasonCode: 'missing-observation', observedThrough: 2, requestedAsOf: 2, model: null,
+        inputMeasurements: null, assumptions: {}, trajectory: null, constraints: [], uncertainty: null },
+    };
+  }
+  globalThis.fetch = async (url, options = {}) => {
+    const method = options.method || 'GET', body = options.body && JSON.parse(options.body);
+    requests.push({ url, method, body });
+    if (url === '/api/workspaces') return response({ workspaces: [{ id: 'test', name: 'Safety project' }] });
+    if (url === '/api/workspaces/test') return response({ id: 'test', name: 'Safety project' });
+    if (url.endsWith('/datasets')) return response({ datasets: [source] });
+    if (url.endsWith('/analyses')) return response({ jobs: [] });
+    if (url.endsWith('/signals')) return response({ signals: [signal] });
+    if (url === '/api/simulations?workspaceId=test') return response({ simulations: [] });
+    if (url === `${base}/configurations` && method === 'GET') return response({ configurations });
+    if (url === `${base}/configurations` && method === 'POST') {
+      const saved = { ...body, id: 'limit-config', workspaceId: 'test', revision: 1, createdAt, updatedAt: createdAt };
+      configurations.push(saved);
+      return response(saved);
+    }
+    if (url === `${base}/configurations/limit-config` && method === 'PATCH') {
+      configurations[0] = { ...configurations[0], ...body, revision: 2 };
+      return response(configurations[0]);
+    }
+    if (url === `${base}/assessments` && method === 'GET') return response({ assessments });
+    if (url === `${base}/evaluate`) return response(assessment(body, false));
+    if (url === `${base}/assessments` && method === 'POST') {
+      const saved = assessment(body, true);
+      assessments.push(saved);
+      return response(saved);
+    }
+    if (url === `${base}/assessments/safety-assessment`) return response(assessments[0]);
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [incident] });
+    if (url === `${base}/assessments/safety-assessment/incident-evidence`) return response(incident);
+    throw new Error(`Unexpected safety request ${url}`);
+  };
+  window.location.hash = '#/workspaces/test/safety?dataset=tank-data';
+  await mount(React.createElement(App));
+  assert.equal(container.querySelector('[aria-current="page"]').textContent.trim(), '12Process Safety↗');
+  assert.equal(inputFor('Dataset').value, source.id);
+  await click(button('Add constraint'));
+  await setField(inputFor('Constraint name'), 'Tank operating ceiling');
+  await setField(inputFor('Critical upper limit'), 2.6);
+  await setField(inputFor('Configuration name'), 'Tank limits');
+  await click(button('Save configuration'));
+  const original = requests.find(item => item.method === 'POST' && item.url.endsWith('/configurations')).body.constraints[0];
+  assert.equal(original.terms[0].signalId, signal.id);
+  assert.equal(original.unit, 'm');
+  await setField(inputFor('Critical upper limit'), 2.5);
+  await click(button('Save new revision'));
+  const edit = requests.find(item => item.method === 'PATCH');
+  assert.equal(edit.body.revision, 1);
+  assert.equal(edit.body.constraints[0].id, original.id);
+  assert.equal(edit.body.constraints[0].upper, 2.5);
+  await click(inputFor('Include a forecast'));
+  await click(button('Evaluate limits'));
+  const evaluation = requests.find(item => item.url.endsWith('/evaluate'));
+  assert.equal(evaluation.body.configurationRevision, 2);
+  assert.equal(evaluation.body.forecast.input.mode, 'hold');
+  assert.match(container.textContent, /A measured level or control input is unavailable/);
+  await click(button('Evaluate again and save'));
+  await act(async () => window.dispatchEvent(new window.HashChangeEvent('hashchange')));
+  assert.equal(window.location.hash, '#/workspaces/test/safety/safety-assessment');
+  assert.ok(container.querySelector('a[download][href*="format=csv"]'));
+  const raw = [...container.querySelectorAll('details')].find(node => node.querySelector('summary').textContent.startsWith('Raw critical exceedances'));
+  raw.open = true;
+  await click([...raw.querySelectorAll('button')].find(node => node.textContent === 'Attach to Incident'));
+  await setField(dialogField('Incident'), incident.id);
+  await click(button('Attach evidence'));
+  const link = requests.find(item => item.url.endsWith('/incident-evidence'));
+  assert.deepEqual(link.body, { kind: 'observed', constraintId: original.id, intervalIndex: 0, raw: true, incidentId: incident.id });
+  assert.ok(container.querySelector('a[href="#/workspaces/test/incidents/event-one"]'));
+  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  assert.equal(container.querySelector('h1').textContent, '过程安全与预测风险');
+  assert.equal(inputFor('Critical upper limit').value, '2.5');
+});
+
 test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
   const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors', 'safety']) {
     const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
     for (const property of source.statements[0].expression.properties) {
       const key = property.name.text;

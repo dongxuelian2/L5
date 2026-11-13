@@ -34,20 +34,35 @@ export type Job = { id: string; workspace_id: string; dataset_id: string; name: 
 
 export type IncidentStatus = "open" | "investigating" | "resolved" | "archived";
 export type IncidentSummary = { id: string; workspace_id: string; title: string; description: string; start_time: number | null; end_time: number | null; time_origin: string | null; time_axis_key?: string | null; status: IncidentStatus; conclusion: string; created_at: string; updated_at: string; analysis_count?: number; interval_count?: number };
-export type IncidentSource = { kind: "dataset" | "analysis" | "interval" | "simulation" | "run"; datasetId?: string; analysisId?: string; intervalIndex?: number; simulationId?: string; runId?: string; hypothesis?: string; asOf?: number; windowStart?: number };
+export type IncidentSource = { kind: "dataset" | "analysis" | "interval" | "simulation" | "run" | "safety-observed" | "safety-predicted"; datasetId?: string; analysisId?: string; intervalIndex?: number; simulationId?: string; runId?: string; hypothesis?: string; asOf?: number; windowStart?: number; assessmentId?: string; constraintId?: string; raw?: boolean };
 export type RuntimeRun = { modelId?: string; modelVersion?: string; scenarioId?: string | null; scenarioVersion?: number | null; id: string; kind: string; request: Record<string, unknown>; result: unknown; createdAt: string };
-export type IncidentLink = { id: string; incident_id: string; kind: IncidentSource["kind"]; reference_id: string; selector: string; created_at: string; details: { experiment?: ExperimentSource; title: string; datasetId?: string; analysisId?: string; algorithmLabel?: string; analysisRange?: [number, number]; signals?: string[]; contributionMetric?: ContributionMetric; intervalIndex?: number; interval?: Interval; simulationId?: string; modelId?: string; modelVersion?: string; modelName?: string; scenarioId?: string | null; scenarioVersion?: number | null; run?: RuntimeRun; observationWindow?: { asOf: number; windowStart: number; hypothesis?: string } } };
+export type SafetyIncidentEvidence = { kind: "observed" | "predicted"; raw: boolean; constraintId: string; constraintName: string; unit: string; interval: { start: number; end: number; maximumExceedance: number; peakTime: number }; asOf: number | null; forecastOrigin: number | null; timeToViolation: number | null };
+export type IncidentLink = { id: string; incident_id: string; kind: IncidentSource["kind"]; reference_id: string; selector: string; created_at: string; details: { experiment?: ExperimentSource; title: string; datasetId?: string; analysisId?: string; algorithmLabel?: string; analysisRange?: [number, number]; signals?: string[]; contributionMetric?: ContributionMetric; intervalIndex?: number; interval?: Interval; simulationId?: string; modelId?: string; modelVersion?: string; modelName?: string; scenarioId?: string | null; scenarioVersion?: number | null; run?: RuntimeRun; observationWindow?: { asOf: number; windowStart: number; hypothesis?: string }; assessmentId?: string; safety?: SafetyIncidentEvidence; clock?: { axisId: string; offset: number } } };
 export type IncidentEntry = { id: string; incident_id: string; kind: "note" | "evidence" | "hypothesis"; title: string; content: string; hypothesis_id: string | null; stance: "neutral" | "support" | "oppose"; source_link_id: string | null; observed_at: number | null; observed_axis_key?: string | null; created_at: string; updated_at: string };
 export type Incident = IncidentSummary & { links: IncidentLink[]; entries: IncidentEntry[] };
 
 export type IncidentAxis = { id: string; label: string; origin: string | null; start: number; end: number };
-export type TimelineEvent = { id: string; kind: string; title: string; axisId: string | null; start: number | null; end: number | null; peakTime?: number; peakScore?: number; analysisId?: string; intervalIndex?: number; linkId?: string | null; entryId?: string; recordedAt?: string; updatedAt?: string; content?: string; signals?: string[]; stance?: string; observationWindow?: [number, number]; actionAt?: number; changes?: Record<string, { before: unknown; after: unknown }>; target: string };
+export type TimelineEvent = { id: string; kind: string; title: string; axisId: string | null; start: number | null; end: number | null; peakTime?: number; peakScore?: number; analysisId?: string; intervalIndex?: number; linkId?: string | null; entryId?: string; recordedAt?: string; updatedAt?: string; content?: string; signals?: string[]; stance?: string; observationWindow?: [number, number]; actionAt?: number; changes?: Record<string, { before: unknown; after: unknown }>; target: string; assessmentId?: string; safety?: SafetyIncidentEvidence };
 export type LinkedInterval = Interval & { index: number; linkId: string };
 export type IncidentAnalysis = { id: string; result: AnalysisResult; datasetId: string; datasetName: string; axisId: string; offset: number; scope: string; linkId: string; intervals: LinkedInterval[]; observedSpans: [number, number][] };
 export type ComparisonSegment = { start: number; end: number; kind: "common" | "unique" | "partial" | "uncompared"; analysisIds: string[] };
 export type IncidentComparisonGroup = { axisId: string; analysisIds: string[]; segments: ComparisonSegment[]; common: ComparisonSegment[]; unique: ComparisonSegment[]; firstDetection: number | null; firstAlarmSpread: number | null };
 export type IncidentView = { incident: Incident; workspace: Workspace; generatedAt: string; axes: IncidentAxis[]; primaryAxisId: string; events: TimelineEvent[]; analyses: IncidentAnalysis[]; comparisons: IncidentComparisonGroup[]; datasets: Dataset[] };
 export type IncidentSelection = { axisId: string; start: number; end: number; at: number; eventId?: string; analysisId?: string; intervalIndex?: number; linkId?: string };
+export function safetyEvidenceLabel(value: SafetyIncidentEvidence) {
+  return t(value.raw ? "Raw threshold breach" : value.kind === "observed" ? "Observed constraint violation" : "Predicted constraint violation");
+}
+export function safetyEvidenceSummary(value: SafetyIncidentEvidence) {
+  const { interval, unit, asOf, forecastOrigin, timeToViolation } = value;
+  const parts = [safetyEvidenceLabel(value), `${number(interval.start)}–${number(interval.end)} s`, `${t("Maximum exceedance")} ${number(interval.maximumExceedance)} ${unit}`];
+  if (asOf != null) parts.push(`${t("Forecast observation cutoff (s)")} ${number(asOf)}`);
+  if (forecastOrigin != null && forecastOrigin !== asOf) parts.push(`${t("Forecast origin (s)")} ${number(forecastOrigin)}`);
+  if (timeToViolation != null) parts.push(`${t("Time to violation (s)")} ${number(timeToViolation)}`);
+  return parts.join(" · ");
+}
+export function safetyAssessmentHref(workspaceId: string, assessmentId: string) {
+  return `#/workspaces/${workspaceId}/safety/${assessmentId}`;
+}
 export function axisLabel(axis: { id: string; label: string; origin: string | null }, datasets: Dataset[] = []) {
   if (axis.origin || axis.id === "utc") return t("UTC absolute time");
   if (axis.label === "Transformation source clock" && datasets.some(d => d.metadata.transformation && d.metadata.clock?.axisId === axis.id)) return t("Transformation source clock");
