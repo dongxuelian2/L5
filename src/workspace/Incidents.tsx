@@ -153,6 +153,8 @@ export function IncidentDetail({ initial, datasets, jobs }: { initial: Incident;
         <div className="ws-inline incident-actions">{source.details.datasetId && datasets.some(d => d.id === source.details.datasetId) && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看原始曲线")}</button>}
           {source.details.analysisId && <a className="ws-link" href={analysisHref(incident.workspace_id, source)}>{tr("打开原始分析 ↗")}</a>}
           {source.details.simulationId && <a className="ws-link" href={simulationHref(incident.workspace_id, source)}>{tr("返回模拟会话 ↗")}</a>}
+          {source.details.resilience?.runId && <a className="ws-link" href={`#/workspaces/${incident.workspace_id}/resilience/runs/${source.details.resilience.runId}`}>{tr("Open resilience evidence ↗")}</a>}
+          {source.details.resilience?.campaignId && source.details.resilience.caseId && <a className="ws-link" href={`#/workspaces/${incident.workspace_id}/resilience/campaigns/${source.details.resilience.campaignId}/${source.details.resilience.caseId}`}>{tr("Open resilience evidence ↗")}</a>}
           {source.kind === "run" && <button onClick={() => inspect(source.id)} aria-pressed={focused === source.id}>{tr("查看已保存结果")}</button>}
           <button onClick={() => { setFocused(source.id); begin("evidence"); }}>{tr("记录来源证据")}</button>
         </div>

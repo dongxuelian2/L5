@@ -23,6 +23,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
 | **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
 | **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
+| **Resilience Testing** | Compose overlapping process, sensor and acquisition faults, run detector campaigns and seeded failure searches, and inspect missed events against saved measurements and physical truth. [Protocol and benchmark](docs/resilience-testing.md) |
 | **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
 
 ## Workflows & Screenshots

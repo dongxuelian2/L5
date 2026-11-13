@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import random
 import secrets
+from bisect import bisect_right
 from .base import field, finite, ground_truth, validate_fields
 
 FAULTS = dict(healthy='Healthy operation', pump_degradation='Inlet pump degradation',
@@ -60,7 +61,6 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
 
 
 def flows(c, heads, time, action, at, parameters):
-    h1, h2 = heads
     active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
     s = c['severity'] if active else 0.
     pump, opening = c['pumpControl'], c['valve']
@@ -76,62 +76,91 @@ def flows(c, heads, time, action, at, parameters):
             pump *= max(0., 1-(time-at)/parameters['rampSeconds'])
     if c['fault'] == 'valve_restriction':
         opening *= 1-.85*s
+    leak_coefficient = c['leakCoefficient']*s if c['fault'] == 'tank_leak' else 0.
+    flux = hydraulic_flows(c, heads, pump, opening, efficiency, leak_coefficient, 0.)
+    return flux[:6], pump, opening, s
+
+
+def hydraulic_flows(c, heads, pump, opening, efficiency, leak_coefficient1, leak_coefficient2):
+    h1, h2 = heads
     delta = h1-h2
     transfer = c['connection']*opening*math.copysign(math.sqrt(abs(delta)), delta)
     inlet = c['pumpRate']*pump/100*efficiency
     outlet = c['outlet']*c['outletValve']*math.sqrt(max(0,h2))
-    leak = c['leakCoefficient']*s*math.sqrt(max(0,h1)) if c['fault'] == 'tank_leak' else 0.
+    leak1 = leak_coefficient1*math.sqrt(max(0,h1))
+    leak2 = leak_coefficient2*math.sqrt(max(0,h2))
     spill1, spill2 = (.1*max(0,h-c['tankHeight'])**1.5 for h in heads)
-    return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
+    return [inlet, transfer, outlet, leak1, spill1, spill2, leak2]
+
+
+def integrate_hydraulics(c, targets, boundaries, evaluate):
+    """Integrate a shared tank state with right-continuous control inputs."""
+    heads, t = [c['initial1'], c['initial2']], 0.
+    initial_volume = c['area1']*heads[0]+c['area2']*heads[1]
+    totals = [0.]*7
+
+    def stage(state, when, dt):
+        f, _, _ = evaluate(state, when)
+        # Use the same donor-limited transfer on both sides of the connection.
+        demand1 = max(0, f[1])+f[3]+f[4]
+        demand2 = max(0, -f[1])+f[2]+f[5]+f[6]
+        scale1 = min(1., state[0]*c['area1']/dt/demand1) if demand1 else 1.
+        scale2 = min(1., state[1]*c['area2']/dt/demand2) if demand2 else 1.
+        f[1] *= scale1 if f[1] >= 0 else scale2
+        for index in (3, 4):
+            f[index] *= scale1
+        for index in (2, 5, 6):
+            f[index] *= scale2
+        return [max(0., state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
+                max(0., state[1]+dt*(f[1]-f[2]-f[5]-f[6])/c['area2'])], f
+
+    for target in targets:
+        while t < target:
+            index = bisect_right(boundaries, t)
+            end = min(t+c['integrationStep'], target,
+                      boundaries[index] if index < len(boundaries) else target)
+            dt = end-t
+            # Integrate up to the left limit. The next substep starts on the right.
+            left, flux1 = stage(heads, t, dt)
+            right, flux2 = stage(left, math.nextafter(end, t), dt)
+            heads = [(a+b)/2 for a,b in zip(heads, right)]
+            totals = [v+dt*(a+b)/2 for v,a,b in zip(totals, flux1, flux2)]
+            t = end
+        f, pump, opening = evaluate(heads, target)
+        volume = c['area1']*heads[0]+c['area2']*heads[1]
+        yield dict(t=target, level1=heads[0], level2=heads[1], inlet=f[0], transfer=f[1], outlet=f[2],
+                   pump=pump, valve=opening, leak=f[3]+f[6], leak1=f[3], leak2=f[6],
+                   spill=f[4]+f[5], volume=volume, delivered=totals[2], spilled=totals[4]+totals[5],
+                   injected=totals[0], leaked=totals[3]+totals[6],
+                   massResidual=volume-initial_volume-totals[0]+totals[2]+totals[3]+totals[4]+totals[5]+totals[6])
 
 
 def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
     rng = random.Random(c['seed'])
-    heads, t = [c['initial1'],c['initial2']], 0.
-    initial_volume = c['area1']*heads[0]+c['area2']*heads[1]
-    totals = [0.]*6
     physical, rows = [], []
     boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
 
-    def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
-        # Joint donor limiting keeps transfer, leak and overflow conservative.
-        demand1 = max(0,f[1])+f[3]+f[4]
-        scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
-        demand2 = max(0,-f[1])+f[2]+f[5]
-        scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
-        f[1] *= scale1 if f[1] >= 0 else scale2
-        f[3] *= scale1; f[4] *= scale1
-        f[2] *= scale2; f[5] *= scale2
-        return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
-                max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+    def evaluate(heads, when):
+        flux, pump, opening, _ = flows(c, heads, when, action, at, p)
+        return [*flux, 0.], pump, opening
 
     count = math.ceil(c['duration']/c['step'])
     targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
     if include_at:
         targets.add(at)
-    for target in sorted(targets):
-        while t < target-1e-10:
-            next_boundary = next((b for b in boundaries if b > t+1e-10),target)
-            dt = min(c['integrationStep'],target-t,next_boundary-t)
-            # Both SSP stages use the same side of a discontinuity. The next
-            # substep begins at the event with the new fault/action inputs.
-            left, flux1 = stage(heads,t,dt)
-            right, flux2 = stage(left,t+dt*.999999999,dt)
-            heads = [(a+b)/2 for a,b in zip(heads,right)]
-            totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
-            t = round(t+dt,12)
-        f,pump,opening,s = flows(c,heads,target,action,at,p)
+    for row in integrate_hydraulics(c, sorted(targets), boundaries, evaluate):
+        target = row['t']
+        active = target >= c['start'] and (c['fault_duration'] is None or target < c['start'] + c['fault_duration'])
+        s = c['severity'] if active else 0.
         bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.
-        rows.append(dict(t=target,level1=heads[0]+rng.gauss(0,c['noise']),
-                         level2=heads[1]+bias+rng.gauss(0,c['noise']),
-                         inlet=f[0],transfer=f[1],outlet=f[2],pump=pump,valve=opening))
-        volume = c['area1']*heads[0]+c['area2']*heads[1]
-        physical.append(dict(t=target,level1=heads[0],level2=heads[1],inlet=f[0],transfer=f[1],outlet=f[2],
-            leak=f[3],spill=f[4]+f[5],volume=volume,delivered=totals[2],spilled=totals[4]+totals[5],
-            massResidual=volume-initial_volume-totals[0]+totals[2]+totals[3]+totals[4]+totals[5]))
+        observed = {key: row[key] for key in ('t', 'level1', 'level2', 'inlet', 'transfer', 'outlet', 'pump', 'valve')}
+        observed['level1'] += rng.gauss(0, c['noise'])
+        observed['level2'] = row['level2']+bias+rng.gauss(0, c['noise'])
+        rows.append(observed)
+        physical.append({key: value for key, value in row.items()
+                         if key not in {'pump', 'valve', 'leak1', 'leak2', 'injected', 'leaked'}})
     return rows, physical
 
 

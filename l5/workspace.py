@@ -55,6 +55,8 @@ class WorkspaceStore:
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
         self.tep_studies = TEPStudyService(self)
+        from .resilience import ResilienceService
+        self.resilience = ResilienceService(self)
 
     @contextmanager
     def connect(self):
@@ -149,7 +151,7 @@ class WorkspaceStore:
 
         return self.save_dataset(workspace_id, name, metadata, times, values, body['csv'])
 
-    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None):
+    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None, on_save=None):
         """Persist imported and generated datasets through the same repository path."""
         self.workspace(workspace_id)
         name = self.name(name)
@@ -162,6 +164,8 @@ class WorkspaceStore:
             with self.connect() as db:
                 db.execute('INSERT INTO datasets VALUES (?,?,?,?,?)', (identity, workspace_id, name, json.dumps(metadata), stamp))
                 self.signals.register(dict(id=identity, metadata=metadata), db)
+                if on_save is not None:
+                    on_save(db, identity)
                 db.execute('UPDATE workspaces SET updated_at=? WHERE id=?', (stamp, workspace_id))
         except Exception:
             shutil.rmtree(folder)
