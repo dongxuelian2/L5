@@ -54,6 +54,7 @@ const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
 const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
 const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
 const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
+const { ResilienceWorkspace } = require('../src/workspace/ResilienceWorkspace.tsx');
 const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
 const copy = require('../src/i18n/messages.json');
 const { errorMessage } = require('../src/i18n/errors.ts');
@@ -218,6 +219,62 @@ async function setField(node,value) {
   });
 }
 function isMasked(node) { return Boolean(node?.closest('[aria-hidden="true"][inert]')); }
+
+test('resilience composer localizes, saves stable fault schedules and exports only a run reference', async () => {
+  const base = '/api/workspaces/test/resilience';
+  const signal = {key:'level1', tag:'LT-101', unit:'m', label:'Tank 1 measured level'};
+  const initial = {name:'Tank trial',model_id:'coupled-tanks',initial:{},parameters:{},duration:10,sample_interval:1,integration_step:.05,seed:1,
+    measurement:{noise:0,missing_fraction:0,physical_noise:0,signals:['level1']},faults:[]};
+  const catalog = {models:[{id:initial.model_id,name:'Coupled tanks',version:'1',initial:[],parameters:[],signals:[signal]}],
+    fault_types:[{id:'pump_degradation',targets:['pump'],parameters:[]}],
+    profiles:[{id:'step',parameters:[]}],defaults:initial,limits:{max_faults:24,max_samples:6001},
+    algorithms:{'robust-maxz':'Robust Max-Z'},default_detectors:[{algorithm:'robust-maxz',signals:['level1']}],
+    max_cases:64,max_search_cases:32,objectives:['missed'],benchmark_version:'v1',benchmark_detectors:[{algorithm:'robust-maxz'}]};
+  const stamp = '2026-11-13T00:00:00Z';
+  let simulation, saved, exportedRequest;
+  const exported = dataset('resilience-dataset',2);
+  exported.metadata.columns = [{name:'level1',id:'catalog-level1'}];
+  globalThis.fetch = async (url, request) => {
+    const body = request.body ? JSON.parse(request.body) : null;
+    if (url === `${base}/catalog`) return response(catalog);
+    if (url === `${base}/scenarios` && !body) return response({scenarios:[]});
+    if (url === `${base}/scenarios` && body) return response(saved={id:'scenario',...body});
+    if (url === `${base}/runs`) return response({runs:[]});
+    if (url === `${base}/campaigns`) return response({campaigns:[]});
+    const schedule = scenario => scenario.faults.map(fault => ({...fault,intervals:[{start:fault.onset,end:scenario.duration}]}));
+    if (url === `${base}/preview`) return response({schedule:schedule(body.scenario)});
+    if (url === `${base}/simulate`) {
+      const events = schedule(body.scenario);
+      return response(simulation={id:'run',name:body.name,created_at:stamp,dataset_id:null,scenario:body.scenario,
+        model_version:'1',signals:[signal],schedule:events,
+        truth:{physical:[{t:0,level1:1},{t:1,level1:1}],events,severities:Object.fromEntries(events.map(event=>[event.id,[0,.6]]))},
+        observations:[{t:0,values:{level1:1},quality:{level1:'observed'},source_times:{level1:0},acquisition_times:{level1:0}},
+          {t:1,values:{level1:null},quality:{level1:'blackout'},source_times:{level1:1},acquisition_times:{level1:null}}],
+        observation_packets:[]});
+    }
+    if (url === `${base}/runs/run`) return response(simulation);
+    if (url === `${base}/export`) { exportedRequest=body; return response(exported); }
+    throw new Error(`Unexpected resilience request ${url}`);
+  };
+  const props={workspaceId:'test',onExport:()=>{}};
+  await mount(React.createElement(ResilienceWorkspace,props));
+  assert.equal(container.querySelector('h1').textContent,'Resilience Testing');
+  await click(button('Add fault'));
+  await click(button('Add fault'));
+  await click(button('Save scenario'));
+  assert.deepEqual(saved.scenario.faults.map(event=>event.id),['fault-1','fault-2']);
+  await act(async()=>setLocale('zh-CN'));
+  assert.equal(container.querySelector('h1').textContent,'韧性测试');
+  assert.match(container.textContent,/故障时序/);
+  await act(async()=>setLocale('en'));
+  await click(button('Run simulation'));
+  await act(async()=>root.render(React.createElement(ResilienceWorkspace,{...props,section:'runs',recordId:'run'})));
+  assert.match(container.textContent,/Physical vs\. measured trajectories/);
+  assert.match(container.textContent,/Blackout/);
+  await click(button('Open Signal Explorer'));
+  assert.deepEqual(exportedRequest,{run_id:'run',name:saved.name});
+  assert.equal(window.location.hash,'#/workspaces/test/explorer/catalog-level1');
+});
 async function openRuntime(api, asOf = 300, tab = 'evidence') {
   await mount(React.createElement(RuntimeWorkbench,{simulationId:'A',initialTab:tab}));
   await setField(field('Observe through'),asOf);

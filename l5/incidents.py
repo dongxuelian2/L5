@@ -358,6 +358,8 @@ class IncidentService:
             if kind == 'dataset':
                 dataset = self.store.dataset(reference)
                 link['details'] = dict(datasetId=reference, title=dataset['name'])
+                if dataset['metadata'].get('resilience'):
+                    link['details']['resilience'] = dataset['metadata']['resilience']
             elif kind in ('analysis', 'interval'):
                 if reference not in results:
                     results[reference] = self.store.result(reference)

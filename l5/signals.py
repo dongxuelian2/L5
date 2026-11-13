@@ -86,9 +86,16 @@ class SignalWorkspace:
         signals = []
         for dataset in self.store.datasets(workspace_id):
             metadata = dataset['metadata']
+            source = 'CSV'
+            if metadata.get('transformation'):
+                source = 'Transformation'
+            elif metadata.get('model'):
+                source = metadata['model'].get('name', metadata['model']['id']) + ' simulation'
+            elif metadata.get('resilience'):
+                source = 'Resilience simulation'
             for column in metadata['columns']:
                 signals.append(dict(**column, datasetId=dataset['id'], workspaceId=workspace_id,
-                    datasetName=dataset['name'], source='Transformation' if metadata.get('transformation') else (metadata['model'].get('name', metadata['model']['id']) + ' simulation') if metadata.get('model') else 'CSV',
+                    datasetName=dataset['name'], source=source,
                     simulationId=metadata.get('model', {}).get('simulationId'),
                     time=metadata['time'], clock=metadata['clock'], quality=metadata['quality']['signals'][column['name']]))
         return signals
