@@ -1,0 +1,36 @@
+.sensor-workspace { display: grid; gap: 1rem; min-width: 0; }
+.sensor-workspace .ws-page-title { margin-bottom: 0; }
+.sensor-actions, .sensor-legend, .sensor-checks { display: flex; flex-wrap: wrap; gap: .65rem 1.2rem; align-items: end; }
+.sensor-workspace label { display: grid; gap: .35rem; }
+.sensor-actions a { text-decoration: none; padding: .55rem .8rem; }
+.sensor-workspace fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.sensor-workspace legend { font-size: 1.18rem; font-weight: 700; padding: 0; margin-bottom: .8rem; }
+.sensor-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); align-items: end; gap: .7rem; margin: .65rem 0 1rem; }
+.sensor-workspace input:not([type=checkbox]), .sensor-workspace select { width: 100%; }
+.sensor-workspace td input { max-width: 8.5rem; }
+.sensor-workspace td select { min-width: 9rem; }
+.sensor-workspace .sensor-checks label { display: flex; flex-direction: row; align-items: center; gap: .45rem; }
+.sensor-results { display: grid; gap: 1rem; min-width: 0; }
+.sensor-results section { min-width: 0; }
+.sensor-results .ws-panel > p { margin: .55rem 0 1rem; }
+.sensor-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .65rem; }
+.sensor-summary button { display: grid; text-align: left; gap: .45rem; }
+.sensor-summary strong { color: #b5ed9a; }
+.sensor-selected-row { background: rgba(136, 198, 118, .14); }
+.sensor-weak { color: #f4c280; font-weight: 650; white-space: nowrap; }
+.sensor-legend { margin: .75rem 0; }
+.sensor-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.sensor-legend i { display: inline-block; width: .8rem; height: .21rem; border-radius: .12rem; }
+.sensor-scatter { margin: 1rem 0; max-width: 48rem; }
+.sensor-scatter svg { display: block; width: 100%; overflow: visible; }
+.sensor-scatter line { stroke: #475348; stroke-dasharray: 3 4; }
+.sensor-scatter text { fill: #afbaaf; font-size: 12px; }
+.sensor-scatter circle { cursor: pointer; stroke: #172017; stroke-width: 1px; }
+.sensor-scatter .pareto { fill: #a3e085; }
+.sensor-scatter .rejected { fill: #78877c; }
+.sensor-scatter .selected { fill: #efb67a; }
+.sensor-spectrum { list-style: none; padding: 0; max-width: 34rem; }
+.sensor-spectrum li { display: grid; grid-template-columns: 2rem 1fr 6rem; gap: .7rem; align-items: center; }
+.sensor-spectrum meter { width: 100%; }
+.sensor-workspace details { margin: .7rem 0; }
+.sensor-workspace summary { cursor: pointer; }
