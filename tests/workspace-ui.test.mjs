@@ -1487,7 +1487,7 @@ test('report generation uses the selected locale and discards responses from an 
 
 test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
   const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
+  for (const file of ['messages', 'common', 'catalog', 'service-errors', 'sensor-placement']) {
     const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
     for (const property of source.statements[0].expression.properties) {
       const key = property.name.text;
@@ -1582,4 +1582,79 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
+});
+
+test('sensor placement saves configured constraints, restores bilingual evidence and opens published signals', async () => {
+  const { SensorPlacementWorkspace } = require('../src/workspace/SensorPlacementWorkspace.tsx');
+  const endpoint = '/api/workspaces/pilot/sensor-placement';
+  const model = { id: 'coupled-tanks', name: 'Coupled-Tank Process', version: '1.0.0' };
+  const keys = ['level1', 'level2', 'inlet', 'transfer', 'outlet'];
+  const sensors = keys.map((key, i) => ({ key, label: i === 0 ? 'Tank 1 measured level' : key, tag: 'sensor-' + i, unit: 'm' }));
+  const hypotheses = ['healthy', 'pump_degradation', 'valve_restriction'];
+  const config = { modelId: model.id, horizon: 12, step: .5, onset: 2, duration: null,
+    sensors: keys.map(key => ({ key, noise: .01, cost: 1, mode: 'available' })),
+    correlations: keys.map((_, i) => keys.map((__, j) => +(i === j))),
+    hypotheses: hypotheses.slice(1), intensities: { pump_degradation: .3, valve_restriction: .3 },
+    conditions: [{ id: 'nominal', parameters: {} }], budget: 4, maxSensors: 2, objective: 'separation', aggregation: 'worst' };
+  const trajectories = hypotheses.map((_, j) => [keys.map(() => 0), keys.map(() => j)]);
+  const scores = { separation: 0, detectability: 0, isolability: 2, information: 0 };
+  const spectrum = { singularValues: [3, 0], rank: 1, condition: null, tolerance: 1e-14 };
+  const evidence = { ...scores, spectrum, signatureSpectrum: spectrum, sensitivityNorms: [[1], [0]],
+    distances: [[0, 0, 2], [0, 0, 2], [2, 2, 0]] };
+  const subset = { sensors: ['level1'], cost: 1, pareto: true, nominal: scores, mean: scores, worst: scores,
+    conditions: [evidence] };
+  const metadata = { id: 'saved', name: 'Study A', created_at: '2026-11-14T01:23:45Z' };
+  const cohort = { id: 'holdout_timing', trialsPerHypothesis: 3, falseAlarmRate: 0, detectionRate: .5,
+    classificationAccuracy: 0, ambiguousRate: .5, unclassifiedRate: 1, trueMinimumSeparation: 0,
+    counts: [[3,0,0,0], [3,0,0,0], [0,0,0,3]], pairwise: [] };
+  const cancellation = { id: 'cancellation_nominal', templates: trajectories, pumpIntensity: .3,
+    valveIntensity: .3, noiseScale: 1, metrics: [{ sensors: ['level1'], detectability: 0, isolability: 2,
+      competitor: 'pump_degradation', detectionPower: .05, nearestPairError: .16 }] };
+  const analysis = { config, hypotheses, sensors, parameters: hypotheses.slice(1), runtimeMs: 10, weakDistance: 2,
+    conditions: [{ id: 'nominal', times: [0, 2], templates: trajectories, signatures: trajectories,
+      derivativeStability: hypotheses.slice(1).map(fault => ({ fault, relativeL2: keys.map(() => 0) })) }],
+    subsets: [subset], winners: { nominal: subset.sensors, mean: subset.sensors, worst: subset.sensors },
+    cancellation: { times: [0,2], templates: trajectories, hypotheses, tank1Rms: [.03,.03,0], cases: [cancellation] },
+    evaluation: { calibrationSeed: 1, holdoutSeed: 2, targetFalseAlarm: .05, chosenLayout: 'minimax_optimum',
+      cohorts: [{ id: cohort.id, model: { start: 2 }, representative: trajectories }],
+      layouts: [{ id: 'minimax_optimum', sensors: subset.sensors, cost: 1, minimumSeparation: 0, runtimeMs: 1, cohorts: [cohort] }] } };
+  const posts = [];
+  globalThis.fetch = async (url, options) => {
+    if (options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      posts.push([url, payload]);
+      if (url.endsWith('/dataset')) return response({ metadata: { columns: [{ id: 'catalog-signal' }] } });
+      return response({ ...metadata, analysis: { ...analysis, config: payload.config } });
+    }
+    if (url === endpoint) return response({ runs: [metadata], defaults: config, conditions: ['nominal'],
+      modelFields: [], models: [model], sensors });
+    if (url === endpoint + '/saved') return response({ ...metadata, analysis });
+    throw new Error('Unexpected request ' + url);
+  };
+  const changes = [];
+  const render = runId => React.createElement(SensorPlacementWorkspace, { workspaceId: 'pilot', runId, onChanged: () => changes.push(true) });
+  window.location.hash = '#/workspaces/pilot/sensor-placement';
+  await mount(render());
+  const select = container.querySelector('select[aria-label="Tank 1 measured level · Sensor status"]');
+  await act(async () => {
+    select.value = 'required';
+    select.dispatchEvent(new window.Event('change', { bubbles: true }));
+    const name = container.querySelector('input[maxlength="160"]');
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(name, 'Study A');
+    name.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await act(async () => container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+  assert.equal(posts[0][1].config.sensors[0].mode, 'required');
+  assert.equal(window.location.hash, '#/workspaces/pilot/sensor-placement/saved');
+  await act(async () => root.render(render('saved')));
+  assert.match(container.textContent, /Indistinguishable/);
+  assert.ok(container.querySelector('a[href$="/analysis.json"]'));
+  assert.ok(container.querySelector('svg[aria-label^="Tank 1 measured level"]'));
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.textContent, /故障可检测性与传感器布置/);
+  assert.ok(container.querySelector('a[href$="lang=zh-CN"]'));
+  await click([...container.querySelectorAll('button')].find(button => button.textContent === '发布轨迹到信号浏览器'));
+  assert.deepEqual(posts[1][1], { condition: 'nominal', hypothesis: 'pump_degradation', sensors: ['level1'] });
+  assert.equal(changes.length, 1);
+  assert.equal(window.location.hash, '#/workspaces/pilot/explorer/catalog-signal');
 });

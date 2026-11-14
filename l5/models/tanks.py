@@ -59,12 +59,18 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
-def flows(c, heads, time, action, at, parameters):
-    h1, h2 = heads
+def active_intensities(c, time, faults):
     active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
-    s = c['severity'] if active else 0.
+    if not active:
+        return {}
+    return {c['fault']: c['severity']} if faults is None else faults
+
+
+def flows(c, heads, time, action, at, parameters, *, faults=None):
+    h1, h2 = heads
     pump, opening = c['pumpControl'], c['valve']
-    efficiency = 1 - .7*s if c['fault'] == 'pump_degradation' else 1.
+    intensities = active_intensities(c, time, faults)
+    efficiency = 1 - .7*intensities.get('pump_degradation', 0.)
     if action and time >= at:
         if action == 'adjust_pump':
             pump = parameters['pumpControl']
@@ -74,18 +80,18 @@ def flows(c, heads, time, action, at, parameters):
             efficiency, pump = 1., parameters['backupControl']
         elif action == 'stop_supply':
             pump *= max(0., 1-(time-at)/parameters['rampSeconds'])
-    if c['fault'] == 'valve_restriction':
-        opening *= 1-.85*s
+    opening *= 1-.85*intensities.get('valve_restriction', 0.)
     delta = h1-h2
     transfer = c['connection']*opening*math.copysign(math.sqrt(abs(delta)), delta)
     inlet = c['pumpRate']*pump/100*efficiency
     outlet = c['outlet']*c['outletValve']*math.sqrt(max(0,h2))
-    leak = c['leakCoefficient']*s*math.sqrt(max(0,h1)) if c['fault'] == 'tank_leak' else 0.
+    leak = c['leakCoefficient']*intensities.get('tank_leak', 0.)*math.sqrt(max(0,h1))
     spill1, spill2 = (.1*max(0,h-c['tankHeight'])**1.5 for h in heads)
-    return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
+    return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, intensities.get(c['fault'], 0.)
 
 
-def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
+def integrate(config, action=None, at=0., parameters=None, *, include_at=False, faults=None):
+    """Integrate one shared fault window; optional intensities compose in the physical fluxes."""
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
     rng = random.Random(c['seed'])
@@ -96,7 +102,7 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
 
     def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
+        f, _, _, _ = flows(c,state,when,action,at,p,faults=faults)
         # Joint donor limiting keeps transfer, leak and overflow conservative.
         demand1 = max(0,f[1])+f[3]+f[4]
         scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
@@ -123,8 +129,8 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
             heads = [(a+b)/2 for a,b in zip(heads,right)]
             totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
             t = round(t+dt,12)
-        f,pump,opening,s = flows(c,heads,target,action,at,p)
-        bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.
+        f,pump,opening,_ = flows(c,heads,target,action,at,p,faults=faults)
+        bias = c['sensorBias']*active_intensities(c,target,faults).get('sensor_bias', 0.)
         rows.append(dict(t=target,level1=heads[0]+rng.gauss(0,c['noise']),
                          level2=heads[1]+bias+rng.gauss(0,c['noise']),
                          inlet=f[0],transfer=f[1],outlet=f[2],pump=pump,valve=opening))

@@ -187,6 +187,11 @@ def dispatch(handler, method: str) -> bool:
             elif method == 'DELETE':
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'sensor-placement':
+            from .sensor_placement_routes import route
+            result, status, sent = route(handler, store.sensor_placement, method, parts[2], parts[4:], body, url.query)
+            if sent:
+                return True
         elif len(parts) == 4 and parts[1] == 'workspaces':
             if parts[3] == 'model-research' and method == 'GET':
                 from .model_research import research
