@@ -7,6 +7,7 @@ transfer flux enters the other tank, so the limiter preserves mass exactly.
 """
 from __future__ import annotations
 
+from bisect import bisect_right
 import math
 import random
 import secrets
@@ -59,11 +60,11 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
-def flows(c, heads, time, action, at, parameters):
+def flows(c, heads, time, action, at, parameters, *, inputs=None):
     h1, h2 = heads
     active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
     s = c['severity'] if active else 0.
-    pump, opening = c['pumpControl'], c['valve']
+    pump, opening = inputs if inputs is not None else (c['pumpControl'], c['valve'])
     efficiency = 1 - .7*s if c['fault'] == 'pump_degradation' else 1.
     if action and time >= at:
         if action == 'adjust_pump':
@@ -85,7 +86,15 @@ def flows(c, heads, time, action, at, parameters):
     return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
 
 
-def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
+def integrate(config, action=None, at=0., parameters=None, *, include_at=False,
+              schedule=None, inspect_step=None):
+    """Run one continuous experiment. Schedule rows are (start, pump %, valve fraction).
+
+    Commands are right-continuous at observation times. Both stages of a
+    substep ending at a switch use the preceding command. The observer
+    receives the initial and all accepted substep states, independently
+    of observation cadence.
+    """
     c = config
     p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
     rng = random.Random(c['seed'])
@@ -93,10 +102,20 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
     initial_volume = c['area1']*heads[0]+c['area2']*heads[1]
     totals = [0.]*6
     physical, rows = [], []
-    boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
+    schedule = list(schedule) if schedule is not None else [(0., c['pumpControl'], c['valve'])]
+    starts = [item[0] for item in schedule]
+    if (not starts or starts[0] != 0 or starts[-1] >= c['duration']
+            or not all(finite(t) for t in starts) or any(b <= a for a, b in zip(starts, starts[1:]))):
+        raise ValueError('Tank input schedule must start at zero and increase inside the horizon.')
+    if any(not finite(pump) or not 0 <= pump <= 150+1e-12
+           or not finite(valve) or not .01-1e-12 <= valve <= 1+1e-12 for _, pump, valve in schedule):
+        raise ValueError('Tank input schedule exceeds the physical actuator bounds.')
+    boundaries = sorted(set([c['duration'], c['start'], *starts, *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
+    if inspect_step is not None:
+        inspect_step(t, heads)
 
-    def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
+    def stage(state, when, dt, inputs):
+        f, _, _, _ = flows(c,state,when,action,at,p,inputs=inputs)
         # Joint donor limiting keeps transfer, leak and overflow conservative.
         demand1 = max(0,f[1])+f[3]+f[4]
         scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
@@ -109,21 +128,26 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
                 max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
 
     count = math.ceil(c['duration']/c['step'])
-    targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
+    targets = {min(round(index*c['step'],9),c['duration']) for index in range(count)}
+    targets.add(c['duration'])
     if include_at:
         targets.add(at)
     for target in sorted(targets):
-        while t < target-1e-10:
-            next_boundary = next((b for b in boundaries if b > t+1e-10),target)
-            dt = min(c['integrationStep'],target-t,next_boundary-t)
+        while t < target:
+            boundary_index = bisect_right(boundaries, t)
+            end = min(target, boundaries[boundary_index], round(t+c['integrationStep'], 12))
+            dt = end-t
+            inputs = schedule[bisect_right(starts,t)-1][1:]
             # Both SSP stages use the same side of a discontinuity. The next
             # substep begins at the event with the new fault/action inputs.
-            left, flux1 = stage(heads,t,dt)
-            right, flux2 = stage(left,t+dt*.999999999,dt)
+            left, flux1 = stage(heads,t,dt,inputs)
+            right, flux2 = stage(left,t+dt*.999999999,dt,inputs)
             heads = [(a+b)/2 for a,b in zip(heads,right)]
             totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
-            t = round(t+dt,12)
-        f,pump,opening,s = flows(c,heads,target,action,at,p)
+            t = end
+            if inspect_step is not None:
+                inspect_step(t, heads)
+        f,pump,opening,s = flows(c,heads,target,action,at,p,inputs=schedule[bisect_right(starts,target)-1][1:])
         bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.
         rows.append(dict(t=target,level1=heads[0]+rng.gauss(0,c['noise']),
                          level2=heads[1]+bias+rng.gauss(0,c['noise']),

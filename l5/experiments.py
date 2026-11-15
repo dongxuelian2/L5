@@ -97,6 +97,8 @@ class ExperimentService:
             db.execute("UPDATE experiment_tasks SET status='interrupted',error=?,completed_at=? WHERE status IN ('queued','running')",
                        ('Local service stopped before this task completed. Retry unfinished tasks in a new run.', stamp))
             db.execute("UPDATE experiment_runs SET status='interrupted',completed_at=? WHERE status IN ('queued','running')", (stamp,))
+        from .design_experiments import DesignExperiments
+        self.designs = DesignExperiments(store)
 
     def list(self, workspace_id):
         self.store.workspace(workspace_id)

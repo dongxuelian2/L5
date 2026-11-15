@@ -17,6 +17,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | Module | What you can do |
 |---|---|
 | **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
+| **Optimal Experiment Design** | Optimize bounded coupled-tank pump and valve schedules for nominal or worst-case parameter information. Compare conventional excitation strategies, inspect feasibility and sensitivity, and publish simulated observations as Datasets. |
 | **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
 | **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
 | **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
@@ -115,13 +116,14 @@ node scripts/python.mjs server.py --data-dir /path/to/l5-data
 | [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
 | [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
 | [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
+| [Optimal Experiment Design](docs/experiment-design.md) | Coupled-tank input planning, identifiability diagnostics and reproducible held-out parameter recovery |
 | [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
 | [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
 | [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |
 
 ## Development & Validation
 
-React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. GitHub Actions builds the application on pushes to `main`. Run the application and research checks locally:
+React 19, TypeScript and Vite power the frontend. Python 3.12+, NumPy, pandas, SciPy and SQLite provide local computation and persistence. GitHub Actions builds the application on pushes to `main`. Run the application and research checks locally:
 
 ```bash
 npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build

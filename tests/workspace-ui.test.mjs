@@ -1583,3 +1583,57 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
 });
+
+test('input design reopens a saved experiment, localizes controls and publishes the selected strategy', async () => {
+  const { ExperimentDesign } = require('../src/workspace/ExperimentDesign.tsx');
+  const config = {
+    modelId: 'coupled-tanks', duration: 2, controlInterval: 1, segments: 2, sampleInterval: 1,
+    integrationStep: .25, seed: 1, objective: 'E', initialLevels: [1.56, 1],
+    levelMin: [0, 0], levelMax: [2.4, 2.4], tankHeight: 2.5, minDelivery: 0, terminalLevelTolerance: null,
+    initialInput: [100, 1], terminalInput: null, inputMin: [45, .45], inputMax: [150, 1],
+    maxMovement: [280, 2], maxSlew: [10, .075], parameters: ['pumpRate'], noise: { level1: .004 },
+    nominal: { pumpRate: .03 }, scenarios: [{ pumpRate: .035 }],
+  };
+  const report = {
+    parameters: config.nominal, objective: 4, rank: 1, singularValues: [2], eigenvalues: [4],
+    logDet: Math.log(4), condition: 1, matrix: [[4]], physicalMatrix: [[4444]], correlation: [[1]],
+    weakDirections: [[1]], rankThreshold: 1e-7, differenceDisagreement: 1e-8, sensitivity: [[[0]], [[.02]], [[.03]]],
+    structurallyAbsent: [], times: [0, 1, 2], response: { level1: [1.56, 1.56, 1.58], level2: [1, 1, 1] },
+    observations: { level1: [1.56, 1.56, 1.58] }, sampledInputs: { pump: [100, 110, 110], valve: [1, 1, 1] },
+    margins: { levelUpper: [.8, 1.4] }, feasible: true, delivered: .06, spilled: 0, massResidual: 1e-16,
+    extrema: { minAt: [0, 0], maxAt: [2, 0], substeps: 16 },
+  };
+  const strategy = {
+    id: 'nominal-optimal', schedule: [{ start: 0, pump: 100, valve: 1 }, { start: 1, pump: 110, valve: 1 }],
+    duration: 2, movement: [10, 0], maxSlew: [10, 0], inputMargins: { slew: [0, .075] },
+    inputFeasible: true, feasible: true, reports: { nominal: report, 'scenario-1': { ...report, feasible: false } },
+    worstScenario: 'scenario-1', worstObjective: 3, violatedScenarios: ['scenario-1'],
+  };
+  const summary = { id: 'design-1', name: 'Fixture', created_at: '2026-01-01T00:00:00Z', status: 'completed' };
+  const record = { ...summary, snapshot: { config, designs: [strategy], solvers: {},
+    diagnostics: { dRidge: 1e-6, stateIntegrationStep: .125, feasibilityTolerance: 1e-6 } } };
+  const requests = [];
+  let publications = 0;
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith('/datasets')) return response(dataset('generated'));
+    if (url.endsWith('/design-1')) return response(record);
+    return response({ defaults: config, experiments: [summary], parameters: {
+      pumpRate: { label: 'Nominal pump flow', unit: 'm³/s', min: 0, max: .2 },
+    }, measurements: { level1: { label: 'Tank 1 measured level', unit: 'm' }, level2: { label: 'Tank 2 measured level', unit: 'm' } } });
+  };
+  setLocale('zh-CN');
+  await mount(React.createElement(ExperimentDesign, { workspaceId: 'test', experimentId: 'design-1', onPublished: () => publications++ }));
+  assert.match(container.textContent, /最优实验设计/);
+  assert.match(container.textContent, /Fisher 信息矩阵/);
+  const scenarios = [...container.querySelectorAll('select')].find(node => node.value === 'nominal');
+  await act(async () => {
+    scenarios.value = 'scenario-1';
+    scenarios.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  assert.match(container.textContent, /违反仿真约束/);
+  await click([...container.querySelectorAll('button')].find(node => node.textContent === '发布为数据集'));
+  assert.equal(publications, 1);
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body), { designId: 'nominal-optimal', scenarioId: 'scenario-1' });
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/generated"]'));
+});
