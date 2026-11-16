@@ -1,13 +1,13 @@
 """Independent finite references and coupled-tank recovery integration checks."""
 from functools import lru_cache
 from itertools import combinations, product
+import math
 from pathlib import Path
 import unittest
 from urllib.request import build_opener, ProxyHandler
 
 import numpy as np
 
-from benchmarks.reachability import independent_transition
 from l5.reachability import Study, margin, physical_step, predecessor, reach, validate, viability
 from l5.recovery_reports import render
 from l5.workspace import WorkspaceStore
@@ -82,7 +82,7 @@ class FiniteReferenceTests(unittest.TestCase):
 
 
 class HydraulicPlanningTests(unittest.TestCase):
-    def test_equilibrium_independent_solver_and_donor_volume(self):
+    def test_equilibrium_analytic_transition_and_donor_volume(self):
         config = validate({})
         h = (1.5625, 1.)
         final, _, trace, net = physical_step(config, h, (100., 1.), {}, .1, trace=True)
@@ -97,10 +97,14 @@ class HydraulicPlanningTests(unittest.TestCase):
         area = [plant['area1'], plant['area2']]
         self.assertAlmostEqual(float(np.dot(area, result)-np.dot(area, h)), net, places=13)
 
-        h, action = (1.29, .81), (100., .6)
-        independent = independent_transition(config, h, action, disturbance)[0]
-        fine = physical_step(config, h, action, disturbance, .02)[0]
-        np.testing.assert_allclose(fine, independent, atol=3e-6)
+        # A fully obstructed valve decouples the ODEs. Tank 1 fills at a
+        # constant rate while sqrt(Tank 2 head) decreases linearly.
+        h, action = (1.29, .81), (100., 1.)
+        duration = config['controlSeconds']
+        expected = (h[0] + duration*plant['pumpRate']/plant['area1'],
+                    (math.sqrt(h[1]) - duration*plant['outlet']*plant['outletValve']/(2*plant['area2']))**2)
+        fine = physical_step(config, h, action, {'valve': 0.}, .02)[0]
+        np.testing.assert_allclose(fine, expected, atol=1e-8, rtol=0)
 
     def test_interior_violation_rejects_graph_edge_even_when_both_ends_are_safe(self):
         study = Study(dict(grid=[31, 31], controlSeconds=30,

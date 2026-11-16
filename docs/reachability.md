@@ -24,9 +24,10 @@ In the numerical JSON, head indices \(i,j\) use row \(iN_2+j\), where \(N_2\) is
 
 ## Reproducible benchmark
 
-Run this command from the repository root with the existing requirements installed.
+Run these commands from the repository root with the application requirements installed. The independent benchmark also uses SciPy.
 
 ```shell
+node scripts/python.mjs -m pip install scipy==1.16.2
 node scripts/python.mjs -m benchmarks.reachability --output recovery-benchmark.json
 ```
 
