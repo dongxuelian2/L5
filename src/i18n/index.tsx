@@ -3,6 +3,7 @@ import messages from "./messages.json";
 import common from "./common.json";
 import catalog from "./catalog.json";
 import serviceErrors from "./service-errors.json";
+import reachability from "./reachability.json";
 import "./language.css";
 
 export type Locale = "zh-CN" | "en";
@@ -40,11 +41,12 @@ export function useLocale() {
   return current;
 }
 /** Source keys refer only to application-owned copy. Never pass user data here. */
-const copy: Record<string, readonly string[]> = { ...messages, ...common, ...catalog, ...serviceErrors };
+const legacyCopy: Record<string, readonly string[]> = { ...messages, ...common, ...catalog, ...serviceErrors };
+const copy: Record<string, readonly string[]> = { ...legacyCopy, ...reachability };
 // Source keys win. Only unambiguous English labels may stand in for a source key;
 // Chinese translations and rendered messages are never parsed back into keys.
 const english = new Map<string, readonly string[] | null>();
-for (const pair of Object.values(copy)) {
+for (const pair of Object.values(legacyCopy)) {
   if (!english.has(pair[1])) english.set(pair[1], pair);
   else if (english.get(pair[1])?.[0] !== pair[0]) english.set(pair[1], null);
 }

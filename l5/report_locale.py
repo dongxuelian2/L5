@@ -24,6 +24,7 @@ def messages():
     for label, pair in english.items():
         if pair is not None:
             result.setdefault(label, pair)
+    result.update(json.loads((root / 'reachability.json').read_text(encoding='utf-8')))
     return result
 
 

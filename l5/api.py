@@ -62,6 +62,32 @@ def dispatch(handler, method: str) -> bool:
                 handler.end_headers()
                 handler.wfile.write(payload)
                 return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'reachability':
+            workspace = parts[2]
+            if len(parts) == 4 and method == 'GET':
+                result = store.recovery.index(workspace)
+            elif len(parts) == 4 and method == 'POST':
+                result, status = store.recovery.save(workspace, body), 201
+            elif len(parts) == 5 and parts[4] == 'compute' and method == 'POST':
+                result = store.recovery.compute(workspace, body)
+            elif len(parts) == 5 and method == 'GET':
+                result = store.recovery.get(workspace, parts[4])
+            elif len(parts) == 6 and parts[5] == 'dataset' and method == 'POST':
+                result, status = store.recovery.export_dataset(workspace, parts[4], body.get('strategy')), 201
+            elif len(parts) == 6 and parts[5] == 'report.html' and method == 'GET':
+                from .recovery_reports import render
+                saved = store.recovery.get(workspace, parts[4])
+                query = parse_qs(url.query)
+                payload = render(saved, locale=query.get('lang', ['en'])[0]).encode('utf-8')
+                handler.send_response(200)
+                handler.send_header('Content-Type', 'text/html; charset=utf-8')
+                handler.send_header('Content-Length', str(len(payload)))
+                handler.send_header('Cache-Control', 'no-store')
+                if query.get('download') == ['1']:
+                    handler.send_header('Content-Disposition', f'attachment; filename="l5-recovery-{saved["id"]}.html"')
+                handler.end_headers()
+                handler.wfile.write(payload)
+                return True
         elif parts[1] == 'models' and method == 'GET':
             from .models import catalog, resolve
             if len(parts) == 2:

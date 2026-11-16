@@ -59,8 +59,37 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
-def flows(c, heads, time, action, at, parameters):
+def hydraulic_flows(c, heads, pump, opening, efficiency=1., leak_coefficient=0., inflow_bias=0., *, ops=math):
+    """Physical fluxes for scalar or batched heads, before the donor limiter."""
+    maximum = max if ops is math else ops.maximum
     h1, h2 = heads
+    delta = h1-h2
+    transfer = c['connection']*opening*ops.copysign(ops.sqrt(abs(delta)), delta)
+    inlet = maximum(0., c['pumpRate']*pump/100*efficiency + inflow_bias)
+    outlet = c['outlet']*c['outletValve']*ops.sqrt(maximum(0., h2))
+    leak = leak_coefficient*ops.sqrt(maximum(0., h1))
+    spill1, spill2 = (.1*maximum(0., h-c['tankHeight'])**1.5 for h in heads)
+    return [inlet, transfer, outlet, leak, spill1, spill2]
+
+
+def donor_stage(c, heads, fluxes, dt, *, ops=math):
+    """One conservative forward Euler stage of the shared SSPRK2 integrator."""
+    maximum, minimum = (max, min) if ops is math else (ops.maximum, ops.minimum)
+    inlet, transfer, outlet, leak, spill1, spill2 = fluxes
+    area1, area2 = c['area1'], c['area2']
+    demand1 = maximum(0., transfer)+leak+spill1
+    demand2 = maximum(0., -transfer)+outlet+spill2
+    scale1 = minimum(1., heads[0]*area1/(dt*demand1 + (demand1 == 0)))
+    scale2 = minimum(1., heads[1]*area2/(dt*demand2 + (demand2 == 0)))
+    # The scale for a zero withdrawal is immaterial. Each transfer is shared by both tanks.
+    transfer = maximum(0., transfer)*scale1 + minimum(0., transfer)*scale2
+    leak, spill1 = leak*scale1, spill1*scale1
+    outlet, spill2 = outlet*scale2, spill2*scale2
+    return (maximum(0., heads[0]+dt*(inlet-transfer-leak-spill1)/area1),
+            maximum(0., heads[1]+dt*(transfer-outlet-spill2)/area2)), [inlet, transfer, outlet, leak, spill1, spill2]
+
+
+def flows(c, heads, time, action, at, parameters):
     active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
     s = c['severity'] if active else 0.
     pump, opening = c['pumpControl'], c['valve']
@@ -76,13 +105,8 @@ def flows(c, heads, time, action, at, parameters):
             pump *= max(0., 1-(time-at)/parameters['rampSeconds'])
     if c['fault'] == 'valve_restriction':
         opening *= 1-.85*s
-    delta = h1-h2
-    transfer = c['connection']*opening*math.copysign(math.sqrt(abs(delta)), delta)
-    inlet = c['pumpRate']*pump/100*efficiency
-    outlet = c['outlet']*c['outletValve']*math.sqrt(max(0,h2))
-    leak = c['leakCoefficient']*s*math.sqrt(max(0,h1)) if c['fault'] == 'tank_leak' else 0.
-    spill1, spill2 = (.1*max(0,h-c['tankHeight'])**1.5 for h in heads)
-    return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
+    leak = c['leakCoefficient']*s if c['fault'] == 'tank_leak' else 0.
+    return hydraulic_flows(c, heads, pump, opening, efficiency, leak), pump, opening, s
 
 
 def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
@@ -97,16 +121,7 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
 
     def stage(state, when, dt):
         f, _, _, _ = flows(c,state,when,action,at,p)
-        # Joint donor limiting keeps transfer, leak and overflow conservative.
-        demand1 = max(0,f[1])+f[3]+f[4]
-        scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
-        demand2 = max(0,-f[1])+f[2]+f[5]
-        scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
-        f[1] *= scale1 if f[1] >= 0 else scale2
-        f[3] *= scale1; f[4] *= scale1
-        f[2] *= scale2; f[5] *= scale2
-        return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
-                max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+        return donor_stage(c, state, f, dt)
 
     count = math.ceil(c['duration']/c['step'])
     targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}

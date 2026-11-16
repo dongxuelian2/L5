@@ -1583,3 +1583,68 @@ test('model action IDs and deterministic runtime summaries use translated displa
   assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
 });
+
+test('reachability computes a map, replays a selected state, reopens its snapshot and exports an ordinary Dataset', async () => {
+  const config = { modelId: 'coupled-tanks', plant: { area1: 1, area2: 1, connection: .04, outlet: .03, pumpRate: .03, outletValve: 1, tankHeight: 2.5 },
+    safe: [[.3, 2.35], [.25, 2.35]], target: [[1.4, 1.8], [.85, 1.15]], pump: [0, 150], valve: [.2, 1],
+    slew: [6, .05], actionCounts: [4, 3], grid: [3, 3], horizon: 16, controlSeconds: 10, integrationStep: .1, mode: 'nominal', disturbances: ['pump-loss'] };
+  const analysis = { config, modelVersion: '1.0.0', numerical: { axes: [[0, 1.2, 2.4], [0, 1.2, 2.4]], spacing: [1.2, 1.2],
+    actions: [[50, 1], [100, 1]], scenarios: { nominal: {} }, horizonSeconds: 160, viabilityIterations: 2,
+    nominalViabilityIterations: 2, convergence: true, seconds: .06, graphBytes: 64, safeAugmentedStates: 8, boundaryAugmentedStates: 6 },
+    safe: Array(9).fill(true), target: Array(9).fill(false), ranks: Array(9).fill([1, 2]),
+    policy: Array(9).fill([0, 0]), viable: Array(9).fill([true, true]), boundary: Array(9).fill([true, true]) };
+  analysis.nominalRanks = analysis.viableTargetRanks = analysis.ranks;
+  analysis.nominalViable = analysis.viable;
+  const rootPath = '/api/workspaces/test/reachability';
+  const data = dataset('recovered-data', 20);
+  const calls = [];
+  let saved;
+  window.location.hash = '#/workspaces/test/reachability';
+  globalThis.fetch = async (url, options) => {
+    const body = options?.body ? JSON.parse(options.body) : null;
+    calls.push([url, body]);
+    if (url === '/api/workspaces') return response({ workspaces: [{ id: 'test', name: 'Tanks' }] });
+    if (url === '/api/workspaces/test') return response({ id: 'test', name: 'Tanks' });
+    if (url.endsWith('/datasets')) return response({ datasets: [] });
+    if (url.endsWith('/analyses')) return response({ jobs: [] });
+    if (url === rootPath && !body) return response({
+      studies: saved ? [saved] : [], defaults: config, disturbances: { nominal: {}, 'pump-loss': { pump: .85 } }, scenarios: [], incidents: [],
+    });
+    if (url === rootPath + '/saved') return response(saved);
+    if (url === rootPath + '/saved/dataset') return response(data);
+    if (url === rootPath || url === rootPath + '/compute') {
+      const evaluation = body.initial ? { initial: body.initial, integrationStep: .05,
+        replays: Object.fromEntries(['policy', 'hold', 'drain', 'fill'].map(strategy => [strategy, {
+          strategy, status: 'recovered', recoverySeconds: 10, effort: [500, 10], movement: [50, 0],
+          minimumMargin: .1, violations: [], actions: [{ t: 0, pump: 50, valve: 1, disturbance: 'nominal' }],
+          trajectory: [{ t: 0, level1: body.initial.heads[0], level2: body.initial.heads[1], pump: 50, valve: 1, safetyMargin: .1 },
+            { t: 10, level1: 1.55, level2: 1.05, pump: 50, valve: 1, safetyMargin: .2 }],
+        }])) } : null;
+      const result = { analysis, evaluation, scenario: null, incident: null };
+      if (url === rootPath) saved = { ...result, id: 'saved', name: body.name };
+      return response(url === rootPath ? saved : result);
+    }
+    throw new Error('Unexpected reachability request ' + url);
+  };
+  await mount(React.createElement(App));
+  assert.equal(container.querySelector('a[href="#/workspaces/test/reachability"]').getAttribute('aria-current'), 'page');
+  await click(button('reach.compute'));
+  const map = container.querySelector('svg[aria-label="Tank state map"]');
+  assert.ok(map);
+  await act(async () => map.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })));
+  await click(button('reach.simulate'));
+  const simulation = calls.filter(([url]) => url.endsWith('/compute')).at(-1)[1].initial;
+  assert.deepEqual(simulation, { heads: [1.2, 1.2], previousAction: 1, disturbance: 'nominal' });
+  assert.ok(container.querySelector('.reach-map polyline'));
+  assert.match(container.textContent, /Nonlinear replay comparison/);
+  await click(button('reach.save'));
+  await act(async () => window.dispatchEvent(new window.HashChangeEvent('hashchange')));
+  assert.equal(window.location.hash, '#/workspaces/test/reachability/saved');
+  assert.ok(calls.some(([url]) => url === rootPath + '/saved'));
+  await click(button('reach.exportDataset'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/recovered-data"]'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/recovered-data"]'));
+  await act(async () => setLocale('zh-CN'));
+  assert.match(container.textContent, /安全可达性与恢复规划/);
+  assert.match(container.textContent, /非线性仿真比较/);
+});

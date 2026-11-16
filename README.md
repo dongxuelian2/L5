@@ -23,6 +23,7 @@ L5 keeps industrial data, processing steps, detection results and investigation 
 | **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
 | **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
 | **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
+| **Safety Reachability** | Map bounded coupled-tank recovery and finite-state viability, compare nominal and robust policies in nonlinear simulation, and save studies or export trajectories as Datasets. [Methods and benchmark](docs/reachability.md) |
 | **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
 
 ## Workflows & Screenshots
@@ -66,6 +67,8 @@ flowchart LR
 </details>
 
 [More screenshots and example data](docs/images/README.md).
+
+**Operating limits → recovery map → nonlinear replay.** Open **Safety reachability** in a local workspace. Compute a map, select an initial point and the previous pump/valve command, and simulate the feedback policy alongside fixed emergency actions. Save the study to reopen its policy and trajectories, export a Dataset for an Experiment, or download an offline report. Grid classifications are approximate and all actions run in simulation. [Reachability and viability methods](docs/reachability.md)
 
 ## Tennessee Eastman Case Study
 

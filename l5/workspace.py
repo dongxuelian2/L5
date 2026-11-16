@@ -45,6 +45,8 @@ class WorkspaceStore:
         self.scenarios = ScenarioService(self)
         from .incidents import IncidentService
         self.incidents = IncidentService(self)
+        from .recovery_studies import RecoveryStudies
+        self.recovery = RecoveryStudies(self)
         from .signals import SignalWorkspace
         self.signals = SignalWorkspace(self)
         from .transformations import TransformationService

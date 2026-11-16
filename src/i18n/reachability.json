@@ -1,0 +1,635 @@
+{
+  "reach.openStudy": ["打开来源恢复研究", "Open source recovery study"],
+  "reach.nav": [
+    "安全可达性",
+    "Safety reachability"
+  ],
+  "reach.title": [
+    "安全可达性与恢复规划",
+    "Safety Reachability & Recovery Planning"
+  ],
+  "reach.scope": [
+    "仅用于仿真。结果来自代表性网格点及已声明的扰动，整个单元和实际装置的安全性未经验证。",
+    "Simulation only. Results use representative grid points and declared disturbances. Safety across whole cells or on a physical plant remains unverified."
+  ],
+  "reach.opening": [
+    "正在打开恢复工作区…",
+    "Opening recovery workspace…"
+  ],
+  "reach.setup": [
+    "研究设置",
+    "Study settings"
+  ],
+  "reach.map": [
+    "双水箱状态图",
+    "Tank state map"
+  ],
+  "reach.saved": [
+    "已保存的研究",
+    "Saved study"
+  ],
+  "reach.new": [
+    "新建研究",
+    "New study"
+  ],
+  "reach.model": [
+    "过程模型",
+    "Process model"
+  ],
+  "reach.coupled": [
+    "耦合双水箱",
+    "Coupled tanks"
+  ],
+  "reach.scenario": [
+    "场景参数来源",
+    "Scenario parameter source"
+  ],
+  "reach.defaultPlant": [
+    "模型默认参数",
+    "Model defaults"
+  ],
+  "reach.regions": [
+    "液位边界",
+    "Level limits"
+  ],
+  "reach.safe": [
+    "允许运行区域",
+    "Operating region"
+  ],
+  "reach.target": [
+    "恢复目标",
+    "Recovery target"
+  ],
+  "reach.limit00": [
+    "水箱 1 最低液位 (m)",
+    "Tank 1 minimum (m)"
+  ],
+  "reach.limit01": [
+    "水箱 1 最高液位 (m)",
+    "Tank 1 maximum (m)"
+  ],
+  "reach.limit10": [
+    "水箱 2 最低液位 (m)",
+    "Tank 2 minimum (m)"
+  ],
+  "reach.limit11": [
+    "水箱 2 最高液位 (m)",
+    "Tank 2 maximum (m)"
+  ],
+  "reach.actuators": [
+    "执行器约束",
+    "Actuator constraints"
+  ],
+  "reach.pump0": [
+    "泵指令下限 (%)",
+    "Pump minimum (%)"
+  ],
+  "reach.pump1": [
+    "泵指令上限 (%)",
+    "Pump maximum (%)"
+  ],
+  "reach.valve0": [
+    "阀门开度下限 (比例)",
+    "Valve minimum (fraction)"
+  ],
+  "reach.valve1": [
+    "阀门开度上限 (比例)",
+    "Valve maximum (fraction)"
+  ],
+  "reach.slew0": [
+    "泵变化率 (百分点/秒)",
+    "Pump slew (percentage points/s)"
+  ],
+  "reach.slew1": [
+    "阀门变化率 (比例/秒)",
+    "Valve slew (fraction/s)"
+  ],
+  "reach.actionCounts0": [
+    "泵指令采样数",
+    "Pump command samples"
+  ],
+  "reach.actionCounts1": [
+    "阀门开度采样数",
+    "Valve command samples"
+  ],
+  "reach.slewHint": [
+    "每步开始时切换指令，步内保持恒定。相邻指令的变化量受采样变化率限制。",
+    "Commands switch at step boundaries and are held between switches. Slew limits bound the change between consecutive commands."
+  ],
+  "reach.plant": [
+    "水力参数",
+    "Hydraulic parameters"
+  ],
+  "reach.area1": [
+    "水箱 1 截面积 (m²)",
+    "Tank 1 area (m²)"
+  ],
+  "reach.area2": [
+    "水箱 2 截面积 (m²)",
+    "Tank 2 area (m²)"
+  ],
+  "reach.connection": [
+    "连通流量系数 (m⁵ᐟ²/s)",
+    "Connection coefficient (m⁵ᐟ²/s)"
+  ],
+  "reach.outlet": [
+    "出口流量系数 (m⁵ᐟ²/s)",
+    "Outlet coefficient (m⁵ᐟ²/s)"
+  ],
+  "reach.pumpRate": [
+    "泵额定流量 (m³/s)",
+    "Nominal pump flow (m³/s)"
+  ],
+  "reach.outletValve": [
+    "出口阀开度 (比例)",
+    "Outlet opening (fraction)"
+  ],
+  "reach.tankHeight": [
+    "共同溢流液位 (m)",
+    "Shared overflow height (m)"
+  ],
+  "reach.scenarioHint": [
+    "场景提供水力参数的初始值。请在规划设置中选择研究使用的扰动。",
+    "A saved scenario initializes hydraulic parameters. Choose the disturbances used in this study under planning settings."
+  ],
+  "reach.planning": [
+    "规划与扰动",
+    "Planning and disturbances"
+  ],
+  "reach.grid0": [
+    "水箱 1 采样点",
+    "Tank 1 grid points"
+  ],
+  "reach.grid1": [
+    "水箱 2 采样点",
+    "Tank 2 grid points"
+  ],
+  "reach.horizon": [
+    "规划步数",
+    "Horizon (steps)"
+  ],
+  "reach.controlSeconds": [
+    "控制间隔 (s)",
+    "Control interval (s)"
+  ],
+  "reach.integrationStep": [
+    "最大积分步长 (s)",
+    "Maximum integration step (s)"
+  ],
+  "reach.mode": [
+    "分析模式",
+    "Analysis mode"
+  ],
+  "reach.nominal": [
+    "标称",
+    "Nominal"
+  ],
+  "reach.robust": [
+    "鲁棒",
+    "Robust"
+  ],
+  "reach.modeledDisturbances": [
+    "建模扰动（另含标称）",
+    "Modeled disturbances (plus nominal)"
+  ],
+  "reach.pump-loss": [
+    "泵效率下降",
+    "Reduced pump effectiveness"
+  ],
+  "reach.valve-restriction": [
+    "连通阀受限",
+    "Valve restriction"
+  ],
+  "reach.leakage": [
+    "水箱 1 泄漏",
+    "Tank 1 leakage"
+  ],
+  "reach.input-low": [
+    "进流偏低",
+    "Low inlet bias"
+  ],
+  "reach.input-high": [
+    "进流偏高",
+    "High inlet bias"
+  ],
+  "reach.hydraulic-mismatch": [
+    "水力参数偏差",
+    "Hydraulic mismatch"
+  ],
+  "reach.effect-pump": [
+    "泵倍率",
+    "Pump factor"
+  ],
+  "reach.effect-valve": [
+    "阀门倍率",
+    "Valve factor"
+  ],
+  "reach.effect-leak": [
+    "泄漏系数 m⁵ᐟ²/s",
+    "Leak coefficient m⁵ᐟ²/s"
+  ],
+  "reach.effect-inflow": [
+    "进流偏差 m³/s",
+    "Inlet bias m³/s"
+  ],
+  "reach.effect-connection": [
+    "连通倍率",
+    "Connection factor"
+  ],
+  "reach.effect-outlet": [
+    "出口倍率",
+    "Outlet factor"
+  ],
+  "reach.robustHint": [
+    "每一步先选择同一个指令，再考虑该步所有已声明的扰动。下一次决策可以使用届时观测的状态。",
+    "Each decision chooses one command before considering every declared disturbance for that interval. The next decision can use the state observed then."
+  ],
+  "reach.incident": [
+    "关联事件",
+    "Related incident"
+  ],
+  "reach.noIncident": [
+    "无关联事件",
+    "No related incident"
+  ],
+  "reach.compute": [
+    "计算状态图",
+    "Compute state map"
+  ],
+  "reach.mapView": [
+    "显示结果",
+    "Map view"
+  ],
+  "reach.robustReach": [
+    "鲁棒安全恢复",
+    "Robust safe recovery"
+  ],
+  "reach.nominalReach": [
+    "标称安全恢复",
+    "Nominal safe recovery"
+  ],
+  "reach.viability": [
+    "可生存性",
+    "Viability"
+  ],
+  "reach.nominalViability": [
+    "标称可生存性",
+    "Nominal viability"
+  ],
+  "reach.viableTarget": [
+    "安全到达可生存目标",
+    "Safe arrival at viable target"
+  ],
+  "reach.previous": [
+    "上一个泵指令 (%) / 阀开度",
+    "Previous pump (%) / valve fraction"
+  ],
+  "reach.level1": [
+    "水箱 1 液位 (m)",
+    "Tank 1 level (m)"
+  ],
+  "reach.level2": [
+    "水箱 2 液位 (m)",
+    "Tank 2 level (m)"
+  ],
+  "reach.viable": [
+    "有限模型内可生存",
+    "Viable on grid"
+  ],
+  "reach.nonviable": [
+    "有限模型内不可生存",
+    "Nonviable on grid"
+  ],
+  "reach.recoverable": [
+    "时域内可恢复",
+    "Recoverable within horizon"
+  ],
+  "reach.nonrecoverable": [
+    "时域内不可恢复",
+    "Unreachable within horizon"
+  ],
+  "reach.unsafe": [
+    "不安全或超出范围",
+    "Unsafe or out of domain"
+  ],
+  "reach.uncertain": [
+    "网格判定不确定",
+    "Uncertain at this grid resolution"
+  ],
+  "reach.boundary": [
+    "边界 / 不确定单元",
+    "Boundary / uncertain cells"
+  ],
+  "reach.trajectory": [
+    "仿真轨迹",
+    "Simulated trajectory"
+  ],
+  "reach.mapHint": [
+    "点击单元或用方向键选择初态。虚线为运行边界，金线为目标边界。",
+    "Click a cell or use the arrow keys to select a starting state. The dashed outline marks operating limits. The gold outline marks the target."
+  ],
+  "reach.reachedCells": [
+    "可恢复点 / 安全点",
+    "Recoverable / safe points"
+  ],
+  "reach.viableCells": [
+    "可生存网格点",
+    "Viable grid points"
+  ],
+  "reach.fixedPoint": [
+    "固定点轮数",
+    "Fixed-point iterations"
+  ],
+  "reach.converged": [
+    "已收敛",
+    "Converged"
+  ],
+  "reach.incomplete": [
+    "未收敛",
+    "Incomplete"
+  ],
+  "reach.nominalCells": [
+    "标称可恢复点 / 可生存点",
+    "Nominal recovery / viability points"
+  ],
+  "reach.nominalIterations": [
+    "标称固定点轮数",
+    "Nominal fixed-point iterations"
+  ],
+  "reach.assumptions": [
+    "数值假设",
+    "Numerical assumptions"
+  ],
+  "reach.objectives": [
+    "安全恢复检查到达目标前的约束。可生存性计算可无限保持在安全区域的网格点。可生存目标要求到达后仍有安全策略。",
+    "Safe recovery enforces limits until target entry. Viability asks which grid states can stay in bounds indefinitely. Arrival at a viable target also requires a safe continuation."
+  ],
+  "reach.numbering": [
+    "积分检查每个子步的液位，随后将终点映射到最近网格点。恢复仅在控制步边界检查。决策优先最少步数，同一步数下优先较小的下一步指令变化。",
+    "The solver checks levels at every integration substep, then projects each endpoint to the nearest grid point. Target entry is checked at control boundaries. The policy minimizes grid steps and breaks ties by the smaller immediate command change."
+  ],
+  "reach.spacing": [
+    "网格间距 (m)",
+    "Grid spacing (m)"
+  ],
+  "reach.horizonSeconds": [
+    "时域 (s)",
+    "Horizon (s)"
+  ],
+  "reach.boundaryStates": [
+    "增广边界状态",
+    "Augmented boundary states"
+  ],
+  "reach.graphSize": [
+    "转移数组大小",
+    "Transition array size"
+  ],
+  "reach.computeSeconds": [
+    "计算时间 (s)",
+    "Compute time (s)"
+  ],
+  "reach.modelVersion": [
+    "模型版本",
+    "Model version"
+  ],
+  "reach.empty": [
+    "计算后可在这里查看可恢复性和可生存性。",
+    "Compute a map to inspect recoverability and viability."
+  ],
+  "reach.working": [
+    "正在计算或读取研究…",
+    "Working on the study…"
+  ],
+  "reach.plan": [
+    "恢复策略",
+    "Recovery policy"
+  ],
+  "reach.realization": [
+    "回放扰动（全程保持）",
+    "Replay disturbance (held throughout)"
+  ],
+  "reach.classification": [
+    "所选初态分类",
+    "Selected state classification"
+  ],
+  "reach.gridSteps": [
+    "网格恢复步数",
+    "Grid steps to target"
+  ],
+  "reach.firstAction": [
+    "首个泵指令 (%) / 阀开度",
+    "First pump (%) / valve fraction"
+  ],
+  "reach.simulate": [
+    "生成策略并仿真比较",
+    "Generate policy and simulate"
+  ],
+  "reach.comparison": [
+    "非线性仿真比较",
+    "Nonlinear replay comparison"
+  ],
+  "reach.replayStep": [
+    "回放步长",
+    "Replay step"
+  ],
+  "reach.strategy": [
+    "策略",
+    "Strategy"
+  ],
+  "reach.status": [
+    "状态",
+    "Status"
+  ],
+  "reach.recoveryTime": [
+    "到达时间 (s)",
+    "Time to target (s)"
+  ],
+  "reach.margin": [
+    "安全裕度 (m)",
+    "Safety margin (m)"
+  ],
+  "reach.movement": [
+    "泵 / 阀累计变化 (百分点 / 比例)",
+    "Pump / valve movement (pp / fraction)"
+  ],
+  "reach.effort": [
+    "泵 / 阀用量积分 (%·s / 比例·s)",
+    "Pump / valve effort (%·s / fraction·s)"
+  ],
+  "reach.violations": [
+    "越界采样数",
+    "Violation samples"
+  ],
+  "reach.policy": [
+    "网格反馈",
+    "Grid feedback"
+  ],
+  "reach.hold": [
+    "保持初始指令",
+    "Hold initial command"
+  ],
+  "reach.drain": [
+    "最低泵量与开阀",
+    "Low pump, open valve"
+  ],
+  "reach.fill": [
+    "最高泵量与开阀",
+    "High pump, open valve"
+  ],
+  "reach.recovered": [
+    "已恢复",
+    "Recovered"
+  ],
+  "reach.no-policy": [
+    "无适用的网格策略",
+    "No grid policy action"
+  ],
+  "reach.safetyLimit": [
+    "安全边界",
+    "Safety limit"
+  ],
+  "reach.commands": [
+    "切换指令",
+    "Command switches"
+  ],
+  "reach.time": [
+    "时间 (s)",
+    "Time (s)"
+  ],
+  "reach.pumpCommand": [
+    "泵指令 (%)",
+    "Pump command (%)"
+  ],
+  "reach.valveCommand": [
+    "阀开度 (比例)",
+    "Valve opening (fraction)"
+  ],
+  "reach.disturbance": [
+    "扰动",
+    "Disturbance"
+  ],
+  "reach.noCommands": [
+    "这次回放未发出仿真指令。",
+    "This replay issued no simulated commands."
+  ],
+  "reach.saveExport": [
+    "保存与导出",
+    "Save and export"
+  ],
+  "reach.studyName": [
+    "研究名称",
+    "Study name"
+  ],
+  "reach.defaultName": [
+    "双水箱恢复研究",
+    "Coupled-tank recovery"
+  ],
+  "reach.save": [
+    "保存研究快照",
+    "Save study snapshot"
+  ],
+  "reach.json": [
+    "下载数值 JSON",
+    "Download numerical JSON"
+  ],
+  "reach.report": [
+    "下载 HTML 报告",
+    "Download HTML report"
+  ],
+  "reach.csv": [
+    "下载轨迹 CSV",
+    "Download trajectory CSV"
+  ],
+  "reach.exportDataset": [
+    "导出到数据集",
+    "Export as Dataset"
+  ],
+  "reach.datasetSaved": [
+    "已保存数据集",
+    "Dataset saved"
+  ],
+  "reach.experiment": [
+    "用于实验",
+    "Use in an experiment"
+  ],
+  "reach.horizonExpired": [
+    "时域结束",
+    "Horizon expired"
+  ],
+  "Choose a supported coupled-tank reachability configuration.": [
+    "请选择受支持的双水箱可达性配置。",
+    "Choose a supported coupled-tank reachability configuration."
+  ],
+  "Choose supported hydraulic parameters.": [
+    "请选择受支持的水力参数。",
+    "Choose supported hydraulic parameters."
+  ],
+  "Use increasing tank level limits within the model overflow height.": [
+    "请输入小于或等于模型溢流高度、严格递增的液位上下限。",
+    "Use increasing tank level limits within the model overflow height."
+  ],
+  "The recovery target must lie entirely inside the operating region.": [
+    "恢复目标必须完全位于运行区域内。",
+    "The recovery target must lie entirely inside the operating region."
+  ],
+  "Use valid pump and valve command bounds.": [
+    "请输入有效的泵和阀指令范围。",
+    "Use valid pump and valve command bounds."
+  ],
+  "Use slew limits of 0–150 percentage points/s and 0–1 fraction/s.": [
+    "泵变化率须在 0–150 个百分点/秒内，阀变化率须在 0–1 比例/秒内。",
+    "Use slew limits of 0–150 percentage points/s and 0–1 fraction/s."
+  ],
+  "Use 7–61 level points per axis and 2–5 samples per actuator.": [
+    "每个液位轴使用 7–61 个采样点，每个执行器使用 2–5 个采样值。",
+    "Use 7–61 level points per axis and 2–5 samples per actuator."
+  ],
+  "Use 1–40 control steps, 1–30 s per step and 0.02–0.25 s for integration.": [
+    "请输入 1–40 个控制步、1–30 秒的控制间隔及 0.02–0.25 秒的积分步长。",
+    "Use 1–40 control steps, 1–30 s per step and 0.02–0.25 s for integration."
+  ],
+  "Choose unique modeled disturbances for robust analysis.": [
+    "请选择互不重复的建模扰动。",
+    "Choose unique modeled disturbances for robust analysis."
+  ],
+  "The target contains no grid points. Refine the grid or widen the target.": [
+    "目标内没有网格点。请加密网格或扩大目标区域。",
+    "The target contains no grid points. Refine the grid or widen the target."
+  ],
+  "This study exceeds the graph or integration budget. Reduce the grid, actions or disturbances.": [
+    "研究超出转移图或积分预算。请缩小网格或减少指令、扰动。",
+    "This study exceeds the graph or integration budget. Reduce the grid, actions or disturbances."
+  ],
+  "Enter two physical heads between 0 and 10.8 m.": [
+    "请输入 0–10.8 m 内的两个物理液位。",
+    "Enter two physical heads between 0 and 10.8 m."
+  ],
+  "Choose a previous pump and valve command from the action grid.": [
+    "请从指令网格选择上一次泵量及阀开度。",
+    "Choose a previous pump and valve command from the action grid."
+  ],
+  "Select an exact scenario version.": [
+    "请选择确定的场景版本。",
+    "Select an exact scenario version."
+  ],
+  "Choose a coupled-tank scenario from this workspace.": [
+    "请选择此工作区内的双水箱场景。",
+    "Choose a coupled-tank scenario from this workspace."
+  ],
+  "Choose an incident from this workspace.": [
+    "请选择此工作区内的事件。",
+    "Choose an incident from this workspace."
+  ],
+  "Choose a modeled replay disturbance.": [
+    "请选择已建模的回放扰动。",
+    "Choose a modeled replay disturbance."
+  ],
+  "Recovery study not found.": [
+    "未找到恢复研究。",
+    "Recovery study not found."
+  ],
+  "Select a saved recovery trajectory.": [
+    "请选择已保存的恢复轨迹。",
+    "Select a saved recovery trajectory."
+  ]
+}
