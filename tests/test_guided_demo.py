@@ -12,10 +12,10 @@ class GuidedDemoTests(IncidentHTTPFixture):
         self.request(guide + '/run', {}, expected=404)
         self.assertEqual(self.request('/workspaces')['workspaces'], [])
 
-        state = self.request(guide, {'locale': 'en'})
+        state = self.request(guide, {})
         session, plan = state['session'], state['plan']
         workspace, dataset = session['workspaceId'], session['datasetId']
-        self.assertEqual(self.request(guide, {'locale': 'zh-CN'}), state)
+        self.assertEqual(self.request(guide, {}), state)
         self.request(guide + '/incident', {}, expected=400)
         data = self.request(f'/datasets/{dataset}')
         self.assertEqual(data['metadata']['model']['id'], 'coupled-tanks')
@@ -48,7 +48,7 @@ class GuidedDemoTests(IncidentHTTPFixture):
             self.assertTrue(result['intervals'][0]['contributions'])
             self.assertEqual(task['metrics']['labelled']['event']['detectedEvents'], 1)
 
-        state = self.request(guide + '/incident', {'locale': 'en'})
+        state = self.request(guide + '/incident', {})
         incident_id = state['session']['incidentId']
         self.assertEqual(self.request(guide + '/incident', {}), state)
         incident = f'/incidents/{incident_id}'
@@ -61,8 +61,8 @@ class GuidedDemoTests(IncidentHTTPFixture):
         self.start()
         self.assertEqual(self.request(guide), state)
         self.assertEqual(len(self.request(f'/experiments/{session["experimentId"]}/runs')['runs']), 1)
-        for locale, heading in (('en', 'Robust Max-Z'), ('zh-CN', '稳健最大 Z 分数')):
-            url = f'http://127.0.0.1:{self.service.server_port}/api{incident}/report.html?lang={locale}&download=1'
+        for heading in ('Incident investigation report', 'Robust Max-Z'):
+            url = f'http://127.0.0.1:{self.service.server_port}/api{incident}/report.html?download=1'
             with build_opener(ProxyHandler({})).open(url, timeout=30) as response:
                 report = response.read().decode('utf-8')
                 self.assertIn('attachment;', response.headers['Content-Disposition'])

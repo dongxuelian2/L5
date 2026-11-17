@@ -7,19 +7,33 @@ import traceback
 from urllib.parse import parse_qs, urlparse
 
 from .datasets import prepare_csv, series_preview
+from .live import LiveConflict, LiveUnavailable
 
 
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external', 'guided-demo'):
+    namespaces = {
+        'workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios',
+        'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs',
+        'external', 'guided-demo', 'sensor-health', 'estimations', 'regime-runs', 'alarm-sessions',
+    }
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in namespaces:
         return False
     store = handler.server.workspace_store
+    is_live = len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'live'
+    if is_live:
+        from . import live_routes
+        if not live_routes.allowed(handler, method):
+            handler.send_json(403, {'error': 'Live data requires a local browser or API client and JSON requests.'})
+            return True
     try:
         body = {}
         if method in ('POST', 'PATCH'):
             length = int(handler.headers.get('Content-Length', '0'))
             limit = int(os.environ.get('L5_MAX_REQUEST_BYTES', 256 * 1024 * 1024))
+            if is_live:
+                limit = min(limit, 256 * 1024)
             if not 0 < length <= limit:
                 handler.send_json(413, {'error': f'Request exceeds the configured {limit}-byte server budget (L5_MAX_REQUEST_BYTES).'})
                 return True
@@ -27,15 +41,73 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
+        if len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'safety':
+            from .safety_routes import route
+            return route(handler, store.safety, method, parts[2], parts[4:], body, parse_qs(url.query))
         if parts[1] == 'guided-demo':
             if len(parts) == 2 and method == 'GET':
                 result = store.guided_demo.state()
             elif len(parts) == 2 and method == 'POST':
-                result = store.guided_demo.prepare(body.get('locale'))
+                result = store.guided_demo.prepare()
             elif parts[2:] == ['run'] and method == 'POST':
                 result = store.guided_demo.start()
             elif parts[2:] == ['incident'] and method == 'POST':
-                result = store.guided_demo.incident(body.get('locale'))
+                result = store.guided_demo.incident()
+        elif parts[1] == 'sensor-health' and len(parts) == 3 and method == 'GET':
+            result = store.sensor_health.get(parts[2])
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'control':
+            workspace_id=parts[2]
+            if len(parts) == 4:
+                if method == 'GET':
+                    result = dict(experiments=store.control.list(workspace_id))
+                elif method == 'POST':
+                    result, status = store.control.create(workspace_id, body), 201
+            elif len(parts) == 5 and method == 'GET':
+                result = store.control.get(workspace_id, parts[4])
+            elif len(parts) == 6:
+                if parts[5] == 'dataset' and method == 'POST':
+                    result, status = store.control.dataset(workspace_id, parts[4], body.get('controller')), 201
+                elif parts[5] in ('report.html','results.csv') and method == 'GET':
+                    saved = store.control.get(workspace_id, parts[4])
+                    if parts[5] == 'report.html':
+                        from .control_reports import render_control_report
+                        content = render_control_report(saved)
+                        mime = 'text/html'
+                    else:
+                        from .control_service import csv_result
+                        content = csv_result(saved)
+                        mime = 'text/csv'
+                    filename = f'l5-control-{parts[4]}-{parts[5]}' if parse_qs(url.query).get('download') == ['1'] else None
+                    handler.send_content(200, mime, content, filename=filename)
+                    return True
+        elif len(parts)>=4 and parts[1]=='workspaces' and parts[3] in ('calibrations','twins'):
+            from .calibration_routes import route
+            result,status=route(store,method,parts,body)
+        elif len(parts) == 3 and parts[1] == 'estimations' and method == 'GET':
+            result = store.estimations.get(parts[2])
+        elif len(parts) == 4 and parts[1] == 'estimations' and parts[3] == 'dataset' and method == 'POST':
+            result, status = store.estimations.export(parts[2], body), 201
+        elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['estimations', 'observability'] and method == 'POST':
+            from .estimation import observability
+            store.workspace(parts[2])
+            result = observability(body.get('model'), body.get('point'), body.get('sensors'))
+        elif len(parts) == 4 and parts[1] == 'workspaces' and parts[3] == 'estimations':
+            if method == 'GET':
+                result = dict(runs=store.estimations.list(parts[2]))
+            elif method == 'POST':
+                result, status = store.estimations.create(parts[2], body), 201
+        elif is_live:
+            result, status = live_routes.route(store.live, method, parts[2], parts[4:], body, url.query)
+        elif parts[1] == 'alarm-sessions' or (parts[1] == 'workspaces' and len(parts) == 4 and parts[3] == 'alarm-sessions'):
+            from .alarm_routes import alarm_route
+            result, status = alarm_route(handler, store.alarms, method, parts, body, url.query)
+            if status is None:
+                return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'resilience':
+            from .resilience_routes import route
+            result, status = route(handler, store.resilience, method, parts[2], parts[4:], body, url.query)
+            if status is None:
+                return True
         elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
@@ -61,15 +133,29 @@ def dispatch(handler, method: str) -> bool:
                 result = store.tep_studies.fault3(parts[2], parts[6], int(query.get('run', ['1'])[0]))
             elif len(parts) == 8 and parts[7] == 'report.html' and method == 'GET':
                 from .tep_study_reports import render_study_report
-                payload = render_study_report(store, store.tep_studies.get(parts[2], parts[6]), locale=parse_qs(url.query).get('lang', [None])[0]).encode('utf-8')
-                handler.send_response(200)
-                handler.send_header('Content-Type', 'text/html; charset=utf-8')
-                handler.send_header('Content-Length', str(len(payload)))
-                handler.send_header('Cache-Control', 'no-store')
-                if parse_qs(url.query).get('download') == ['1']:
-                    handler.send_header('Content-Disposition', f'attachment; filename="l5-tep-study-{parts[6]}.html"')
-                handler.end_headers()
-                handler.wfile.write(payload)
+                payload = render_study_report(store, store.tep_studies.get(parts[2], parts[6]))
+                filename = f'l5-tep-study-{parts[6]}.html' if parse_qs(url.query).get('download') == ['1'] else None
+                handler.send_content(200, 'text/html', payload, filename=filename)
+                return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'reachability':
+            workspace = parts[2]
+            if len(parts) == 4 and method == 'GET':
+                result = store.recovery.index(workspace)
+            elif len(parts) == 4 and method == 'POST':
+                result, status = store.recovery.save(workspace, body), 201
+            elif len(parts) == 5 and parts[4] == 'compute' and method == 'POST':
+                result = store.recovery.compute(workspace, body)
+            elif len(parts) == 5 and method == 'GET':
+                result = store.recovery.get(workspace, parts[4])
+            elif len(parts) == 6 and parts[5] == 'dataset' and method == 'POST':
+                result, status = store.recovery.export_dataset(workspace, parts[4], body.get('strategy')), 201
+            elif len(parts) == 6 and parts[5] == 'report.html' and method == 'GET':
+                from .recovery_reports import render
+                saved = store.recovery.get(workspace, parts[4])
+                query = parse_qs(url.query)
+                payload = render(saved)
+                filename = f'l5-recovery-{saved["id"]}.html' if query.get('download') == ['1'] else None
+                handler.send_content(200, 'text/html', payload, filename=filename)
                 return True
         elif parts[1] == 'models' and method == 'GET':
             from .models import catalog, resolve
@@ -96,9 +182,20 @@ def dispatch(handler, method: str) -> bool:
             from .experiment_routes import report
             report(handler, store, parts[2], url.query)
             return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'prognostics':
+            from .prognostic_routes import dispatch_prognostics
+            result, status = dispatch_prognostics(handler, store, method, parts[2], parts[4:], body)
+            if status is None:
+                return True
         elif parts[1] in ('experiments', 'experiment-runs'):
             from .experiment_routes import route
             result, status = route(store, method, parts, body)
+        elif (len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'regimes') or parts[1] == 'regime-runs':
+            from .regime_routes import route
+            routed = route(handler, store.regimes, method, parts, body, url.query)
+            if routed is None:
+                return True
+            result, status = routed
         elif parts == ['api', 'units'] and method == 'GET':
             from .units import catalog
             result = {'units': catalog()}
@@ -131,15 +228,9 @@ def dispatch(handler, method: str) -> bool:
                     result = investigation(store, parts[2], [v for v in query['analysis'] if v] if 'analysis' in query else None)
                 elif parts[3] == 'report.html' and method == 'GET':
                     from .reports import render_report
-                    payload = render_report(store, parts[2], locale=parse_qs(url.query).get('lang', [None])[0]).encode('utf-8')
-                    handler.send_response(200)
-                    handler.send_header('Content-Type', 'text/html; charset=utf-8')
-                    handler.send_header('Content-Length', str(len(payload)))
-                    handler.send_header('Cache-Control', 'no-store')
-                    if parse_qs(url.query).get('download') == ['1']:
-                        handler.send_header('Content-Disposition', f'attachment; filename="l5-incident-{parts[2]}.html"')
-                    handler.end_headers()
-                    handler.wfile.write(payload)
+                    payload = render_report(store, parts[2])
+                    filename = f'l5-incident-{parts[2]}.html' if parse_qs(url.query).get('download') == ['1'] else None
+                    handler.send_content(200, 'text/html', payload, filename=filename)
                     return True
                 elif parts[3] == 'entries':
                     if method == 'GET':
@@ -196,8 +287,23 @@ def dispatch(handler, method: str) -> bool:
             elif method == 'DELETE':
                 store.delete_workspace(parts[2])
                 result = {'deleted': True}
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'sensor-placement':
+            from .sensor_placement_routes import route
+            result, status, sent = route(handler, store.sensor_placement, method, parts[2], parts[4:], body, url.query)
+            if sent:
+                return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'experiment-designs':
+            from .design_experiments import route
+            result, status = route(store.experiments.designs, method, parts[2], parts[4:], body)
         elif len(parts) == 4 and parts[1] == 'workspaces':
-            if parts[3] == 'model-research' and method == 'GET':
+            if parts[3] == 'replays' and method == 'POST':
+                result, status = store.replays.create(parts[2], body), 201
+            elif parts[3] == 'sensor-health':
+                if method == 'GET':
+                    result = {'diagnostics': store.sensor_health.list(parts[2])}
+                elif method == 'POST':
+                    result, status = store.sensor_health.run(parts[2], body), 201
+            elif parts[3] == 'model-research' and method == 'GET':
                 from .model_research import research
                 result = research(store, parts[2])
             elif parts[3] == 'scenarios':
@@ -244,6 +350,9 @@ def dispatch(handler, method: str) -> bool:
                     result = {'jobs': store.jobs(parts[2])}
                 elif method == 'POST':
                     result, status = store.analyze(parts[2], body), 201
+        elif len(parts) == 6 and parts[1] == 'workspaces' and parts[3] == 'replays' and method == 'POST':
+            if parts[5] in ('frame', 'evidence', 'export', 'incident'):
+                result = store.replays.operate(parts[2], parts[4], parts[5], body)
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['experiments', 'preview'] and method == 'POST':
             result = store.experiments.preview(parts[2], body.get('config'))
         elif len(parts) == 5 and parts[1] == 'workspaces' and parts[3:] == ['external', 'tep'] and method == 'POST':
@@ -269,6 +378,8 @@ def dispatch(handler, method: str) -> bool:
             result, status = store.experiments.simulation_labels(parts[2], body), 201
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'quality' and method == 'GET':
             result = store.dataset(parts[2])['metadata']['quality']
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'sensor-model' and method == 'GET':
+            result = {'model': store.sensor_health.model_defaults(parts[2])}
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'time-reference':
             if method == 'GET':
                 result = store.signals.clock(parts[2])
@@ -287,6 +398,10 @@ def dispatch(handler, method: str) -> bool:
         handler.send_json(status if result is not None else 404, result if result is not None else {'error': 'Unknown workspace endpoint.'})
     except KeyError as error:
         handler.send_json(404, {'error': str(error.args[0])})
+    except LiveConflict as error:
+        handler.send_json(409, {'error': str(error)})
+    except LiveUnavailable as error:
+        handler.send_json(502, {'error': str(error)})
     except (ValueError, TypeError, OverflowError) as error:
         handler.send_json(400, {'error': str(error)})
     except Exception:

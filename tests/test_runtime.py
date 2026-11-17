@@ -100,7 +100,7 @@ class RuntimeTests(unittest.TestCase):
                 intervention = request(f'/simulations/{identity}/interventions',dict(asOf=93,at=95.6,horizon=340,mode='observed',hypothesis='cooling_valve',actions=['feed_reduce','setpoint'],parameters={'feedReduction':.37,'setpointDrop':3.2}))
                 self.assertEqual(intervention['result']['observedThrough'],93)
                 self.assertEqual(len(intervention['result']['branches']),2)
-                brief = request('/analyze',{'simulationId':identity,'asOf':93,'prompt':'请检查我正在调查的传感器差异'})
+                brief = request('/analyze',{'simulationId':identity,'asOf':93,'prompt':'Check the sensor discrepancy under investigation'})
                 self.assertEqual(brief['incidentId'],identity)
                 self.assertEqual(brief['trace'][0]['tool'],'sensor_consistency')
                 dataset = request(f'/simulations/{identity}/save',{'workspaceId':wid})

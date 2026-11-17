@@ -3,11 +3,8 @@
 At timestamp t and channel j:
   S+(t,j) = max(0, max_{1<=h<=W} sum_{i=t-h+1}^t (z(i,j)-k))
   S-(t,j) = max(0, max_{1<=h<=W} sum_{i=t-h+1}^t (-z(i,j)-k)).
-Only the observed prefix matters; unlike unbounded Page CUSUM, old drift
-cannot remain in the accumulator beyond the trailing W observations.
-
-This is a maximum-over-recent-suffixes statistic, not a mechanical CUSUM
-alarm reset. W=12 / 24 and k=0.5 are fixed before looking at fault tests.
+The statistic maximizes over recent suffixes of at most W observations.
+The fault tests use fixed settings W=12 or 24 and k=0.5.
 """
 from __future__ import annotations
 

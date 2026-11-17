@@ -108,7 +108,7 @@ class DynamicPCAMonitor:
         if self.mode == "q":
             weights = (residual[-1]**2).reshape(self.lags + 1, self.features).sum(axis=0)
         else:
-            # Descriptive leverage only; no additive causal decomposition.
+            # Report descriptive leverage for the lagged signal features.
             leverage = np.abs(self.components.T @ (projected[-1] / np.sqrt(self.eigenvalues)))
             weights = leverage.reshape(self.lags + 1, self.features).sum(axis=0)
         order = sorted(range(self.features), key=lambda i: (-float(weights[i]), i))

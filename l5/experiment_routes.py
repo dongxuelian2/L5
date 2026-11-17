@@ -34,12 +34,6 @@ def route(store, method, parts, body):
 def report(handler, store, identity, query):
     from .experiment_reports import render_experiment_report
     params = parse_qs(query)
-    payload = render_experiment_report(store, identity, params.get('run', [None])[0], locale=params.get('lang', [None])[0]).encode('utf-8')
-    handler.send_response(200)
-    handler.send_header('Content-Type', 'text/html; charset=utf-8')
-    handler.send_header('Content-Length', str(len(payload)))
-    handler.send_header('Cache-Control', 'no-store')
-    if params.get('download') == ['1']:
-        handler.send_header('Content-Disposition', f'attachment; filename="l5-experiment-{identity}.html"')
-    handler.end_headers()
-    handler.wfile.write(payload)
+    payload = render_experiment_report(store, identity, params.get('run', [None])[0])
+    filename = f'l5-experiment-{identity}.html' if params.get('download') == ['1'] else None
+    handler.send_content(200, 'text/html', payload, filename=filename)

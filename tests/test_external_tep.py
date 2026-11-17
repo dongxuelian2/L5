@@ -188,7 +188,7 @@ class IndependentTests(unittest.TestCase):
         self.assertEqual(run['status'], 'completed')
         self.assertEqual(len(run['tasks']), 18)
         self.assertEqual(len(run['snapshot']['datasets']), 4)
-        self.assertIn('l5/independent.py', run['snapshot']['engine']['sourceHashes'])
+        self.assertIn('l5.independent.fit_detector', run['snapshot']['engine']['analysis'])
         self.assertEqual(len({t['metrics']['training']['modelKey'] for t in run['tasks']}), 9)
         hashes = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in self.root.rglob('*.json')}
         reopened = WorkspaceStore(self.root)

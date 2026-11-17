@@ -1,10 +1,8 @@
 """TEP normal-only temporal validation and predeclared alarm-workload budgets.
 
-This is NOT a new independent process dataset. Both chronological folds
-reuse overlapping segments of the SAME d00.dat normal trajectory. The
-external d00_te.dat is a separate reference *file*, not verified to be an
-independent plant realization. Fault labels and both held-out test file
-families cannot influence model fitting, thresholding or budget selection.
+Both chronological folds use overlapping segments of the same d00.dat
+normal trajectory. The separate d00_te.dat file supplies normal test data.
+The training partitions supply the fit, calibration, and budget inputs.
 
 The primary budget is fixed before examining any fault outcomes:
 at most one confirmed normal-calibration alarm episode and at most 2%
@@ -154,15 +152,15 @@ def run_validation(
         "rows": [],
         "paired_vs_maxz": [],
         "limitations": [
-            "Two forward chronological folds overlap in the same normal-training trajectory; they are not independent replicates.",
-            "d00_te.dat is a separate external normal test FILE, not evidence of independent plant trajectories or operating regimes.",
-            "An equal cap on healthy CALIBRATION episodes/active samples does not imply equal realized held-out healthy-test workload.",
-            "The short calibration sections (~100 observations) provide weak guarantees about the 960-sample normal test.",
+            "The two forward chronological folds overlap in one normal training trajectory.",
+            "The reference file d00_te.dat supplies the external normal test sequence.",
+            "Equal normal calibration budgets can yield different alarm workloads on the healthy test sequence.",
+            "Calibration uses about 100 observations. The normal test sequence has 960 samples.",
             "DPCA uses normal-fit-only lag padding and resets per separate calibration, validation or test sequence.",
             "All threshold parameters and fold boundaries were set before examining any fault labels.",
-            "The same set of 21 held-out fault trajectories is reused in both folds; no independent confidence interval follows.",
+            "Both folds use the same 21 held-out fault trajectories.",
             "Mean delay conditional on detection can improve when difficult cases are missed; compare full fault hit counts.",
-            "Alarm episodes and active sample burden both matter. No superiority or deployment safety claim follows.",
+            "The study reports both alarm episodes and alarm-active samples.",
         ],
     }
     for fold_name, fit_end, cal_end, val_end in folds:

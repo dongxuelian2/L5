@@ -8,7 +8,6 @@ from xml.etree import ElementTree
 import unittest
 
 from l5.incident_timeline import compare_intervals, observed_spans
-from l5.report_locale import localized_report
 from l5.reports import chart, render_report
 from l5.workspace import WorkspaceStore
 from tests.test_incidents import IncidentHTTPFixture, csv_with_excursions
@@ -31,8 +30,8 @@ class ReportMarkup(HTMLParser):
         self.text.append(data)
 
 
-class ReportLocaleTests(unittest.TestCase):
-    def test_system_report_text_and_chart_defaults_follow_each_request_locale(self):
+class ReportLanguageTests(unittest.TestCase):
+    def test_system_report_text_and_chart_defaults_are_english(self):
         with TemporaryDirectory() as folder:
             store = WorkspaceStore(Path(folder))
             workspace = store.create_workspace('Project')
@@ -42,27 +41,22 @@ class ReportLocaleTests(unittest.TestCase):
                 algorithm='robust-maxz', alpha=.01))
             incident = store.incidents.create(workspace['id'], dict(title='Investigation', status='investigating',
                 source=dict(kind='analysis',analysisId=result['id'])))
-            english = render_report(store,incident['id'],locale='en')
-            chinese = render_report(store,incident['id'],locale='zh-CN')
+            english = render_report(store,incident['id'])
             self.assertNotRegex(''.join(ReportMarkup(english).text), r'[\u3400-\u9fff]')
-            self.assertIn('Current status:Investigating', english)
+            self.assertIn('Current status: Investigating', english)
             self.assertIn('Status change', english)
             self.assertIn('Anomaly interval', english)
-            self.assertIn('当前状态：调查中', chinese)
-            self.assertIn('稳健最大 Z 分数', chinese)
-            self.assertEqual(english.count('<svg'),chinese.count('<svg'))
             store.incidents.update(incident['id'],dict(title='状态变更',conclusion='Status'))
             before = store.incidents.get(incident['id'])
-            retained = render_report(store,incident['id'],locale='en')
+            retained = render_report(store,incident['id'])
             self.assertIn('状态变更',retained)
             self.assertIn('Status',retained)
             self.assertEqual(before,store.incidents.get(incident['id']))
-        render_chart = localized_report(lambda: chart('Raw signal',[0,1],[dict(label='raw',values=[1,2])]))
-        english_chart = render_chart(locale='en')
+        english_chart = chart('Raw signal', [0, 1], [dict(label='raw', values=[1, 2])])
         self.assertNotRegex(''.join(ReportMarkup(english_chart).text),r'[\u3400-\u9fff]')
-        self.assertIn('原始值（源数据未提供单位）',render_chart(locale='zh-CN'))
+        self.assertIn('Original values (source provides no units)', english_chart)
 
-    def test_model_forecast_display_translates_without_changing_saved_results(self):
+    def test_model_forecast_labels_preserve_saved_results(self):
         with TemporaryDirectory() as directory:
             store=WorkspaceStore(Path(directory))
             workspace=store.create_workspace('Model language check')
@@ -73,24 +67,19 @@ class ReportLocaleTests(unittest.TestCase):
             incident=store.incidents.create(workspace['id'],dict(title='Tank investigation',
                 source=dict(kind='simulation',simulationId=session['id'],windowStart=0,asOf=80)))
             store.incidents.add_link(incident['id'],dict(kind='run',simulationId=session['id'],runId=run['id']))
-            english=render_report(store,incident['id'],locale='en')
-            chinese=render_report(store,incident['id'],locale='zh-CN')
+            english=render_report(store,incident['id'])
             self.assertNotRegex(''.join(ReportMarkup(english).text),r'[\u3400-\u9fff]')
             self.assertIn('Adjust inlet pump command',english)
-            self.assertIn('调整进水泵指令',chinese)
-            self.assertIn('实际液位峰值',chinese)
-            self.assertIn('预测不确定性界限',chinese)
-            self.assertEqual(english.count('<svg'),chinese.count('<svg'))
+            self.assertIn('Peak physical level', english)
+            self.assertIn('Forecasts use fixed scenario parameters', english)
             self.assertEqual(run,store.runtime.run(session['id'],run['id']))
 
 
 class IncidentReportingHTTPTests(IncidentHTTPFixture):
-    def report(self, base, download=False, locale=None):
+    def report(self, base, download=False):
         params = []
         if download:
             params.append('download=1')
-        if locale:
-            params.append('lang=' + locale)
         with build_opener(ProxyHandler({})).open(
                 f'http://127.0.0.1:{self.service.server_port}/api{base}/report.html' + ('?' + '&'.join(params) if params else '')) as response:
             self.assertEqual(response.status, 200)
@@ -109,21 +98,17 @@ class IncidentReportingHTTPTests(IncidentHTTPFixture):
         self.request(base + '/links', dict(kind='analysis', analysisId=results[1]['id']), expected=201)
         return wid, dataset, results, base
 
-    def test_report_language_localizes_template_without_translating_saved_evidence(self):
+    def test_report_uses_english_and_preserves_saved_evidence(self):
         _, _, _, base = self.csv_event()
         # These deliberately match template translation keys.
         self.request(base, dict(title='事件调查报告', conclusion='状态'), method='PATCH')
         before = self.request(base)
-        english = self.report(base, locale='en', download=True)
-        chinese = self.report(base, locale='zh-CN')
+        english = self.report(base, download=True)
         self.assertIn('<html lang="en">', english)
         self.assertIn('Incident investigation report', english)
         self.assertIn('Data, parameters and linked records', english)
         self.assertIn('事件调查报告', english)  # Saved title remains verbatim.
         self.assertIn('状态', english)  # Saved conclusion remains verbatim.
-        self.assertIn('<html lang="zh-CN">', chinese)
-        self.assertIn('附录. 数据、参数与关联记录', chinese)
-        self.assertEqual(english.count('<svg'), chinese.count('<svg'))
         self.assertFalse(ReportMarkup(english).external)
         self.assertEqual(before, self.request(base))
 
@@ -170,7 +155,7 @@ class IncidentReportingHTTPTests(IncidentHTTPFixture):
         self.assertIn('暂时支持冷却侧解释，尚未确认根因。', html)
         self.assertIn('进料稳定', html)
         self.assertIn('真实保存内容 &amp; &lt;检查&gt;', html)
-        self.assertNotIn('<h2>5. 模拟调查', html)
+        self.assertNotIn('<h2>5. Simulation investigation', html)
         self.assertIn('@page { size:A4', html)
         import re
         figures = re.findall(r'<svg\b.*?</svg>', html, re.S)
@@ -178,8 +163,8 @@ class IncidentReportingHTTPTests(IncidentHTTPFixture):
         for svg in figures:
             ElementTree.fromstring(svg)
         # Inspect real score and measurement paths rather than asserting a placeholder image exists.
-        self.assertIn('异常分数与固定阈值', html)
-        self.assertIn('原始变量趋势', html)
+        self.assertIn('Anomaly score and fixed threshold', html)
+        self.assertIn('Original variable trend', html)
         self.assertIn('d="M', html)
         self.stop(); self.start()
         restored = self.request(base + '/timeline')
@@ -246,7 +231,7 @@ class IncidentReportingHTTPTests(IncidentHTTPFixture):
         self.assertEqual(experiment['actionAt'], 96)
         self.assertEqual(experiment['axisId'], 'simulation:' + sid)
         html = self.report(base)
-        for content in ('模拟调查与干预方案比较', 'sensor_consistency', 'feed_reduce', 'bypass', '物理压力（kPa）', 'feedReduction', trial['id']):
+        for content in ('Simulation investigation and intervention comparison', 'sensor_consistency', 'feed_reduce', 'bypass', 'Physical pressure (kPa)', 'feedReduction', trial['id']):
             self.assertIn(content, html)
         self.assertTrue(f'{trial["result"]["branches"][0]["physicalPeak"]:.6g}' in html)
         self.stop(); self.start()

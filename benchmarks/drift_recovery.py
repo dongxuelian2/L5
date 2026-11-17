@@ -5,10 +5,9 @@ Competing decisions:
   - latch an alert until 3 consecutive *observed* readings return below
     75% of the same healthy-calibrated trigger threshold.
 
-Recovery does NOT silence an ongoing fault merely because an incident has
-been raised, and abstention resets both the temporal detector and alarm state.
-The adaptive model is not guaranteed to distinguish benign drift from a
-slowly evolving fault: testing must explicitly report this limitation.
+A confirmed alarm remains active until the release rule is met. Abstention
+resets the temporal detector and alarm state. Assess whether adaptation absorbs
+slowly evolving faults using the early detection counts.
 """
 from __future__ import annotations
 
@@ -220,8 +219,7 @@ def run_experiment(
                     record = {
                         "source": name,
                         "fault_id": int(name[1:3]),
-                        # A pre-existing nuisance alarm is NOT a new detected
-                        # fault; make the distinction observable in reports.
+                        # Record whether an alarm was already active when the fault began.
                         "alarm_already_active_at_fault_onset": (
                             decisions[onset - 1] == ALARM if onset is not None else None
                         ),
@@ -281,14 +279,12 @@ def render_markdown(report: dict) -> str:
         )
     lines.extend([
         "",
-        "Recovery does not suppress an active incident on a timer: three observed",
-        "sub-threshold readings are required for confirmed clearance.",
+        "The recovery policy clears an alarm after three observed sub-threshold readings.",
         "JSON additionally records post-transient clearance delay or censoring",
         "when the healthy test was in an alarm at intervention end.",
-        "Pre-existing pre-fault alarm episodes are reported separately; their",
-        "continuation past onset is not credited as a newly detected fault.",
-        "An adaptive center can absorb gradual *fault* evidence; unchanged fault",
-        "denominators and early-hit counts expose rather than conceal this risk.",
+        "The report separates alarms active before onset from new post-onset detections.",
+        "An adaptive center can absorb evidence of a gradual fault. Use the fixed",
+        "fault denominators and early detection counts to assess this effect.",
         "", "## Original input SHA-256", "",
     ])
     for file in report["source_files"]:

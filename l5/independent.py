@@ -14,11 +14,8 @@ from .monitoring import calibrate
 
 
 def file_hash(path):
-    h = hashlib.sha256()
     with path.open('rb') as stream:
-        for block in iter(lambda: stream.read(1024*1024), b''):
-            h.update(block)
-    return h.hexdigest()
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def snapshot(store, dataset):

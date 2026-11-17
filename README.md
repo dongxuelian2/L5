@@ -1,134 +1,66 @@
-# L5 — Industrial Process Analysis & Investigation Workspace
+# L5
 
-**Industrial time-series analysis, anomaly detection, process experiments and incident investigation.**
+L5 is a local workstation for industrial process analysis. Import measurements or run a simulation, compare detectors, investigate alarms, and export the evidence in a standalone report.
 
-[Quick Start](#quick-start) · [Features](#core-features) · [TEP Case Study](#tennessee-eastman-case-study) · [Architecture](docs/architecture.md) · [Documentation](#examples--documentation)
+![L5 guided investigation of a coupled-tank pump fault](docs/l5-workspace.jpg)
 
-[![Check](https://github.com/dongxuelian2/L5/actions/workflows/check.yml/badge.svg)](https://github.com/dongxuelian2/L5/actions/workflows/check.yml)
+## Core capabilities
 
-L5 keeps industrial data, processing steps, detection results and investigation evidence together in a persistent local project. Start with your own CSV, explore multiple sources, derive a dataset and compare nine detectors. Turn alarm intervals, evidence and conclusions into an incident and an offline report. TripLens and coupled-tank models provide a second complete path from fault scenarios to intervention experiments.
+| Workflow | Tools |
+| --- | --- |
+| Measure and monitor | Import CSV or TSV, record read-only OPC UA subscriptions, inspect signal quality, align time series, replay measurements, and compare anomaly detectors across operating regimes. |
+| Diagnose and investigate | Examine alarm episodes, correlate related events, compare sensor and process fault explanations, and link supporting evidence to an incident. |
+| Simulate and design | Run TripLens and coupled-tank scenarios, compare PI and model predictive control, calibrate digital twins, estimate states, and design sensor layouts and experiments. |
+| Evaluate risk and maintenance | Compare fault-injection responses, forecast limit crossings and remaining useful life, and study simulated safety recovery and reachability. |
 
-![L5 Experiment Workspace comparing nine detectors on one derived Dataset, with a shared timeline and saved alarm intervals](docs/images/workspace-experiment.jpg)
+## Installation
 
-*Align three CSV sources into a derived dataset, compare nine detectors on a shared timeline, and link the saved results to an incident.*
+Use Node.js 22.12 or later, npm, and Python 3.12 or later. From the repository root, run the installation commands below.
 
-## Core Features
-
-| Module | What you can do |
-|---|---|
-| **Guided Investigation Demo** | Investigate a simulated inlet pump fault, compare two live detectors, open a linked incident and export an offline report using a built-in case. |
-| **Data Management** | Create persistent workspaces; import CSV/TSV; inspect samples, clocks and quality; retain multiple datasets and analysis histories. |
-| **Signal Explorer** | Edit names, engineering units, devices and tags. Relate source clocks, browse raw measurements with a shared window and cursor, inspect missing samples and acquisition gaps, and save views. |
-| **Data Transformation** | Convert units, resample, handle duplicate timestamps and missing values, and calculate derived signals. Preview computed curves and sample provenance, then generate an ordinary analysis-ready Dataset. |
-| **Anomaly Detection** | Run Robust Max-Z, PCA-Q/T², EWMA, Page CUSUM, finite-window CUSUM, DPCA-Q/T² and Adaptive Max-Z (Experimental). Inspect scores, thresholds, intervals and signal contributions. |
-| **Experiment & Benchmark** | Compare algorithms and finite parameter studies; configure separate normal fit, calibration and test datasets; retain execution snapshots, task status, label evaluations, research notes and conclusions. |
-| **Incident Investigation** | Organize datasets, analyses and intervals into an incident. Connect timelines, raw curves, hypotheses and supporting or opposing evidence, then return to the saved sources. |
-| **Models & Scenarios** | Create versioned scenarios, simulate faults, run investigation tools and compare interventions. TripLens provides 18 signals and 12 faults; Coupled-Tank provides 7 signals and 4 faults. |
-| **Reporting & Export** | Generate standalone HTML containing saved curves, provenance, parameters and conclusions. Print to A4 PDF in the browser, export analysis/incident JSON, and download simulated observations as CSV. |
-
-## Workflows & Screenshots
-
-```mermaid
-flowchart LR
-    A[Import data] --> B[Explore signals]
-    B --> C[Transform]
-    C --> D[Analyze and compare]
-    D --> E[Investigate]
-    E --> F[Report]
-```
-
-**Multiple sources → derived Dataset.** Make time relationships and units explicit while retaining original observations and processing provenance.
-
-<details>
-<summary>Signal Explorer: three sources, one observation window and a raw-sample cursor</summary>
-
-![Signal Explorer aligns the selected temperature, flow and pressure sources on a UTC window and distinguishes measured samples, missing values and gaps](docs/images/workspace-signals.jpg)
-
-</details>
-
-<details>
-<summary>Transformation: resampling, unit conversion and measured quality preview</summary>
-
-![Transformation Workspace previews a common grid, kPa-to-MPa conversion and a calculated pressure rate using three example sources](docs/images/transformation-preview.jpg)
-
-</details>
-
-**Detection results → investigation records.** Place detector alarms, published events and observations on one timeline, then link evidence and generate a report.
-
-![The CSV example's saved Incident timeline, with the original temperature analysis, nine detector results and investigation records](docs/images/workspace-incident.jpg)
-
-**Model scenario → intervention comparison → Dataset → Experiment.** Save each simulation with its configuration and continue with the same data, analysis and investigation tools.
-
-<details>
-<summary>Coupled-Tank: measured levels and inlet flow under pump degradation</summary>
-
-![Actual coupled-tank observations showing the two measured levels and inlet flow during the 0–80 second window of a pump-degradation scenario](docs/images/workspace-model-tank.jpg)
-
-</details>
-
-[More screenshots and example data](docs/images/README.md).
-
-## Tennessee Eastman Case Study
-
-L5 brings [Rieth et al.'s official public TEP simulation data](https://doi.org/10.7910/DVN/6C3JR1) into the Dataset → Experiment → Incident workflow: **52 process variables, nine detectors, 20 faults and three normal-training configurations**.
-
-The expanded benchmark completed **585 executions**, and the A/B/C normal-training study completed **1,755 executions**: **2,340 successful executions** across both studies, covering **1,755 distinct training-configuration/detector/test-run combinations**. Training configuration A was evaluated in both studies.
-
-| Fixed configuration A | Detected within 30 min / 60 fault events | Eventual nominal detections / 60 | Alarm samples on normal data / 4,800 |
-|---|---:|---:|---:|
-| PCA-Q | 19 | 51 | 2 |
-| DPCA-Q | 20 | 54 | 2 |
-
-On the same normal test data, Page CUSUM produced **0, 739 and 1,833** alarm samples under training configurations A, B and C. The study reports early detections, eventual alarm overlap, detection delay and normal-data alarm burden separately. See the [expanded benchmark](docs/tep-benchmark-expanded.md) for the full nine-detector results and per-fault analysis.
-
-![Saved TEP robustness results: individual fault-3 test runs and normal-training sensitivity under fixed method parameters](docs/images/workspace-tep-study.jpg)
-
-Results use TEP mode 1 and three test runs per fault. [Original 72-task case](docs/tep-case-study.md) · [Data preparation and reproduction](examples/tep/README.md)
-
-## Quick Start
-
-Install **Node.js 20.19+ or 22.12+, npm and Python 3.12+**. From the repository root:
-
-```bash
+```sh
 npm ci
-python -m venv .venv
+python3 -m venv .venv
 node scripts/python.mjs -m pip install -r requirements.txt
 npm run build
+```
+
+On Windows, use `py -3.12 -m venv .venv`. The remaining commands are the same in both environments.
+
+## Quick start
+
+```sh
 npm run serve
 ```
 
-Open **http://127.0.0.1:8787** and select **Guided Investigation Demo** from Workspaces. Load the built-in coupled-tank scenario, run both detectors, then create the linked incident and generate a report. The demo uses the local engine and needs no dataset download. [Walk through the case](docs/user-guide.md#guided-investigation-demo).
+Open [L5](http://127.0.0.1:8787), then choose **Open guided demo** to try a built-in case. To work with your own measurements, create a workspace and import a CSV in **Datasets**. Try the motor cooling example to explore clocks, gaps, and transformations across three sources. [Example data](examples/data-foundation/README.md)
 
-To work with your own data, create a workspace and import a CSV. The repository includes [three signal examples](examples/data-foundation/README.md). Prepare official TEP data separately using the [reproduction guide](examples/tep/README.md).
+Workspaces are stored locally in `data/`. Reopen the application with the same data directory to resume your work.
 
-The interface supports English and Chinese, with a language switch in the top-right corner. Your selection also applies to newly generated offline reports.
+## Guided demonstration
 
-For development, run `npm run serve` and `npm run dev` in separate terminals. Vite proxies `/api` to port 8787. The Python launcher prefers the project `.venv`; set `PYTHON` to select another interpreter.
+1. Choose **Load the scenario** to open the coupled-tank case. Compare measured levels with inlet flow and the pump command around the injected fault.
+2. Select **Run both detectors** and compare Robust Max-Z with EWMA. Inspect scores, thresholds, alarm delay, and signal contributions.
+3. Choose **Create linked incident**. Open the incident timeline and record your hypothesis, evidence, and conclusion.
+4. Generate the report and download the HTML. Open it in a browser to review the saved evidence or print to PDF.
 
-Projects live in `data/` by default: SQLite stores metadata and investigation records; CSV, NumPy arrays and result files retain numerical evidence. Restart with the same directory to continue. Set `L5_DATA_DIR` or choose a directory explicitly:
+The [Streamlit demo](demo/README.md) runs the same detectors on an example or a small CSV and includes a Tennessee Eastman results browser.
 
-```bash
-node scripts/python.mjs server.py --data-dir /path/to/l5-data
-```
+## Technical components
 
-## Examples & Documentation
+The React and TypeScript interface uses a local Python HTTP API. NumPy, pandas, and SciPy support numerical analysis. SQLite stores workspace records alongside CSV and array files. Models, detectors, and specialist workspaces share the same dataset and incident model. OPC UA acquisition uses subscriptions with read-only access. Control, fault injection, and recovery policies run on local simulations.
 
-| Start here | Further details |
-|---|---|
-| [User guide: data, signals and transformations](docs/user-guide.md#数据与信号) | [Signal and clock contracts](docs/architecture.md#signal--time-series-workspace) · [Transformations](docs/architecture.md#transformation-pipeline) |
-| [Analysis and experiments](docs/user-guide.md#分析与实验) | [Configuration, labels, evaluation and API](docs/architecture.md#analysis-experiments) |
-| [Models and scenarios](docs/user-guide.md#模型与场景) | [Model interfaces, equations, numerical examples and limits](docs/model-workspace.md) |
-| [Incidents and reports](docs/user-guide.md#事件与报告) | [Timeline, reports and persistence](docs/architecture.md#事件时间线共享窗口与报告) |
-| [Original TEP case](docs/tep-case-study.md) · [Expanded benchmark](docs/tep-benchmark-expanded.md) | [Reproduction and result files](examples/tep/README.md) · [Earlier algorithm studies](benchmarks/README.md) |
-| [TripLens example video](video/README.md) | Open **TripLens examples** in the application for the existing investigation and teaching cases. |
+## Reproducible results
 
-## Development & Validation
+A fixed Tennessee Eastman mode 1 benchmark evaluated nine detection methods on three test runs for each of 20 simulated faults, plus five independent normal runs. These results use normal training configuration A.
 
-React 19, TypeScript and Vite power the frontend; Python 3.12+, NumPy, pandas and SQLite provide local computation and persistence. GitHub Actions builds the application on pushes to `main`. Run the application and research checks locally:
+| Detector | Faults detected within 30 min | Faults detected during the run | Alarm samples on normal data |
+| --- | ---: | ---: | ---: |
+| PCA-Q | 19 / 60 | 51 / 60 | 2 / 4,800 |
+| Dynamic PCA-Q | 20 / 60 | 54 / 60 | 2 / 4,800 |
 
-```bash
-npm run check             # Workspace/simulation Python, React DOM, TypeScript, production build
-npm run test:research     # Research regressions
-```
+## Documentation
 
-[Development notes](docs/development.md) · [Research methods and limitations](benchmarks/README.md) · [MIT License](LICENSE)
+- [User guide](docs/user-guide.md) for importing measurements, specialist workspaces, and report export.
+- [Architecture](docs/architecture.md) for repository responsibilities, the data pipeline, and persistence.
+- [Benchmarks](docs/benchmarks.md) for data sources, experimental protocols, and reproduction commands.
+- [MIT license](LICENSE).

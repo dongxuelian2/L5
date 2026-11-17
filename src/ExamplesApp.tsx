@@ -1,4 +1,4 @@
-import { LanguageSwitch, t as tr, useLocale } from "./i18n";
+import { t as tr } from "./lib/text";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { PlatformWorkspace } from "./components/PlatformWorkspace";
@@ -50,15 +50,14 @@ type Overlay =
   | { type: "commands" }
   | null;
 const views: { id: View; symbol: string; label: string; key: string }[] = [
-  { id: "live", symbol: "◉", get label() { return tr("Live incident"); }, key: "1" },
-  { id: "investigate", symbol: "⌘", get label() { return tr("Investigate"); }, key: "2" },
-  { id: "learn", symbol: "▣", get label() { return tr("Learn"); }, key: "3" },
-  { id: "replay", symbol: "↶", get label() { return tr("Incident replay"); }, key: "4" },
-  { id: "lab", symbol: "⌗", get label() { return tr("Computation lab"); }, key: "5" },
+  { id: "live", symbol: "◉", get label() { return "Live incident"; }, key: "1" },
+  { id: "investigate", symbol: "⌘", get label() { return "Investigate"; }, key: "2" },
+  { id: "learn", symbol: "▣", get label() { return "Learn"; }, key: "3" },
+  { id: "replay", symbol: "↶", get label() { return "Incident replay"; }, key: "4" },
+  { id: "lab", symbol: "⌗", get label() { return "Computation lab"; }, key: "5" },
 ];
 
 export default function ExamplesApp() {
-  useLocale();
   const [view, setView] = useState<View>("investigate");
   const [time, setTime] = useState(180);
   const [playing, setPlaying] = useState(false);
@@ -90,12 +89,12 @@ export default function ExamplesApp() {
   const point = pointAt(time);
   const status =
     time < scenario.faultTime
-      ? tr("NOMINAL")
+      ? "NOMINAL"
       : time < scenario.firstAlarm
-        ? tr("DEVIATION")
+        ? "DEVIATION"
         : time < scenario.tripTime
-          ? tr("ESCALATING")
-          : tr("CRITICAL");
+          ? "ESCALATING"
+          : "CRITICAL";
   const tone =
     time < scenario.faultTime
       ? "mint"
@@ -275,7 +274,7 @@ export default function ExamplesApp() {
     ...views.map((item) => ({
       id: item.id,
       title: item.label,
-      group: tr("WORKSPACE"),
+      group: "WORKSPACE",
       hint: item.key,
       run: () => {
         closeOverlay();
@@ -284,7 +283,7 @@ export default function ExamplesApp() {
     })),
     {
       id: "run",
-      title: tr("Run the complete incident sequence"),
+      title: "Run the complete incident sequence",
       group: "ACTION",
       hint: "R",
       keywords: "restart start play",
@@ -295,7 +294,7 @@ export default function ExamplesApp() {
     },
     {
       id: "legacy-investigate",
-      title: tr("Investigate rising reactor pressure"),
+      title: "Investigate rising reactor pressure",
       group: "ACTION",
       hint: "↗",
       keywords: "analyst root cause why",
@@ -308,7 +307,7 @@ export default function ExamplesApp() {
     },
     {
       id: "compare",
-      title: tr("Compare a cooling-bypass intervention"),
+      title: "Compare a cooling-bypass intervention",
       group: "ACTION",
       hint: "⑂",
       keywords: "counterfactual simulate branch",
@@ -316,7 +315,7 @@ export default function ExamplesApp() {
     },
     {
       id: "journal",
-      title: tr("Open the alarm journal"),
+      title: "Open the alarm journal",
       group: "ACTION",
       hint: "↗",
       keywords: "logs raw events",
@@ -333,7 +332,7 @@ export default function ExamplesApp() {
     ...chapters.map((chapter) => ({
       id: `chapter-${chapter.time}`,
       title: tr("Jump to {0}", {0: chapter.label.toLowerCase()}),
-      group: tr("CHAPTER"),
+      group: "CHAPTER",
       hint: `+${clock(chapter.time)}`,
       keywords: chapter.title,
       run: () => {
@@ -349,7 +348,7 @@ export default function ExamplesApp() {
       className={`workstation ${view === "live" || view === "replay" ? "has-playback" : "is-lab"}`}
     >
       <a href="#main-content" className="skip-link">
-        {" "}{tr("Skip to workspace")}{" "}</a>
+        {" "}Skip to workspace{" "}</a>
       <aside className="sidebar">
         <a
           href="#"
@@ -358,7 +357,7 @@ export default function ExamplesApp() {
             event.preventDefault();
             changeView("live");
           }}
-          aria-label={tr("TripLens home")}
+          aria-label={"TripLens home"}
         >
           <span className="brand-mark" aria-hidden="true">
             <i />
@@ -371,13 +370,13 @@ export default function ExamplesApp() {
           </span>
           <span>
             trip<span className="text-mint">lens</span>
-            <small>{tr("INCIDENT INTELLIGENCE")}</small>
+            <small>INCIDENT INTELLIGENCE</small>
           </span>
         </a>
         <div className="workspace-label">
-          {" "}{tr("WORKSPACE")}{" "}<span>/ 01</span>
+          {" "}WORKSPACE{" "}<span>/ 01</span>
         </div>
-        <nav aria-label={tr("Main navigation")}>
+        <nav aria-label={"Main navigation"}>
           {views.map((item) => (
             <button
               key={item.id}
@@ -400,49 +399,49 @@ export default function ExamplesApp() {
         </nav>
         <div className="sidebar-divider" />
         <div className="workspace-label">
-          {" "}{tr("CONNECTED PROCESS")}{" "}<span>⌁</span>
+          {" "}CONNECTED PROCESS{" "}<span>⌁</span>
         </div>
         <div className="plant-card">
           <div>
             <StatusDot pulse={playing} />
             <strong>
-              {" "}{tr("PROCESS /")}{" "}
+              {" "}PROCESS /{" "}
               {view === "investigate" || view === "learn" ? "02" : "01"}
             </strong>
           </div>
           <p>
             {view === "investigate" || view === "learn"
-              ? tr("Coupled process network")
-              : tr("Reactor cooling loop")}
+              ? "Coupled process network"
+              : "Reactor cooling loop"}
           </p>
           <div className="plant-tags">
             <span>
               {view === "investigate" || view === "learn"
-                ? tr("18 channels")
-                : tr("6 signals")}
+                ? "18 channels"
+                : "6 signals"}
             </span>
             <span>
               {view === "investigate" || view === "learn"
-                ? tr("14 paths")
-                : tr("5 paths")}
+                ? "14 paths"
+                : "5 paths"}
             </span>
           </div>
         </div>
         <div className="sidebar-tree">
           <div>
-            <span className="tree-line">├─</span> R-101 <span>{tr("reactor")}</span>
+            <span className="tree-line">├─</span> R-101 <span>reactor</span>
             <i
               className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 41 ? "amber" : "mint"}`}
             />
           </div>
           <div>
-            <span className="tree-line">├─</span> V-201 <span>{tr("separator")}</span>
+            <span className="tree-line">├─</span> V-201 <span>separator</span>
             <i
               className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 56 ? "violet" : "mint"}`}
             />
           </div>
           <div>
-            <span className="tree-line">└─</span> P-301 <span>{tr("product")}</span>
+            <span className="tree-line">└─</span> P-301 <span>product</span>
             <i
               className={`bg-${view === "investigate" || view === "learn" ? "muted" : time >= 67 ? "violet" : "mint"}`}
             />
@@ -459,14 +458,14 @@ export default function ExamplesApp() {
             <span>░░░▒▒▓▓▒▒░░░░░░</span>
           </div>
           <p>
-            {" "}{tr("Less noise.")}{" "}<br />
-            <span className="text-mint">{tr("More understanding.")}</span>
+            {" "}Less noise.{" "}<br />
+            <span className="text-mint">More understanding.</span>
           </p>
           <button
             className="help-button"
             onClick={() => setOverlay({ type: "help" })}
           >
-            <Glyph>?</Glyph>{" "}{tr("Field guide")}{" "}<kbd>?</kbd>
+            <Glyph>?</Glyph>{" "}Field guide{" "}<kbd>?</kbd>
           </button>
           <div className="sidebar-version">
             <span>TRIPLENS / v0.2</span>
@@ -479,44 +478,44 @@ export default function ExamplesApp() {
         <header className="topbar">
           <div className="breadcrumb">
             <span className="text-mint">⌘</span>
-            <span>{tr("workspace")}</span>
+            <span>workspace</span>
             <span>/</span>
             <strong>
               {view === "live"
-                ? tr("live-incident")
+                ? "live incident"
                 : view === "replay"
-                  ? tr("incident-replay")
+                  ? "incident replay"
                   : view === "investigate"
-                    ? tr("investigate")
+                    ? "investigate"
                     : view === "learn"
-                      ? tr("learn")
-                      : tr("computation-lab")}
+                      ? "learn"
+                      : "computation lab"}
             </strong>
             <span className="terminal-cursor" aria-hidden="true">
               ▍
             </span>
           </div>
           <div className="topbar-right">
-            <LanguageSwitch />
+
             <button
               className="command-trigger"
-              aria-label={tr("Open command palette")}
+              aria-label={"Open command palette"}
               onClick={() => {
                 setPlaying(false);
                 setOverlay({ type: "commands" });
               }}
             >
               <span>⌕</span>
-              <span>{tr("Jump to…")}</span>
+              <span>Jump to…</span>
               <kbd>Ctrl K</kbd>
             </button>
             <span className="connection-label">
-              <StatusDot />{" "}{tr("SYSTEM ONLINE")}{" "}</span>
+              <StatusDot />{" "}SYSTEM ONLINE{" "}</span>
             <span className="topbar-divider" />
             <time>
               {view === "investigate" || view === "learn" ? (
                 <>
-                  {" "}{tr("WINDOW")}{" "}<span>Δt 1s</span>
+                  {" "}WINDOW{" "}<span>Δt 1s</span>
                 </>
               ) : (
                 <>
@@ -526,7 +525,7 @@ export default function ExamplesApp() {
             </time>
             <button
               className="topbar-help"
-              aria-label={tr("Open field guide")}
+              aria-label={"Open field guide"}
               onClick={() => setOverlay({ type: "help" })}
             >
               ?
@@ -555,19 +554,19 @@ export default function ExamplesApp() {
                       <div className="eyebrow">
                         <span className={`text-${tone}`}>●</span>{" "}
                         {view === "live"
-                          ? tr("INCIDENT 001")
-                          : tr("REPLAY / INCIDENT 001")}
-                        <span className="heading-separator">/</span>{" "}{tr("COOLING LOOP DISTURBANCE")}{" "}</div>
+                          ? "INCIDENT 001"
+                          : "REPLAY / INCIDENT 001"}
+                        <span className="heading-separator">/</span>{" "}COOLING LOOP DISTURBANCE{" "}</div>
                       <h1>
                         {view === "live"
-                          ? tr("Every alarm has an origin")
-                          : tr("Rewind the chain of events")}
+                          ? "Every alarm has an origin"
+                          : "Rewind the chain of events"}
                         <span className="text-mint">.</span>
                       </h1>
                       <p>
                         {view === "live"
-                          ? tr("Trace the cascade. Find the first cause. Change the outcome.")
-                          : tr("Move through the incident. Watch the evidence emerge, one signal at a time.")}
+                          ? "Trace the cascade. Find the first cause. Change the outcome."
+                          : "Move through the incident. Watch the evidence emerge, one signal at a time."}
                       </p>
                     </div>
                     <div className="heading-actions">
@@ -578,7 +577,7 @@ export default function ExamplesApp() {
                           reset(true);
                         }}
                       >
-                        <Glyph>▷</Glyph>{" "}{tr("Run sequence")}{" "}</button>
+                        <Glyph>▷</Glyph>{" "}Run sequence{" "}</button>
                       <button
                         className="primary-button"
                         onClick={() => {
@@ -586,7 +585,7 @@ export default function ExamplesApp() {
                           setOverlay({ type: "compare" });
                         }}
                       >
-                        <Glyph>⑂</Glyph>{" "}{tr("Simulate intervention")}{" "}<Glyph>↗</Glyph>
+                        <Glyph>⑂</Glyph>{" "}Simulate intervention{" "}<Glyph>↗</Glyph>
                       </button>
                     </div>
                   </div>
@@ -596,17 +595,17 @@ export default function ExamplesApp() {
                       <div>
                         <span className="text-violet">↶</span>
                         <strong>INC-001</strong>
-                        <span>{tr("Cooling-water valve sticking")}</span>
+                        <span>Cooling-water valve sticking</span>
                       </div>
                       <span>
-                        {" "}{tr("05:00 duration ·")}{" "}{scenario.alarms.length}{" "}{tr("events · 3 propagation chains")}{" "}</span>
+                        {" "}05:00 duration ·{" "}{scenario.alarms.length}{" "}events · 3 propagation chains{" "}</span>
                     </Reveal>
                   )}
 
                   <Reveal delay={0.05}>
                     <section
                       className="incident-summary"
-                      aria-label={tr("Incident summary")}
+                      aria-label={"Incident summary"}
                     >
                       <button
                         className="summary-cell alarm-summary"
@@ -615,7 +614,7 @@ export default function ExamplesApp() {
                         }
                       >
                         <span className="eyebrow">
-                          {" "}{tr("RAW ALARM EVENTS")}{" "}<Glyph>↗</Glyph>
+                          {" "}RAW ALARM EVENTS{" "}<Glyph>↗</Glyph>
                         </span>
                         <div>
                           <strong className="text-coral">
@@ -634,20 +633,20 @@ export default function ExamplesApp() {
                           </span>
                         </div>
                         <span className="metric-caption">
-                          {recentRate}{" "}{tr("events in the last 60s")}{" "}</span>
+                          {recentRate}{" "}events in the last 60s{" "}</span>
                       </button>
                       <div className="summary-arrow" aria-hidden="true">
                         →
                       </div>
                       <button
-                        aria-label={tr("Inspect incident chains")}
+                        aria-label={"Inspect incident chains"}
                         className="summary-cell chains-summary"
                         onClick={() =>
                           setOverlay({ type: "alarms", chain: "thermal" })
                         }
                       >
                         <span className="eyebrow">
-                          {" "}{tr("INCIDENT CHAINS")}{" "}<Glyph>↗</Glyph>
+                          {" "}INCIDENT CHAINS{" "}<Glyph>↗</Glyph>
                         </span>
                         <div>
                           <strong className="text-amber">0{chainCount}</strong>
@@ -660,13 +659,13 @@ export default function ExamplesApp() {
                           </span>
                         </div>
                         <span className="metric-caption">
-                          {" "}{tr("Connected by time & topology")}{" "}</span>
+                          {" "}Connected by time &amp; topology{" "}</span>
                       </button>
                       <div className="summary-arrow" aria-hidden="true">
                         →
                       </div>
                       <div className="summary-cell cause-summary">
-                        <span className="eyebrow">{tr("LEADING ROOT CAUSE")}</span>
+                        <span className="eyebrow">LEADING ROOT CAUSE</span>
                         <div>
                           <strong className="text-mint">
                             {ready ? "01" : "—"}
@@ -674,22 +673,22 @@ export default function ExamplesApp() {
                           <span className="cause-name">
                             {ready ? (
                               <>
-                                {" "}{tr("Cooling-water")}{" "}<br />
-                                {" "}{tr("valve sticking")}{" "}</>
+                                {" "}Cooling-water{" "}<br />
+                                {" "}valve sticking{" "}</>
                             ) : (
                               <>
-                                {" "}{tr("Collecting")}{" "}<br />
-                                {" "}{tr("signal evidence")}{" "}</>
+                                {" "}Collecting{" "}<br />
+                                {" "}signal evidence{" "}</>
                             )}
                           </span>
                         </div>
                         <span className="metric-caption">
                           <span className="text-mint">
-                            {ready ? "CV-101" : tr("LISTENING")}
+                            {ready ? "CV-101" : "LISTENING"}
                           </span>{" "}
                           {ready
-                            ? tr("· upstream origin identified")
-                            : tr("· awaiting propagation")}
+                            ? "· upstream origin identified"
+                            : "· awaiting propagation"}
                         </span>
                       </div>
                       <div className="summary-status">
@@ -698,14 +697,14 @@ export default function ExamplesApp() {
                           <ScrambleText text={status} />
                         </span>
                         <div>
-                          <span className="eyebrow">{tr("REACTOR PRESSURE")}</span>
+                          <span className="eyebrow">REACTOR PRESSURE</span>
                           <strong>
-                            {Math.round(point.pressure).toLocaleString()}
+                            {Math.round(point.pressure).toLocaleString("en")}
                             <small>kPa</small>
                           </strong>
                         </div>
                         <span className="metric-caption">
-                          {" "}{tr("TRIP LIMIT")}{" "}<span>3,050 kPa</span>
+                          {" "}TRIP LIMIT{" "}<span>3,050 kPa</span>
                         </span>
                       </div>
                     </section>
@@ -738,11 +737,11 @@ export default function ExamplesApp() {
                   <Reveal delay={0.18}>
                     <section
                       className="chain-strip"
-                      aria-label={tr("Incident chains")}
+                      aria-label={"Incident chains"}
                     >
                       <div className="chain-strip-label">
                         <span className="text-mint">⌁</span>
-                        <span>{tr("THE CASCADE")}</span>
+                        <span>THE CASCADE</span>
                       </div>
                       {scenario.chains.map((chain, i) => {
                         const count = alarms.filter(
@@ -771,7 +770,7 @@ export default function ExamplesApp() {
                             </div>
                             <span className="chain-count">
                               {count}
-                              <small>{tr("events")}</small>
+                              <small>events</small>
                             </span>
                             <Glyph>↗</Glyph>
                           </button>
@@ -784,13 +783,13 @@ export default function ExamplesApp() {
                     <Reveal delay={0.22}>
                       <Panel
                         code="03"
-                        title={tr("Signal historian")}
+                        title={"Signal historian"}
                         className="historian-panel"
                         action={
                           <span className="panel-meta">
                             {trendSignal
-                              ? tr("absolute values")
-                              : tr("normalized per signal")}{" "}
+                              ? "absolute values"
+                              : "normalized per signal"}{" "}
                             / 1s
                           </span>
                         }
@@ -830,16 +829,16 @@ export default function ExamplesApp() {
                         />
                         <div className="historian-bottom">
                           <span>
-                            <span className="text-mint">┊</span>{" "}{tr("Fault injected +00:30")}{" "}</span>
+                            <span className="text-mint">┊</span>{" "}Fault injected +00:30{" "}</span>
                           <span>
-                            {" "}{tr("Valve deviation")}{" "}
+                            {" "}Valve deviation{" "}
                             <strong className="text-mint">+00:33</strong>
                           </span>
                           <button
                             className="text-button"
                             onClick={() => setComputationsOpen((open) => !open)}
                           >
-                            {computationsOpen ? tr("Hide") : tr("Live")}{" "}{tr("calculations")}{" "}
+                            {computationsOpen ? "Hide" : "Live"}{" "}calculations{" "}
                             {computationsOpen ? "−" : "+"}
                           </button>
                         </div>
@@ -869,9 +868,9 @@ export default function ExamplesApp() {
                       >
                         <div className="live-computation-heading">
                           <span className="eyebrow text-mint">
-                            {" "}{tr("ƒ LIVE SIGNAL CALCULATIONS")}{" "}</span>
+                            {" "}ƒ LIVE SIGNAL CALCULATIONS{" "}</span>
                           <span className="muted">
-                            {" "}{tr("z = (x − median) / (1.4826 × MAD)")}{" "}</span>
+                            {" "}z = (x − median) / (1.4826 × MAD){" "}</span>
                         </div>
                         <div className="computation-signals">
                           {scenario.tags.map((tag) => {
@@ -889,7 +888,7 @@ export default function ExamplesApp() {
                                   {tag.tag}
                                 </strong>
                                 <span>
-                                  {" "}{tr("robust z")}{" "}<b>{d.z.toFixed(1)}</b>
+                                  {" "}robust z{" "}<b>{d.z.toFixed(1)}</b>
                                 </span>
                                 <span>
                                   CUSUM <b>{d.cusum.toFixed(0)}</b>
@@ -906,26 +905,26 @@ export default function ExamplesApp() {
                   </AnimatePresence>
 
                   <div className="event-ribbon">
-                    <span className="eyebrow">{tr("LATEST EVENT")}</span>
+                    <span className="eyebrow">LATEST EVENT</span>
                     <span className="text-muted">
                       {alarms.length
                         ? wallClock(alarms[alarms.length - 1].t)
                         : wallClock(time)}
                     </span>
                     <span className="text-amber">
-                      {alarms.length ? alarms[alarms.length - 1].tag : tr("SYSTEM")}
+                      {alarms.length ? alarms[alarms.length - 1].tag : "SYSTEM"}
                     </span>
                     <span>
                       {alarms.length
                         ? tr(alarms[alarms.length - 1].message)
-                        : tr("All process signals within baseline. Awaiting disturbance.")}
+                        : "All process signals within baseline. Awaiting disturbance."}
                     </span>
                     <button
                       onClick={() =>
                         setOverlay({ type: "alarms", chain: null })
                       }
                     >
-                      {" "}{tr("Open journal ↗")}{" "}</button>
+                      {" "}Open journal ↗{" "}</button>
                   </div>
                 </>
               )}
@@ -960,24 +959,24 @@ export default function ExamplesApp() {
                 : "~/process-01"}
             </span>
             <span className="text-mint">●</span>
-            <span>{playing ? tr("streaming") : tr("snapshot")}</span>
+            <span>{playing ? "streaming" : "snapshot"}</span>
             <span className="statusbar-mode">
               {view === "investigate"
-                ? tr("INVESTIGATE")
+                ? "INVESTIGATE"
                 : view === "learn"
-                  ? tr("LEARN")
+                  ? "LEARN"
                   : view === "lab"
-                    ? tr("COMPUTE")
+                    ? "COMPUTE"
                     : view === "replay"
-                      ? tr("REPLAY")
-                      : tr("OBSERVE")}
+                      ? "REPLAY"
+                      : "OBSERVE"}
             </span>
           </div>
           <div>
             <span>Δt 1s</span>
             <span>
               {view === "investigate" || view === "learn"
-                ? tr("12 incident sessions")
+                ? "12 incident sessions"
                 : tr("{0}/301 samples", {0: Math.floor(time) + 1})}
             </span>
             <BlockBar
@@ -986,7 +985,7 @@ export default function ExamplesApp() {
               }
               count={12}
             />
-            <span className="desktop-only">{tr("evidence before inference")}</span>
+            <span className="desktop-only">evidence before inference</span>
           </div>
         </footer>
       </div>

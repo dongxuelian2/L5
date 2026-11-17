@@ -1,0 +1,5697 @@
+{
+  "protocol": "tank-estimation-evaluation-v1",
+  "seeds": [
+    11,
+    29,
+    47
+  ],
+  "cases": [
+    {
+      "id": "healthy-both",
+      "sensors": [
+        "level1",
+        "level2"
+      ]
+    },
+    {
+      "id": "healthy-tank1-only",
+      "sensors": [
+        "level1"
+      ]
+    },
+    {
+      "id": "healthy-tank2-only",
+      "sensors": [
+        "level2"
+      ]
+    },
+    {
+      "id": "async-dropout-irregular",
+      "sensors": [
+        "level2"
+      ],
+      "acquisition": {
+        "every": [
+          1,
+          4
+        ],
+        "dropout": 0.35,
+        "irregular": true
+      }
+    },
+    {
+      "id": "pump-degradation",
+      "sensors": [
+        "level2"
+      ],
+      "simulation": {
+        "fault": "pump_degradation"
+      }
+    },
+    {
+      "id": "valve-restriction",
+      "sensors": [
+        "level2"
+      ],
+      "simulation": {
+        "fault": "valve_restriction"
+      }
+    },
+    {
+      "id": "parameter-mismatch",
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {
+        "connection": 0.025,
+        "pumpRate": 0.038
+      }
+    },
+    {
+      "id": "initial-uncertainty-small",
+      "sensors": [
+        "level2"
+      ],
+      "config": {
+        "initialCovariance": [
+          [
+            1e-05,
+            0
+          ],
+          [
+            0,
+            1e-05
+          ]
+        ]
+      }
+    },
+    {
+      "id": "initial-uncertainty-large",
+      "sensors": [
+        "level2"
+      ],
+      "config": {
+        "initialCovariance": [
+          [
+            1.0,
+            0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "sensor-bias-overconfident-R",
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "simulation": {
+        "fault": "sensor_bias"
+      },
+      "config": {
+        "measurementCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ]
+      }
+    },
+    {
+      "id": "exact-initial-open-loop-baseline",
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "config": {
+        "initialState": [
+          1.5625,
+          1.0
+        ]
+      }
+    }
+  ],
+  "defaults": {
+    "initialState": [
+      1.2,
+      0.7
+    ],
+    "initialCovariance": [
+      [
+        0.16,
+        0
+      ],
+      [
+        0,
+        0.16
+      ]
+    ],
+    "processCovariance": [
+      [
+        1e-06,
+        0
+      ],
+      [
+        0,
+        1e-06
+      ]
+    ],
+    "measurementCovariance": [
+      [
+        0.0004,
+        0
+      ],
+      [
+        0,
+        0.0004
+      ]
+    ],
+    "initialTime": 0.0,
+    "maxStep": 0.1,
+    "jacobianStep": 1e-05
+  },
+  "assumptions": "Fixed Q, R and initial settings declared before evaluation; no final-run covariance fitting. Deterministic simulator plus independent additive sensor noise; Q is a robustness assumption, not injected physical process noise. NIS/NEES therefore diagnose misspecification and are not claimed chi-square calibrated here. NEES dimension=2; NIS dimension=current measurement count. Temporal samples are correlated. Coverage is pointwise empirical coverage; convergence means both errors stay <=0.05 m through run end. Three fixed seeds characterize examples, not population guarantees. Numerical failures abort this script.",
+  "summary": [
+    {
+      "case": "healthy-both",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.001939117367778704,
+          0.002891080091524334
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        1.0,
+        0.9926131117266852
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "healthy-tank1-only",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.0029782024222416424,
+          0.03808480184730512
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        1.0,
+        1.0
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "healthy-tank2-only",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.048822396756528,
+          0.0051923255498223485
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        0.9538319482917821,
+        0.9538319482917821
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "async-dropout-irregular",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.07021635897410185,
+          0.030012836234286744
+        ],
+        "openLoop": [
+          0.2262212594716908,
+          0.17364168617234244
+        ]
+      },
+      "meanCoverage95": [
+        0.9897209985315712,
+        1.0
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "pump-degradation",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.2853181579557973,
+          0.08211578400726816
+        ],
+        "openLoop": [
+          0.37369600940568426,
+          0.21743146253715528
+        ]
+      },
+      "meanCoverage95": [
+        0.1819021237303786,
+        0.20960295475530932
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 0,
+      "numericalFailures": 0
+    },
+    {
+      "case": "valve-restriction",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.7930380155673183,
+          0.07404171435602772
+        ],
+        "openLoop": [
+          0.7151105677193094,
+          0.19994570521257896
+        ]
+      },
+      "meanCoverage95": [
+        0.18374884579870732,
+        0.17913204062788549
+      ],
+      "worseThanOpenLoopCount": [
+        3,
+        0
+      ],
+      "convergedRuns": 0,
+      "numericalFailures": 0
+    },
+    {
+      "case": "parameter-mismatch",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.22731475837714668,
+          0.11756058725579287
+        ],
+        "openLoop": [
+          0.7367548186244507,
+          0.22814168580479813
+        ]
+      },
+      "meanCoverage95": [
+        0.012927054478301015,
+        0.012003693444136659
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 0,
+      "numericalFailures": 0
+    },
+    {
+      "case": "initial-uncertainty-small",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.1269574111651893,
+          0.07499656458726571
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        0.29085872576177285,
+        0.40535549399815324
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "initial-uncertainty-large",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.04833269033168055,
+          0.004531182991574679
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        0.9843028624192058,
+        0.9778393351800553
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    },
+    {
+      "case": "sensor-bias-overconfident-R",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.01067001766028722,
+          0.1550691977525951
+        ],
+        "openLoop": [
+          0.22757030034427284,
+          0.17465220616528151
+        ]
+      },
+      "meanCoverage95": [
+        0.10526315789473684,
+        0.025854108956602034
+      ],
+      "worseThanOpenLoopCount": [
+        0,
+        0
+      ],
+      "convergedRuns": 0,
+      "numericalFailures": 0
+    },
+    {
+      "case": "exact-initial-open-loop-baseline",
+      "seeds": [
+        11,
+        29,
+        47
+      ],
+      "meanRMSE": {
+        "estimate": [
+          0.0019208067971354232,
+          0.002878092449780523
+        ],
+        "openLoop": [
+          0.0,
+          0.0
+        ]
+      },
+      "meanCoverage95": [
+        1.0,
+        0.9926131117266852
+      ],
+      "worseThanOpenLoopCount": [
+        3,
+        3
+      ],
+      "convergedRuns": 3,
+      "numericalFailures": 0
+    }
+  ],
+  "runs": [
+    {
+      "case": "healthy-both",
+      "seed": 11,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0020102774331593153,
+              "mae": 0.001330903151121142
+            },
+            {
+              "count": 361,
+              "rmse": 0.0025848043361744386,
+              "mae": 0.0016775121543530856
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01875724768100621,
+              "mae": 0.015039667539246087
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.9944598337950139
+        ],
+        "meanNEES": 0.5557226259460832,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.003596336930090871,
+          0.0028205691785021525
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.796848408949626,
+          "expectedMean": 2,
+          "fraction95": 0.9750692520775623
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.018137966056548382,
+        0.02225336778079723
+      ]
+    },
+    {
+      "case": "healthy-both",
+      "seed": 29,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0019454209732055411,
+              "mae": 0.0013892546980554487
+            },
+            {
+              "count": 361,
+              "rmse": 0.0037633771025215677,
+              "mae": 0.0015822991921887197
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01679729809711943,
+              "mae": 0.01356274740477751
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.9861495844875346
+        ],
+        "meanNEES": 0.4973392806242666,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.002672584628229391,
+          0.0016833510588465384
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.7297294436910264,
+          "expectedMean": 2,
+          "fraction95": 0.9695290858725761
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.011085163935594666,
+        0.03796786171052191
+      ]
+    },
+    {
+      "case": "healthy-both",
+      "seed": 47,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0018616536969712557,
+              "mae": 0.0013708082551316125
+            },
+            {
+              "count": 361,
+              "rmse": 0.0023250588358769957,
+              "mae": 0.0014995790260579147
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01990966675294263,
+              "mae": 0.015674165709483115
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.997229916897507
+        ],
+        "meanNEES": 0.4813770716103346,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0003708075278432421,
+          0.000828360678373441
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.98520691780098,
+          "expectedMean": 2,
+          "fraction95": 0.9556786703601108
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.009827561817139951,
+        0.015853454572731684
+      ]
+    },
+    {
+      "case": "healthy-tank1-only",
+      "seed": 11,
+      "sensors": [
+        "level1"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.002837966500814177,
+              "mae": 0.001900859069311534
+            },
+            {
+              "count": 361,
+              "rmse": 0.03712755279176252,
+              "mae": 0.007581334178868796
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01875724768100621,
+              "mae": 0.015039667539246087
+            },
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          1.0
+        ],
+        "meanNEES": 0.30090209140384355,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 6.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.003228712729740124,
+          0.001953269478239039
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.8718546012076603,
+          "expectedMean": 1,
+          "fraction95": 0.9695290858725761
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.02258037292981263,
+        0.3770850456031454
+      ]
+    },
+    {
+      "case": "healthy-tank1-only",
+      "seed": 29,
+      "sensors": [
+        "level1"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0029809737168413,
+              "mae": 0.0019572582139307268
+            },
+            {
+              "count": 361,
+              "rmse": 0.03865582580398812,
+              "mae": 0.008752122141396793
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01679729809711943,
+              "mae": 0.01356274740477751
+            },
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          1.0
+        ],
+        "meanNEES": 0.40040135277821065,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 8.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.00269249402492977,
+          0.001430195094600517
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.6976148547962356,
+          "expectedMean": 1,
+          "fraction95": 0.9833795013850416
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.021057667450649076,
+        0.3384753877315111
+      ]
+    },
+    {
+      "case": "healthy-tank1-only",
+      "seed": 47,
+      "sensors": [
+        "level1"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0031156670490694515,
+              "mae": 0.0020385912339207397
+            },
+            {
+              "count": 361,
+              "rmse": 0.038471026946164735,
+              "mae": 0.008913182018339549
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01990966675294263,
+              "mae": 0.015674165709483115
+            },
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          1.0
+        ],
+        "meanNEES": 0.33226073756704355,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 11.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0009927688916324673,
+          0.0006287483162210616
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.9861428317640807,
+          "expectedMean": 1,
+          "fraction95": 0.9418282548476454
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.01615318854326886,
+        0.3236704079557574
+      ]
+    },
+    {
+      "case": "healthy-tank2-only",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.056830327673749556,
+              "mae": 0.01766781568289194
+            },
+            {
+              "count": 361,
+              "rmse": 0.005700134709832668,
+              "mae": 0.003338538538684081
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          0.9058171745152355,
+          0.9390581717451524
+        ],
+        "meanNEES": 1.6212930629008706,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 19.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0026621290409045706,
+          0.00250030491989095
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.9426563461936024,
+          "expectedMean": 1,
+          "fraction95": 0.96398891966759
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.523083990504243,
+        0.025987060879690937
+      ]
+    },
+    {
+      "case": "healthy-tank2-only",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.04709485212421532,
+              "mae": 0.013647258808517682
+            },
+            {
+              "count": 361,
+              "rmse": 0.005197619267588675,
+              "mae": 0.002476584927816686
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          0.9722991689750693,
+          0.9778393351800554
+        ],
+        "meanNEES": 0.6161345893839663,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 13.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0006255590646380149,
+          0.0010457544423629894
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 1.0318809099164494,
+          "expectedMean": 1,
+          "fraction95": 0.9501385041551247
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.40555572706720056,
+        0.04117670600503209
+      ]
+    },
+    {
+      "case": "healthy-tank2-only",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.042542010471619124,
+              "mae": 0.011694719620512486
+            },
+            {
+              "count": 361,
+              "rmse": 0.004679222672045702,
+              "mae": 0.0029705830385280984
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          0.9833795013850416,
+          0.9445983379501385
+        ],
+        "meanNEES": 0.9198898978654312,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 4.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0010874371959717077,
+          0.0013456394162785212
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.9939184181562779,
+          "expectedMean": 1,
+          "fraction95": 0.9667590027700831
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.4591617304602029,
+        0.03464405684668337
+      ]
+    },
+    {
+      "case": "async-dropout-irregular",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          4
+        ],
+        "dropout": 0.35,
+        "irregular": true
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 227,
+      "predictionOnly": 184,
+      "inputSha256": "1d10938f3a3a5ce5be9f6932bfcb5a9d608fa8a0390ca94c4937a9d56bb45797",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 227,
+              "rmse": 0.07365991466858783,
+              "mae": 0.030729451506801436
+            },
+            {
+              "count": 227,
+              "rmse": 0.011646421774971723,
+              "mae": 0.008131396022928708
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 227,
+              "rmse": 0.22708003035094979,
+              "mae": 0.21511320434669445
+            },
+            {
+              "count": 227,
+              "rmse": 0.17446388310954367,
+              "mae": 0.16433206742817455
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 43,
+              "rmse": 0.019146899809238064,
+              "mae": 0.0159791071954445
+            }
+          ]
+        },
+        "coverage95": [
+          0.9691629955947136,
+          1.0
+        ],
+        "meanNEES": 1.2037190997756588,
+        "neesDof": 2,
+        "neesCount": 227,
+        "convergenceTime": 22.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.002668059785003285,
+          0.002756983581352568
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 43,
+          "meanNIS": 0.954067068277887,
+          "expectedMean": 1,
+          "fraction95": 0.9534883720930233
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.04360276117094197
+      ]
+    },
+    {
+      "case": "async-dropout-irregular",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          4
+        ],
+        "dropout": 0.35,
+        "irregular": true
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 232,
+      "predictionOnly": 197,
+      "inputSha256": "19e23ce5f4a2490abde7dc7a38d798ce90f1464dc7e1fbae3bcc094a7b683e69",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 232,
+              "rmse": 0.06920523515292133,
+              "mae": 0.022170541347520167
+            },
+            {
+              "count": 232,
+              "rmse": 0.03963048789385892,
+              "mae": 0.009475926450334725
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 232,
+              "rmse": 0.22549999745128183,
+              "mae": 0.2131119209174784
+            },
+            {
+              "count": 232,
+              "rmse": 0.1730307983548536,
+              "mae": 0.1626620742325929
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 35,
+              "rmse": 0.015190241984640633,
+              "mae": 0.010978799263998775
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          1.0
+        ],
+        "meanNEES": 0.6787424757748584,
+        "neesDof": 2,
+        "neesCount": 232,
+        "convergenceTime": 20.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.00047508926513906147,
+          0.0006209450248224613
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 35,
+          "meanNIS": 0.5822806354473227,
+          "expectedMean": 1,
+          "fraction95": 0.9714285714285714
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.30000000000000004
+      ]
+    },
+    {
+      "case": "async-dropout-irregular",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          4
+        ],
+        "dropout": 0.35,
+        "irregular": true
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 246,
+      "predictionOnly": 198,
+      "inputSha256": "e68073e955b847fbf4ee38b37dd143e1e648bf8f5462fcae59e15ab8490d03a8",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 246,
+              "rmse": 0.06778392710079638,
+              "mae": 0.026044457144059195
+            },
+            {
+              "count": 246,
+              "rmse": 0.03876159903402959,
+              "mae": 0.011304423646241346
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 246,
+              "rmse": 0.22608375061284078,
+              "mae": 0.21354029046519907
+            },
+            {
+              "count": 246,
+              "rmse": 0.17343037705263006,
+              "mae": 0.16298093152815932
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 48,
+              "rmse": 0.02196086899730784,
+              "mae": 0.01735403923000184
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          1.0
+        ],
+        "meanNEES": 0.9931212769567396,
+        "neesDof": 2,
+        "neesCount": 246,
+        "convergenceTime": 20.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0029073025503416616,
+          0.0028771262205404824
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 48,
+          "meanNIS": 1.1714014887234134,
+          "expectedMean": 1,
+          "fraction95": 0.9166666666666666
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.30000000000000004
+      ]
+    },
+    {
+      "case": "pump-degradation",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "pump_degradation",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "bcd3b036550f63b81598dd81a04cbcb17d902679986f6f6c0fe8d7066a2e3ac1",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.28633097582207995,
+              "mae": 0.252383715590682
+            },
+            {
+              "count": 361,
+              "rmse": 0.08167201271024625,
+              "mae": 0.06804627931250673
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.37369600940568426,
+              "mae": 0.3310185147832967
+            },
+            {
+              "count": 361,
+              "rmse": 0.21743146253715528,
+              "mae": 0.19457399221708155
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.01942448439071615,
+              "mae": 0.01578341584689713
+            }
+          ]
+        },
+        "coverage95": [
+          0.13573407202216067,
+          0.19113573407202217
+        ],
+        "meanNEES": 3683.1582294951854,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.37519215169121767,
+          0.11851192730527504
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 18.556045846283283,
+          "expectedMean": 1,
+          "fraction95": 0.33240997229916897
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.523083990504243,
+        0.12034013593670856
+      ]
+    },
+    {
+      "case": "pump-degradation",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "pump_degradation",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "cb26c9419c8cab8d99b7f2ca80f7ac04c0ce74f51d3400a4b3afb341c4c30c24",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.2845437131061198,
+              "mae": 0.24863113239179466
+            },
+            {
+              "count": 361,
+              "rmse": 0.08211218051876841,
+              "mae": 0.0676419717914201
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.37369600940568426,
+              "mae": 0.3310185147832967
+            },
+            {
+              "count": 361,
+              "rmse": 0.21743146253715528,
+              "mae": 0.19457399221708155
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548642,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          0.20221606648199447,
+          0.2409972299168975
+        ],
+        "meanNEES": 3662.1186043005064,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.3782026689113108,
+          0.12180836041159049
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 18.15219098102188,
+          "expectedMean": 1,
+          "fraction95": 0.3407202216066482
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.40555572706720056,
+        0.12187569930395248
+      ]
+    },
+    {
+      "case": "pump-degradation",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "pump_degradation",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4638e14a28f7ce38e7373807e1c20eebd369bdd2e30d494c2e202d195f933cd9",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.2850797849391922,
+              "mae": 0.24736662939989126
+            },
+            {
+              "count": 361,
+              "rmse": 0.0825631587927898,
+              "mae": 0.06859396976634213
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.37369600940568426,
+              "mae": 0.3310185147832967
+            },
+            {
+              "count": 361,
+              "rmse": 0.21743146253715528,
+              "mae": 0.19457399221708155
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879552,
+              "mae": 0.016128791915643006
+            }
+          ]
+        },
+        "coverage95": [
+          0.2077562326869806,
+          0.19667590027700832
+        ],
+        "meanNEES": 3697.410234708028,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.3765956015487001,
+          0.11955279173924116
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 18.439407328697317,
+          "expectedMean": 1,
+          "fraction95": 0.3462603878116344
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.4591617304602029,
+        0.12052158938288049
+      ]
+    },
+    {
+      "case": "valve-restriction",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "valve_restriction",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "74b6a95e63c8e2c09add2fd5dcf657de23ced3edf5224c3092e0fcdc3d8b9002",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.7930850556942021,
+              "mae": 0.655185147509248
+            },
+            {
+              "count": 361,
+              "rmse": 0.07460125058247796,
+              "mae": 0.06289010603806423
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7151105677193093,
+              "mae": 0.6659872263466683
+            },
+            {
+              "count": 361,
+              "rmse": 0.19994570521257898,
+              "mae": 0.18890258696134052
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.01942448439071615,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          0.1329639889196676,
+          0.1634349030470914
+        ],
+        "meanNEES": 43745.06625597699,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          1.2699146080394221,
+          0.03190195697881437
+        ],
+        "worseThanOpenLoop": [
+          true,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 15.338000932078199,
+          "expectedMean": 1,
+          "fraction95": 0.32409972299168976
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        1.2699146080394221,
+        0.12326384222476472
+      ]
+    },
+    {
+      "case": "valve-restriction",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "valve_restriction",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "df35a7bd2e5b563e0d2718e393894651437004f3c017c5bc8de1e79cc8172ff0",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.7940151148812051,
+              "mae": 0.6539026107136028
+            },
+            {
+              "count": 361,
+              "rmse": 0.07307064968557339,
+              "mae": 0.06159345842276928
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7151105677193093,
+              "mae": 0.6659872263466683
+            },
+            {
+              "count": 361,
+              "rmse": 0.19994570521257898,
+              "mae": 0.18890258696134052
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548642,
+              "mae": 0.016337910330297394
+            }
+          ]
+        },
+        "coverage95": [
+          0.20221606648199447,
+          0.20221606648199447
+        ],
+        "meanNEES": 43840.26406187222,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          1.267130369043319,
+          0.03513302809161312
+        ],
+        "worseThanOpenLoop": [
+          true,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 14.592727129726628,
+          "expectedMean": 1,
+          "fraction95": 0.3268698060941828
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        1.267130369043319,
+        0.12060239703455444
+      ]
+    },
+    {
+      "case": "valve-restriction",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "valve_restriction",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "0aee707959e6dcb7517da009f7f0a147ad29651f49f8c9dea628487826cd629a",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.7920138761265479,
+              "mae": 0.6484742046378348
+            },
+            {
+              "count": 361,
+              "rmse": 0.0744532428000318,
+              "mae": 0.06290915986428552
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7151105677193093,
+              "mae": 0.6659872263466683
+            },
+            {
+              "count": 361,
+              "rmse": 0.19994570521257898,
+              "mae": 0.18890258696134052
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          0.21606648199445982,
+          0.17174515235457063
+        ],
+        "meanNEES": 43721.864260196075,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          1.2686576250251622,
+          0.03289800492202988
+        ],
+        "worseThanOpenLoop": [
+          true,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 15.11996153646896,
+          "expectedMean": 1,
+          "fraction95": 0.3296398891966759
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        1.2686576250251622,
+        0.124065926441144
+      ]
+    },
+    {
+      "case": "parameter-mismatch",
+      "seed": 11,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {
+        "connection": 0.025,
+        "pumpRate": 0.038
+      },
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.22694360734285532,
+              "mae": 0.2207778995323324
+            },
+            {
+              "count": 361,
+              "rmse": 0.11795740698660041,
+              "mae": 0.11509448860522975
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7367548186244507,
+              "mae": 0.645312588677925
+            },
+            {
+              "count": 361,
+              "rmse": 0.22814168580479816,
+              "mae": 0.18854416340206143
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01875724768100621,
+              "mae": 0.015039667539246087
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          0.0110803324099723,
+          0.0221606648199446
+        ],
+        "meanNEES": 6803.293438649071,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.24183318822018784,
+          0.12809378765808765
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 169.95872527098416,
+          "expectedMean": 2,
+          "fraction95": 0.0221606648199446
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.24886047167820013,
+        0.12974632399781239
+      ]
+    },
+    {
+      "case": "parameter-mismatch",
+      "seed": 29,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {
+        "connection": 0.025,
+        "pumpRate": 0.038
+      },
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.22773461413159315,
+              "mae": 0.2212816247381285
+            },
+            {
+              "count": 361,
+              "rmse": 0.1175791650307636,
+              "mae": 0.11523560400953123
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7367548186244507,
+              "mae": 0.645312588677925
+            },
+            {
+              "count": 361,
+              "rmse": 0.22814168580479816,
+              "mae": 0.18854416340206143
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01679729809711943,
+              "mae": 0.01356274740477751
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          0.013850415512465374,
+          0.002770083102493075
+        ],
+        "meanNEES": 6824.258279064452,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.2485055324009604,
+          0.12400244220613232
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 169.12782429658824,
+          "expectedMean": 2,
+          "fraction95": 0.0221606648199446
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.2504381954889121,
+        0.12887092624565077
+      ]
+    },
+    {
+      "case": "parameter-mismatch",
+      "seed": 47,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {
+        "connection": 0.025,
+        "pumpRate": 0.038
+      },
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.22726605365699162,
+              "mae": 0.22085109798364957
+            },
+            {
+              "count": 361,
+              "rmse": 0.11714518975001458,
+              "mae": 0.11460849978044639
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.7367548186244507,
+              "mae": 0.645312588677925
+            },
+            {
+              "count": 361,
+              "rmse": 0.22814168580479816,
+              "mae": 0.18854416340206143
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01990966675294263,
+              "mae": 0.015674165709483115
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          0.013850415512465374,
+          0.0110803324099723
+        ],
+        "meanNEES": 6791.652021793807,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.24627628436208937,
+          0.1265359346971925
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 169.95540059840647,
+          "expectedMean": 2,
+          "fraction95": 0.0221606648199446
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.2485499213831408,
+        0.1283998133479457
+      ]
+    },
+    {
+      "case": "initial-uncertainty-small",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1e-05,
+            0
+          ],
+          [
+            0,
+            1e-05
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.1272364216394188,
+              "mae": 0.07908605540236395
+            },
+            {
+              "count": 361,
+              "rmse": 0.07516970418864032,
+              "mae": 0.042422569338723695
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          0.2742382271468144,
+          0.3878116343490305
+        ],
+        "meanNEES": 1414.08054356984,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 73.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.004560452261454628,
+          0.003301785209488317
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 15.321310787412743,
+          "expectedMean": 1,
+          "fraction95": 0.667590027700831
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.2923258926756046
+      ]
+    },
+    {
+      "case": "initial-uncertainty-small",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1e-05,
+            0
+          ],
+          [
+            0,
+            1e-05
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.12710773323299776,
+              "mae": 0.07877866386935897
+            },
+            {
+              "count": 361,
+              "rmse": 0.0751531706064105,
+              "mae": 0.04212839137390989
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          0.29362880886426596,
+          0.40166204986149584
+        ],
+        "meanNEES": 1412.1777630981094,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 73.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0013350503635616295,
+          0.00021778914673387106
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 15.456076522188765,
+          "expectedMean": 1,
+          "fraction95": 0.6537396121883656
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.2933820947532151
+      ]
+    },
+    {
+      "case": "initial-uncertainty-small",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1e-05,
+            0
+          ],
+          [
+            0,
+            1e-05
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.1265280786231513,
+              "mae": 0.07795437421301796
+            },
+            {
+              "count": 361,
+              "rmse": 0.07466681896674632,
+              "mae": 0.041430344221560396
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          0.3047091412742382,
+          0.4265927977839335
+        ],
+        "meanNEES": 1402.5896777526173,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 73.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0030904514386544957,
+          0.002191009073139516
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 15.614287179909459,
+          "expectedMean": 1,
+          "fraction95": 0.6648199445983379
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.36250000000000004,
+        0.29303819572933776
+      ]
+    },
+    {
+      "case": "initial-uncertainty-large",
+      "seed": 11,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1.0,
+            0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.05806798039135312,
+              "mae": 0.014171154628093437
+            },
+            {
+              "count": 361,
+              "rmse": 0.005152826910732605,
+              "mae": 0.0030607602803435757
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          0.9695290858725761,
+          0.96398891966759
+        ],
+        "meanNEES": 0.8094666069316319,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 14.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0025981164849999683,
+          0.0024733093298958675
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.9253553603721142,
+          "expectedMean": 1,
+          "fraction95": 0.9750692520775623
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.7892405995946592,
+        0.027369984140059422
+      ]
+    },
+    {
+      "case": "initial-uncertainty-large",
+      "seed": 29,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1.0,
+            0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.045826707181231184,
+              "mae": 0.011392051745023344
+            },
+            {
+              "count": 361,
+              "rmse": 0.004581487064936326,
+              "mae": 0.0022060181643948867
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          0.9833795013850416,
+          0.9778393351800554
+        ],
+        "meanNEES": 0.4762959191318278,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 12.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0006171085767034956,
+          0.0010421898988344225
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 1.0174294980931715,
+          "expectedMean": 1,
+          "fraction95": 0.9501385041551247
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.5810807517637405,
+        0.042757006152086885
+      ]
+    },
+    {
+      "case": "initial-uncertainty-large",
+      "seed": 47,
+      "sensors": [
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            1.0,
+            0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.04110338342245735,
+              "mae": 0.009171443412458043
+            },
+            {
+              "count": 361,
+              "rmse": 0.0038592349990551056,
+              "mae": 0.002442065841410091
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 0,
+              "rmse": null,
+              "mae": null
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.9916897506925207
+        ],
+        "meanNEES": 0.643357096366732,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 6.5,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.001125285682219701,
+          0.001361594968498303
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "1": {
+          "count": 361,
+          "meanNIS": 0.9828030295109934,
+          "expectedMean": 1,
+          "fraction95": 0.96398891966759
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.5728750145618758,
+        0.036665467500764826
+      ]
+    },
+    {
+      "case": "sensor-bias-overconfident-R",
+      "seed": 11,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "sensor_bias",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "f30b19da9ac96e30a20a0f0a5ccf395eb05728b8d67e854581731ddecaea3638",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.010433435093633758,
+              "mae": 0.008347357404311653
+            },
+            {
+              "count": 361,
+              "rmse": 0.15468376823692478,
+              "mae": 0.13820306414099529
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01875724768100621,
+              "mae": 0.015039667539246087
+            },
+            {
+              "count": 361,
+              "rmse": 0.15935476303816,
+              "mae": 0.14339213339259374
+            }
+          ]
+        },
+        "coverage95": [
+          0.11357340720221606,
+          0.0221606648199446
+        ],
+        "meanNEES": 49101.5460118272,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.012584330128419419,
+          0.16041471238762006
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 579.974964589881,
+          "expectedMean": 2,
+          "fraction95": 0.01662049861495845
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.030819774795149746,
+        0.19835567791951192
+      ]
+    },
+    {
+      "case": "sensor-bias-overconfident-R",
+      "seed": 29,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "sensor_bias",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "491c31375ec8b12cfedf065bca71849fcc47530737098f68f0d4affdd7307f6e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.010341831258475775,
+              "mae": 0.00836015894497682
+            },
+            {
+              "count": 361,
+              "rmse": 0.15534223127595106,
+              "mae": 0.13893162588347718
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01679729809711943,
+              "mae": 0.01356274740477751
+            },
+            {
+              "count": 361,
+              "rmse": 0.16017173062500645,
+              "mae": 0.14385798301827843
+            }
+          ]
+        },
+        "coverage95": [
+          0.10249307479224377,
+          0.024930747922437674
+        ],
+        "meanNEES": 49496.23453072311,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.009310645511770632,
+          0.18902367391870434
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 549.7326802985517,
+          "expectedMean": 2,
+          "fraction95": 0.013850415512465374
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.03004770756867714,
+        0.2028656051225417
+      ]
+    },
+    {
+      "case": "sensor-bias-overconfident-R",
+      "seed": 47,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "sensor_bias",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.2,
+          0.7
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "bff86c899f7bd2be35cff53c40ceb097acb45b4aa18ddc63e3bc6c05fe0cc010",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.011234786628752129,
+              "mae": 0.00906673791177859
+            },
+            {
+              "count": 361,
+              "rmse": 0.15518159374490945,
+              "mae": 0.13841163443380491
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.22757030034427284,
+              "mae": 0.2153574463378493
+            },
+            {
+              "count": 361,
+              "rmse": 0.17465220616528151,
+              "mae": 0.1644162727650098
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01990966675294263,
+              "mae": 0.015674165709483115
+            },
+            {
+              "count": 361,
+              "rmse": 0.1599876293375255,
+              "mae": 0.14373944397888366
+            }
+          ]
+        },
+        "coverage95": [
+          0.0997229916897507,
+          0.030470914127423823
+        ],
+        "meanNEES": 49447.064914279224,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": null,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.009769514097647036,
+          0.16108246540527804
+        ],
+        "worseThanOpenLoop": [
+          false,
+          false
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 652.0560978248157,
+          "expectedMean": 2,
+          "fraction95": 0.008310249307479225
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.027944440645613522,
+        0.21351637936151646
+      ]
+    },
+    {
+      "case": "exact-initial-open-loop-baseline",
+      "seed": 11,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 11,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.5625,
+          1.0
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "8dcbca177d92b89fa421b93da1f56ae464bb3a0bf621e6b010247447f8486b9e",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.001992407381108807,
+              "mae": 0.0013259808225519825
+            },
+            {
+              "count": 361,
+              "rmse": 0.0026130579926020147,
+              "mae": 0.0016828527658266123
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            },
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01875724768100621,
+              "mae": 0.015039667539246087
+            },
+            {
+              "count": 361,
+              "rmse": 0.019424484390716153,
+              "mae": 0.015783415846897134
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.9944598337950139
+        ],
+        "meanNEES": 0.5561623976532928,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.0035963367501279375,
+          0.0028205690422545837
+        ],
+        "worseThanOpenLoop": [
+          true,
+          true
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.7930187922556278,
+          "expectedMean": 2,
+          "fraction95": 0.9722991689750693
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.017836630740455606,
+        0.022627708409255654
+      ]
+    },
+    {
+      "case": "exact-initial-open-loop-baseline",
+      "seed": 29,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 29,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.5625,
+          1.0
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "4c8f492bda61ce836822eb37f2503f5d6fab2d391e3b432fb2b445e45f7b2527",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0019291788852327176,
+              "mae": 0.0013861821154534223
+            },
+            {
+              "count": 361,
+              "rmse": 0.0037222485920919567,
+              "mae": 0.0015759469138723924
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            },
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01679729809711943,
+              "mae": 0.01356274740477751
+            },
+            {
+              "count": 361,
+              "rmse": 0.020409713610548646,
+              "mae": 0.016337910330297398
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.9861495844875346
+        ],
+        "meanNEES": 0.4941082842866743,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.002672584808205425,
+          0.0016833511954685854
+        ],
+        "worseThanOpenLoop": [
+          true,
+          true
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.7259209184199513,
+          "expectedMean": 2,
+          "fraction95": 0.9695290858725761
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.010632889008521884,
+        0.03759360130115841
+      ]
+    },
+    {
+      "case": "exact-initial-open-loop-baseline",
+      "seed": 47,
+      "sensors": [
+        "level1",
+        "level2"
+      ],
+      "model": {},
+      "source": {
+        "simulation": {
+          "fault": "healthy",
+          "start": 40.0,
+          "severity": 0.6,
+          "fault_duration": null,
+          "duration": 180.0,
+          "step": 0.5,
+          "integrationStep": 0.05,
+          "seed": 47,
+          "noise": 0.002,
+          "area1": 1.0,
+          "area2": 1.0,
+          "initial1": 1.5625,
+          "initial2": 1.0,
+          "pumpRate": 0.03,
+          "pumpControl": 100.0,
+          "connection": 0.04,
+          "outlet": 0.03,
+          "valve": 1.0,
+          "outletValve": 1.0,
+          "leakCoefficient": 0.015,
+          "sensorBias": 0.3,
+          "tankHeight": 2.5,
+          "targetLevel": 1.0
+        },
+        "noise": [
+          0.02,
+          0.02
+        ],
+        "every": [
+          1,
+          1
+        ],
+        "dropout": 0.0,
+        "irregular": false
+      },
+      "config": {
+        "initialState": [
+          1.5625,
+          1.0
+        ],
+        "initialCovariance": [
+          [
+            0.16,
+            0
+          ],
+          [
+            0,
+            0.16
+          ]
+        ],
+        "processCovariance": [
+          [
+            1e-06,
+            0
+          ],
+          [
+            0,
+            1e-06
+          ]
+        ],
+        "measurementCovariance": [
+          [
+            0.0004,
+            0
+          ],
+          [
+            0,
+            0.0004
+          ]
+        ],
+        "initialTime": 0.0,
+        "maxStep": 0.1,
+        "jacobianStep": 1e-05
+      },
+      "samples": 361,
+      "predictionOnly": 0,
+      "inputSha256": "6c5486234b47662ec2bfdaa6ab8c353716751d39539fb4c35a9e4d920d472b93",
+      "score": {
+        "methods": {
+          "estimate": [
+            {
+              "count": 361,
+              "rmse": 0.0018408341250647443,
+              "mae": 0.0013616666829617482
+            },
+            {
+              "count": 361,
+              "rmse": 0.002298970764647598,
+              "mae": 0.001492694728557535
+            }
+          ],
+          "openLoop": [
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            },
+            {
+              "count": 361,
+              "rmse": 0.0,
+              "mae": 0.0
+            }
+          ],
+          "direct": [
+            {
+              "count": 361,
+              "rmse": 0.01990966675294263,
+              "mae": 0.015674165709483115
+            },
+            {
+              "count": 361,
+              "rmse": 0.020120795735879556,
+              "mae": 0.01612879191564301
+            }
+          ]
+        },
+        "coverage95": [
+          1.0,
+          0.997229916897507
+        ],
+        "meanNEES": 0.4792928470969099,
+        "neesDof": 2,
+        "neesCount": 361,
+        "convergenceTime": 0.0,
+        "convergenceTolerance": 0.05,
+        "finalAbsoluteError": [
+          0.00037080770798580964,
+          0.0008283605417709339
+        ],
+        "worseThanOpenLoop": [
+          true,
+          true
+        ]
+      },
+      "innovationConsistency": {
+        "2": {
+          "count": 361,
+          "meanNIS": 1.9813870717326796,
+          "expectedMean": 2,
+          "fraction95": 0.9556786703601108
+        }
+      },
+      "warnings": [],
+      "maxAbsoluteError": [
+        0.009375323027219551,
+        0.015729527538048238
+      ]
+    }
+  ]
+}

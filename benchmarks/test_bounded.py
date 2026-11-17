@@ -157,7 +157,7 @@ class SyntheticBenchmarkComparisonTests(unittest.TestCase):
         paths = write_report(report, self.root / "out")
         self.assertEqual(json.loads(paths[0].read_text()), report)
         self.assertIn("window-cusum-12", paths[1].read_text())
-        self.assertIn("No choice of a held-out winner", paths[1].read_text())
+        self.assertIn("two fixed thresholds per monitor", paths[1].read_text())
 
     def test_fault_modifications_cannot_change_any_normal_threshold(self):
         original = run_comparison(self.root, faults=(1,))

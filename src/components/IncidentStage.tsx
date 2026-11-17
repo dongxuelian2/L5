@@ -1,4 +1,4 @@
-import { t as tr, useLocale } from "../i18n";
+import { t as tr } from "../lib/text";
 import { motion, AnimatePresence } from "motion/react";
 import { clock, scenario } from "../lib/engine";
 import { ScrambleText } from "./Primitives";
@@ -6,44 +6,44 @@ import { ScrambleText } from "./Primitives";
 export const chapters = [
   {
     time: 0,
-    get label() { return tr("Baseline"); },
-    get title() { return tr("A process in balance."); },
-    get detail() { return tr("Six signals are holding within their operating baseline."); },
+    get label() { return "Baseline"; },
+    get title() { return "A process in balance."; },
+    get detail() { return "Six signals are holding within their operating baseline."; },
     tone: "mint",
   },
   {
     time: scenario.faultTime,
-    get label() { return tr("Disturbance"); },
-    get title() { return tr("One valve changes the story."); },
-    get detail() { return tr("Cooling-valve position changes. Waiting for confirmed signal deviation."); },
+    get label() { return "Disturbance"; },
+    get title() { return "One valve changes the story."; },
+    get detail() { return "Cooling-valve position changes. Waiting for confirmed signal deviation."; },
     tone: "amber",
   },
   {
     time: scenario.detections.valve.time,
-    get label() { return tr("Detection"); },
-    get title() { return tr("The first signal breaks away."); },
-    get detail() { return tr("CV-101 deviates first. Follow the cooling loop downstream."); },
+    get label() { return "Detection"; },
+    get title() { return "The first signal breaks away."; },
+    get detail() { return "CV-101 deviates first. Follow the cooling loop downstream."; },
     tone: "mint",
   },
   {
     time: scenario.detections.purity.time,
-    get label() { return tr("Evidence"); },
-    get title() { return tr("The cascade has an origin."); },
-    get detail() { return tr("All six signals have deviated. Five ordered paths connect the evidence."); },
+    get label() { return "Evidence"; },
+    get title() { return "The cascade has an origin."; },
+    get detail() { return "All six signals have deviated. Five ordered paths connect the evidence."; },
     tone: "amber",
   },
   {
     time: scenario.tripTime,
-    get label() { return tr("Threshold"); },
-    get title() { return tr("Pressure crosses the trip limit."); },
-    get detail() { return tr("3,050 kPa exceeded. Compare an earlier intervention to change the trajectory."); },
+    get label() { return "Threshold"; },
+    get title() { return "Pressure crosses the trip limit."; },
+    get detail() { return "3,050 kPa exceeded. Compare an earlier intervention to change the trajectory."; },
     tone: "coral",
   },
   {
     time: scenario.duration,
-    get label() { return tr("Complete"); },
-    get title() { return tr("Now change one moment."); },
-    get detail() { return tr("The observed sequence is complete. Test when the cooling bypass changes the outcome."); },
+    get label() { return "Complete"; },
+    get title() { return "Now change one moment."; },
+    get detail() { return "The observed sequence is complete. Test when the cooling bypass changes the outcome."; },
     tone: "violet",
   },
 ] as const;
@@ -55,7 +55,6 @@ export function IncidentStage({
   time: number;
   onSeek: (time: number) => void;
 }) {
-  useLocale();
   const index = chapters.reduce(
     (last, chapter, i) => (time >= chapter.time ? i : last),
     0,
@@ -64,10 +63,10 @@ export function IncidentStage({
   return (
     <section
       className={`incident-stage stage-${stage.tone}`}
-      aria-label={tr("Incident chapter")}
+      aria-label={"Incident chapter"}
     >
       <div className="stage-index">
-        <span>{tr("CHAPTER")}</span>
+        <span>CHAPTER</span>
         <strong>
           {String(index + 1).padStart(2, "0")}
           <small>/06</small>
@@ -88,7 +87,7 @@ export function IncidentStage({
           <p>{stage.detail}</p>
         </motion.div>
       </AnimatePresence>
-      <div className="chapter-navigation" aria-label={tr("Jump to chapter")}>
+      <div className="chapter-navigation" aria-label={"Jump to chapter"}>
         {chapters.map((chapter, i) => (
           <button
             key={chapter.label}

@@ -1,0 +1,36 @@
+.reach-workspace { display: grid; gap: 18px; }
+.reach-heading h1 { margin: 0 0 8px; }
+.reach-heading p { max-width: 78ch; margin: 0; color: #a5b0a9; }
+.reach-layout { display: grid; grid-template-columns: minmax(290px, 1fr) minmax(340px, 1.4fr); gap: 16px; align-items: start; }
+.reach-panel { padding: 18px; min-width: 0; border: 1px solid #36413c; border-radius: 8px; background: #1a211f; }
+.reach-panel h2 { color: #eef2eb; margin: 0 0 12px; font-size: 1.05rem; }
+.reach-panel fieldset { min-width: 0; border: 1px solid #36413c; border-radius: 4px; margin: 0; padding: 10px; }
+.reach-panel fieldset.reach-controls { display: grid; align-items: start; gap: 12px; border: 0; padding: 0; }
+.reach-panel fieldset.reach-controls > button { justify-self: start; }
+.reach-panel .ws-form-grid { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+.reach-panel label { display: grid; gap: 4px; min-width: 0; }
+.reach-panel label :is(input, select) { width: 100%; min-width: 0; }
+.reach-panel details { padding: 10px 0 0; border-top: 1px solid #36413c; }
+.reach-panel summary { cursor: pointer; margin-bottom: 10px; color: #dde9df; }
+.reach-regions, .reach-checks { display: grid; gap: 8px; }
+.reach-checks label { display: block; }
+.reach-checks input[type="checkbox"] { width: auto; margin-right: .4em; }
+.reach-checks small { color: #a5b0a9; }
+.reach-map { margin: 0; }
+.reach-map svg { display: block; width: 100%; height: auto; cursor: crosshair; }
+.reach-map svg text { font-size: 12px; fill: #d3ded6; font-family: inherit; }
+.reach-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .78rem; }
+.reach-legend span { display: flex; align-items: center; gap: 5px; }
+.reach-legend i { width: 12px; height: 12px; display: inline-block; border: 1px solid #68716b; }
+.reach-hatch { background: repeating-linear-gradient(135deg,#afb5b0 0 2px,#343b37 2px 5px); }
+.reach-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 10px; }
+.reach-metrics div { padding-top: 6px; border-top: 1px solid #36413c; }
+.reach-metrics dt { color: #bac8bf; font-size: .78rem; }
+.reach-metrics dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.reach-placeholder { min-height: 320px; display: grid; place-items: center; text-align: center; color: #a5b0a9; }
+.reach-table { overflow-x: auto; }
+.reach-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.reach-table :is(th, td) { padding: 6px 8px; border-bottom: 1px solid #36413c; }
+.reach-table tr[data-active="true"] { background: #253530; }
+.reach-commands { max-height: 300px; overflow: auto; }
+@media (max-width: 1050px) { .reach-layout { grid-template-columns: 1fr; } }

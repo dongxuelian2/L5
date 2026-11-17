@@ -1,7 +1,7 @@
 """Reproducible, reduced-order demo model. Python standard library only.
 
-This is an illustrative process, not the Tennessee Eastman simulator. The
-equations and thresholds are chosen for a legible demonstration, not control.
+The equations and thresholds provide a reduced-order example for investigating
+reactor cooling, pressure, and valve response.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def correlation(a: list[float], b: list[float]) -> float:
 
 def compute_diagnostics(points: list[dict], detections: dict) -> dict:
     keys = [t['key'] for t in TAGS]
-    # Correlation is descriptive, never treated as proof of causation.
+    # Correlation describes how the simulated signals move together.
     matrix = [[correlation([p[a] for p in points], [p[b] for p in points]) for b in keys] for a in keys]
     paths = []
     for source, target in EDGES:
@@ -183,13 +183,13 @@ def build_scenario() -> dict:
                 {"action": "Assemble the incident brief", "tool": "format_evidence", "result": "Cooling failure is the leading hypothesis. Test an independent bypass in the reduced-order model."},
             ],
             "summary": "The pressure rise is a downstream symptom. Cooling flow drops after CV-101 changes position, then reactor temperature rises before pressure. This sequence supports a cooling-loop fault as the initiating event.",
-            "limitation": "Mechanical sticking is the scenario label; the observed signals alone do not rule out an actuator fault. Ranking scores are authored evidence scores, not calibrated probabilities.",
+            "limitation": "The scenario injects mechanical sticking. The measurements also support testing an actuator fault. Ranking scores summarize evidence.",
         },
     }
     result['diagnostics'] = compute_diagnostics(points, detections)
     for candidate in result['candidates']:
         candidate['score'] = result['diagnostics']['ranking'][candidate['id']]['score']
-    result['analyst']['limitation'] = "Mechanical sticking is the scenario label; the observed signals alone do not rule out an actuator fault. Scores use explicit topology and coverage rules, not calibrated probabilities."
+    result['analyst']['limitation'] = "The scenario injects mechanical sticking. The measurements also support testing an actuator fault. Ranking scores summarize topology and observation coverage."
     return result
 
 

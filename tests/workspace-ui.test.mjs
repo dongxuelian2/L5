@@ -19,7 +19,7 @@ for (const extension of ['.ts', '.tsx']) {
   };
 }
 require.extensions['.css'] = module => module._compile('', module.filename);
-const dom = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/', pretendToBeVisual: true });
+const dom = new JSDOM(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), { url: 'http://localhost/', pretendToBeVisual: true });
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.HTMLElement = dom.window.HTMLElement;
@@ -33,31 +33,42 @@ dom.window.scrollTo = () => {};
 dom.window.matchMedia = () => ({ matches: true, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 const { createRoot } = await import('react-dom/client');
 const { Plot, SignalPlots } = require('../src/workspace/Charts.tsx');
-const { ResultView } = require('../src/workspace/Results.tsx');
+const { LiveEvidence } = require('../src/workspace/data/LiveEvidence.tsx');
+const { ResultView } = require('../src/workspace/monitoring/Results.tsx');
 const { ImportDataset, AnalysisPage } = require('../src/workspace/WorkspaceApp.tsx');
-const GuidedDemo = require('../src/workspace/GuidedDemo.tsx').default;
+const GuidedDemo = require('../src/workspace/investigation/GuidedDemo.tsx').default;
 const App = require('../src/App.tsx').default;
 const { analysisPath } = require('../src/workspace/api.ts');
-const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
-const { IncidentsPage, IncidentDetail } = require('../src/workspace/Incidents.tsx');
-const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/SignalWorkspace.tsx');
-const { TransformationWorkspace, TransformationLineage } = require('../src/workspace/TransformationWorkspace.tsx');
-const { ExperimentWorkspace, newExperimentConfig } = require('../src/workspace/ExperimentWorkspace.tsx');
-const { ExperimentLabels } = require('../src/workspace/ExperimentLabels.tsx');
-const { ExperimentReport } = require('../src/workspace/ExperimentReport.tsx');
-const { ExperimentComparison } = require('../src/workspace/ExperimentComparison.tsx');
-const { ModelWorkspace } = require('../src/workspace/ModelWorkspace.tsx');
-const { ScenarioEditor } = require('../src/workspace/ScenarioEditor.tsx');
-const { ModelSimulation } = require('../src/workspace/ModelSimulation.tsx');
-const { SavedRunView } = require('../src/workspace/RuntimeWorkbench.tsx');
-const { ModelResearch } = require('../src/workspace/ModelResearch.tsx');
-const { TEPWorkspace } = require('../src/workspace/TEPWorkspace.tsx');
-const { IndependentTraining } = require('../src/workspace/IndependentTraining.tsx');
-const { TEPBenchmark } = require('../src/workspace/TEPBenchmark.tsx');
-const { TEPStudyDashboard } = require('../src/workspace/TEPStudyDashboard.tsx');
-const { t, runtimeText, setLocale, getLocale, preferredLocale, LanguageSwitch } = require('../src/i18n/index.tsx');
-const copy = require('../src/i18n/messages.json');
-const { errorMessage } = require('../src/i18n/errors.ts');
+const { RuntimeWorkbench } = require('../src/workspace/modeling/RuntimeWorkbench.tsx');
+const { IncidentsPage, IncidentDetail } = require('../src/workspace/investigation/Incidents.tsx');
+const { SignalWorkspace, SignalEditor, QualityExplorer, TimeReferenceEditor, CursorReadout } = require('../src/workspace/data/SignalWorkspace.tsx');
+const { TransformationWorkspace, TransformationLineage } = require('../src/workspace/data/TransformationWorkspace.tsx');
+const { ExperimentWorkspace, newExperimentConfig } = require('../src/workspace/investigation/ExperimentWorkspace.tsx');
+const { ExperimentLabels } = require('../src/workspace/investigation/ExperimentLabels.tsx');
+const { ExperimentReport } = require('../src/workspace/investigation/ExperimentReport.tsx');
+const { ExperimentComparison } = require('../src/workspace/investigation/ExperimentComparison.tsx');
+const { ModelWorkspace } = require('../src/workspace/modeling/ModelWorkspace.tsx');
+const { ControlWorkspace } = require('../src/workspace/modeling/ControlWorkspace.tsx');
+const { ControlResults } = require('../src/workspace/modeling/ControlResults.tsx');
+const { defaultProtocol } = require('../src/workspace/modeling/controlTypes.ts');
+const { CalibrationWorkspace, observationReference } = require('../src/workspace/modeling/CalibrationWorkspace.tsx');
+const { CalibrationResults } = require('../src/workspace/modeling/CalibrationResults.tsx');
+const { ScenarioEditor } = require('../src/workspace/modeling/ScenarioEditor.tsx');
+const { ModelSimulation } = require('../src/workspace/modeling/ModelSimulation.tsx');
+const { SavedRunView } = require('../src/workspace/modeling/RuntimeWorkbench.tsx');
+const { ModelResearch } = require('../src/workspace/modeling/ModelResearch.tsx');
+const { EstimationWorkspace, EstimationResults } = require('../src/workspace/modeling/EstimationWorkspace.tsx');
+const { EstimationProvenance } = require('../src/workspace/modeling/EstimationProvenance.tsx');
+const { TEPWorkspace } = require('../src/workspace/investigation/TEPWorkspace.tsx');
+const { IndependentTraining } = require('../src/workspace/investigation/IndependentTraining.tsx');
+const { SensorHealthWorkspace, SensorHealthResult, newHealthConfig } = require('../src/workspace/monitoring/SensorHealthWorkspace.tsx');
+const { TEPBenchmark } = require('../src/workspace/investigation/TEPBenchmark.tsx');
+const { TEPStudyDashboard } = require('../src/workspace/investigation/TEPStudyDashboard.tsx');
+const { ReplayWorkspace } = require('../src/workspace/monitoring/ReplayWorkspace.tsx');
+const { RegimeWorkspace } = require('../src/workspace/monitoring/RegimeWorkspace.tsx');
+const { ResilienceWorkspace } = require('../src/workspace/reliability/ResilienceWorkspace.tsx');
+const { t, runtimeText } = require('../src/lib/text.ts');
+const { errorMessage } = require('../src/lib/text.ts');
 
 const names = ['reactor_temp_c', 'pressure_tx_kpa', 'pressure_backup_kpa', 'cooling_flow_m3h', 'feed_flow_m3h', 'cooling_valve_pct', 'pump_vibration_mms', 'separator_pressure_kpa'];
 const dataset = (id, rows = 900) => ({ id, name: id, workspace_id: 'test', metadata: {
@@ -77,9 +88,75 @@ async function mount(element) {
   root = createRoot(container);
   await act(async () => root.render(element));
 }
-afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); root = null; setLocale('en'); });
+afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); root = null; });
 function curve(name) { return [...container.querySelectorAll('svg')].find(svg => svg.getAttribute('aria-label')?.startsWith(name + ' time series')); }
 async function click(node) { assert.ok(node, 'control exists'); await act(async () => node.click()); }
+
+test('live display can pause without writing to the gateway and bad values remain raw evidence', async () => {
+  const mappings = [
+    { signal_id: 'tank-level', display_name: 'Tank level', node_id: 'ns=2;s=Level', unit: 'm' },
+    { signal_id: 'pump', display_name: 'Pump running', node_id: 'ns=2;s=Pump', unit: '' },
+  ];
+  const session = {
+    id: 'tanks', workspace_id: 'test', name: 'Coupled tanks', state: 'recording',
+    config: { endpoint: 'opc.tcp://127.0.0.1:4840/l5/tanks/' }, mappings,
+    started_at: '2026-01-01T00:00:00.000000+00:00', stopped_at: null,
+  };
+  function observation(id, time, mapping, value, quality = 'good') {
+    const stamp = `2026-01-01T00:00:0${time}.123456+00:00`;
+    return { id, signal_id: mapping.signal_id, node_id: mapping.node_id, value, quality,
+      status_code: quality === 'good' ? 0 : 0x80000000, status_name: quality === 'good' ? 'Good' : 'Bad',
+      timestamp: stamp, timestamp_origin: 'source', source_timestamp: stamp, server_timestamp: stamp, received_at: stamp };
+  }
+  const good = observation(2, 1, mappings[0], 1.25);
+  const bad = observation(3, 2, mappings[0], 98765, 'bad');
+  const recovered = observation(4, 3, mappings[0], 1.3);
+  const quiet = observation(1, 0, mappings[1], true);
+  const writes = [], reads = [], datasets = [];
+  const converted = dataset('captured-tanks');
+  let samples = [good, bad];
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('/dataset')) {
+      writes.push({ url, body: JSON.parse(options.body) });
+      return response(converted);
+    }
+    assert.equal(options.method, 'GET');
+    reads.push({ url, signal: options.signal });
+    return response({ samples, latest: [samples.at(-1), quiet],
+      events: [{ id: 1, kind: 'sampling_gap', timestamp: bad.timestamp, detail: 'No recent data changes. A steady signal may also be quiet.', node_id: bad.node_id }] });
+  };
+  const props = { prefix: '/workspaces/test/live', session, onDataset: data => datasets.push(data) };
+  await mount(React.createElement(LiveEvidence, props));
+  const levelPlot = curve('Tank level (m)');
+  assert.ok(levelPlot);
+  assert.equal(levelPlot.querySelectorAll('circle').length, 1, 'the bad value does not extend the line or create a plotted point');
+  assert.match(container.querySelector('.live-quality[data-quality="bad"]').closest('tr').textContent, /98765.*Bad.*00:00:02\.123456Z/);
+  assert.match([...container.querySelectorAll('tbody tr')].find(row => row.textContent.includes('Pump running')).textContent, /On.*Good/);
+  assert.match(container.querySelector('.live-event-log').textContent, /Sampling gap.*ns=2;s=Level/);
+  await click(button('Pause display'));
+  assert.equal(reads[0].signal.aborted, true);
+  assert.equal(writes.length, 0);
+  assert.match(container.textContent, /Display paused\. Acquisition continues\./);
+  samples = [...samples, recovered];
+  assert.equal(reads.length, 1);
+  await click(button('Resume display'));
+  assert.equal(reads.length, 2);
+  assert.equal(curve('Tank level (m)').querySelectorAll('circle').length, 2);
+  assert.equal(writes.length, 0);
+  await act(async () => root.render(React.createElement(LiveEvidence, {
+    ...props, session: { ...session, state: 'completed', stopped_at: recovered.received_at },
+  })));
+  await click(button('Use displayed time range'));
+  const query = new URL(reads.at(-1).url, 'http://localhost').searchParams;
+  assert.equal(query.get('start'), good.timestamp);
+  assert.equal(query.get('end'), recovered.timestamp);
+  await click(button('Create dataset'));
+  assert.deepEqual(writes, [{ url: '/api/workspaces/test/live/sessions/tanks/dataset',
+    body: { name: 'Coupled tanks', start: good.timestamp, end: recovered.timestamp } }]);
+  assert.deepEqual(datasets, [converted]);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/captured-tanks"]'));
+});
+
 function Controls({ data }) {
   const [selected, setSelected] = useState(names.slice(0, 3));
   return React.createElement(React.Fragment, null,
@@ -124,7 +201,7 @@ test('guided demo connects the live API steps to saved results, incident and loc
     if (url.startsWith(`/api/datasets/${data.id}/series`)) return response(seriesFor(url));
     if (url === `/api/datasets/${data.id}`) return response(data);
     if (url === `/api/incidents/${incident.id}`) return response(incident);
-    if (url === `/api/incidents/${incident.id}/report.html?lang=zh-CN`) return new Response('<h1>事件报告</h1>', { headers: { 'Content-Type': 'text/html' } });
+    if (url === `/api/incidents/${incident.id}/report.html`) return new Response('<h1>Incident report</h1>', { headers: { 'Content-Type': 'text/html' } });
     throw Error(`Unexpected request ${url}`);
   };
   const button = label => [...container.querySelectorAll('button')].find(node => node.textContent === label);
@@ -141,9 +218,8 @@ test('guided demo connects the live API steps to saved results, incident and loc
   assert.match(container.querySelector('.guided-evidence').textContent, /122 s.*240 s/);
   await click(button('Create linked incident'));
   assert.ok(container.querySelector('a[href="#/workspaces/test/incidents/guided-ui-incident"]'));
-  await act(async () => setLocale('zh-CN'));
-  await click(button('生成报告'));
-  assert.match(container.querySelector('iframe').srcdoc, /事件报告/);
+  await click(button("Generate report"));
+  assert.match(container.querySelector('iframe').srcdoc, /Incident report/);
   assert.deepEqual(actions, ['/api/guided-demo', '/api/guided-demo/run', '/api/guided-demo/incident']);
 });
 
@@ -277,7 +353,117 @@ async function setField(node,value) {
     node.dispatchEvent(new dom.window.Event(node.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true}));
   });
 }
+
+test('monitoring prepares explicitly, replays, seeks to an alarm and opens saved evidence in either language', async () => {
+  const source = dataset('monitoring-source');
+  source.metadata.suggestedRanges = { baselineRange: [0, 99], analysisRange: [100, 899] };
+  const signals = names.slice(0, 3);
+  const calls = [];
+  const alarm = { id: 1, start: 125, end: 125, peakTime: 125, peakIndex: 1, peakScore: 8, samples: 1,
+    signals: [signals[0]], status: 'active', durationSeconds: 0, transitionTime: null, contributions: [{ signal: signals[0], value: 8 }] };
+  function series(through) {
+    return { first: 0, times: [100, 125, 125.1].slice(0, through), states: ['normal', 'alarm', 'normal'].slice(0, through),
+      scores: [1, 8, 1].slice(0, through), scoreSegments: [1, 1, 1].slice(0, through),
+      values: Object.fromEntries(signals.map(signal => [signal, [1, 8, 1].slice(0, through)])),
+      signalSegments: Object.fromEntries(signals.map(signal => [signal, [1, 1, 1].slice(0, through)])) };
+  }
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push([url.split('/').at(-1), body]);
+    if (url.endsWith('/replays')) return response({ id: 'replay-a', config: body, threshold: 3, start: 100, end: 125.1,
+      sampleCount: 3, fitSamples: 70, calibrationSamples: 30, alarmPageSize: 20 });
+    if (url.endsWith('/frame')) {
+      const through = body.at < 125 ? 1 : body.at < 125.1 ? 2 : 3;
+      return response({ through, series: series(through), nextTime: [125, 125.1, null][through - 1],
+        alarmCount: through === 1 ? 0 : 1, alarms: through === 1 ? [] : [alarm] });
+    }
+    if (url.endsWith('/evidence')) return response({ alarm, series: series(body.through) });
+    if (url.endsWith('/incident')) return response({ id: 'incident-a' });
+    throw new Error(`Unexpected replay request ${url}`);
+  };
+  await mount(React.createElement(ReplayWorkspace, { workspaceId: 'test', datasets: [source] }));
+  assert.ok(button('Prepare replay').disabled);
+  await click(container.querySelector('.replay-confirm input'));
+  await click(button('Prepare replay'));
+  assert.deepEqual(calls[0][1].baselineRange, [0, 99]);
+  assert.match(container.textContent, /0 \/ 3 observations/);
+  await click(button('Start'));
+  assert.match(container.textContent, /1 \/ 3 observations/);
+  await click(button('Pause'));
+  assert.ok(button('Resume'));
+  const slider = container.querySelector('input[type="range"]');
+  await setField(slider, 125);
+  await click(button('Seek'));
+  assert.match(container.textContent, /2 \/ 3 observations/);
+  assert.match(container.textContent, /Alarm active/);
+  await click(button('Inspect'));
+  assert.deepEqual(calls.at(-1), ['evidence', { alarmId: 1, through: 2 }]);
+  await click(button('Save alarm as incident'));
+  assert.equal(container.querySelector('.replay-evidence a').getAttribute('href'), '#/workspaces/test/incidents/incident-a');
+  assert.match(container.textContent, /Process Replay & Monitoring/);
+  assert.match(container.textContent, /Contribution at peak/);
+  await setField(slider, 100);
+  await click(button('Seek'));
+  assert.doesNotMatch(container.textContent, /Open saved incident/);
+  await click(button('Restart'));
+  assert.match(container.textContent, /0 \/ 3 observations/);
+});
+
 function isMasked(node) { return Boolean(node?.closest('[aria-hidden="true"][inert]')); }
+
+test('resilience composer localizes, saves stable fault schedules and exports only a run reference', async () => {
+  const base = '/api/workspaces/test/resilience';
+  const signal = {key:'level1', tag:'LT-101', unit:'m', label:'Tank 1 measured level'};
+  const initial = {name:'Tank trial',model_id:'coupled-tanks',initial:{},parameters:{},duration:10,sample_interval:1,integration_step:.05,seed:1,
+    measurement:{noise:0,missing_fraction:0,physical_noise:0,signals:['level1']},faults:[]};
+  const catalog = {models:[{id:initial.model_id,name:'Coupled tanks',version:'1',initial:[],parameters:[],signals:[signal]}],
+    fault_types:[{id:'pump_degradation',targets:['pump'],parameters:[]}],
+    profiles:[{id:'step',parameters:[]}],defaults:initial,limits:{max_faults:24,max_samples:6001},
+    algorithms:{'robust-maxz':'Robust Max-Z'},default_detectors:[{algorithm:'robust-maxz',signals:['level1']}],
+    max_cases:64,max_search_cases:32,objectives:['missed'],benchmark_version:'v1',benchmark_detectors:[{algorithm:'robust-maxz'}]};
+  const stamp = '2026-11-13T00:00:00Z';
+  let simulation, saved, exportedRequest;
+  const exported = dataset('resilience-dataset',2);
+  exported.metadata.columns = [{name:'level1',id:'catalog-level1'}];
+  globalThis.fetch = async (url, request) => {
+    const body = request.body ? JSON.parse(request.body) : null;
+    if (url === `${base}/catalog`) return response(catalog);
+    if (url === `${base}/scenarios` && !body) return response({scenarios:[]});
+    if (url === `${base}/scenarios` && body) return response(saved={id:'scenario',...body});
+    if (url === `${base}/runs`) return response({runs:[]});
+    if (url === `${base}/campaigns`) return response({campaigns:[]});
+    const schedule = scenario => scenario.faults.map(fault => ({...fault,intervals:[{start:fault.onset,end:scenario.duration}]}));
+    if (url === `${base}/preview`) return response({schedule:schedule(body.scenario)});
+    if (url === `${base}/simulate`) {
+      const events = schedule(body.scenario);
+      return response(simulation={id:'run',name:body.name,created_at:stamp,dataset_id:null,scenario:body.scenario,
+        model_version:'1',signals:[signal],schedule:events,
+        truth:{physical:[{t:0,level1:1},{t:1,level1:1}],events,severities:Object.fromEntries(events.map(event=>[event.id,[0,.6]]))},
+        observations:[{t:0,values:{level1:1},quality:{level1:'observed'},source_times:{level1:0},acquisition_times:{level1:0}},
+          {t:1,values:{level1:null},quality:{level1:'blackout'},source_times:{level1:1},acquisition_times:{level1:null}}],
+        observation_packets:[]});
+    }
+    if (url === `${base}/runs/run`) return response(simulation);
+    if (url === `${base}/export`) { exportedRequest=body; return response(exported); }
+    throw new Error(`Unexpected resilience request ${url}`);
+  };
+  const props={workspaceId:'test',onExport:()=>{}};
+  await mount(React.createElement(ResilienceWorkspace,props));
+  assert.equal(container.querySelector('h1').textContent,'Resilience Testing');
+  await click(button('Add fault'));
+  await click(button('Add fault'));
+  await click(button('Save scenario'));
+  assert.deepEqual(saved.scenario.faults.map(event=>event.id),['fault-1','fault-2']);
+  assert.equal(container.querySelector('h1').textContent,"Resilience Testing");
+  assert.match(container.textContent,/Fault schedule/);
+  await click(button('Run simulation'));
+  await act(async()=>root.render(React.createElement(ResilienceWorkspace,{...props,section:'runs',recordId:'run'})));
+  assert.match(container.textContent,/Physical vs\. measured trajectories/);
+  assert.match(container.textContent,/Blackout/);
+  await click(button('Open Signal Explorer'));
+  assert.deepEqual(exportedRequest,{run_id:'run',name:saved.name});
+  assert.equal(window.location.hash,'#/workspaces/test/explorer/catalog-level1');
+});
 async function openRuntime(api, asOf = 300, tab = 'evidence') {
   await mount(React.createElement(RuntimeWorkbench,{simulationId:'A',initialTab:tab}));
   await setField(field('Observe through'),asOf);
@@ -416,8 +602,87 @@ function inputFor(label, within = container) {
   assert.ok(element, `field ${label} exists`); return element.querySelector('input,textarea,select');
 }
 function matchesLabel(content, source) {
-  return content.startsWith(t(source)) || Object.keys(copy).some(key => key.startsWith(source) && content.startsWith(t(key)));
+  return content.startsWith(t(source));
 }
+
+test('regime workspace freezes selected context, reopens the evaluation, and links a transition alarm', async () => {
+  const fitA = dataset('Reduced-load normal'), fitB = dataset('Rated-load normal'), evaluation = dataset('Production replay');
+  const datasets = [fitA, fitB, evaluation], endpoint = '/api/workspaces/test/regimes';
+  const createdAt = '2026-11-11T00:00:00Z';
+  const behavior = { validSamples: 4, totalSamples: 4, alarmSamples: 1, alarmIntervalCount: 1, alarmFraction: .25 };
+  const comparison = { behavior, detection: { windows: null }, labelled: null };
+  const detector = { algorithm: 'robust-maxz', alpha: .01, variance: .9, threshold: 0 };
+  const fittedMode = { center: [1], covariance: [[.5]], regularizedCovariance: [[.4]], distanceThreshold: 5, fitSamples: 50, calibrationSamples: 40, detector };
+  let model, run, incidentLink;
+  globalThis.fetch = async (url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    if (url === endpoint + '/models') return response({ models: model ? [model] : [] });
+    if (url === endpoint + '/runs' && !body) return response({ runs: run ? [run] : [] });
+    if (url === endpoint + '/fit' && body) {
+      assert.deepEqual(body.recognition.recognitionSignals, [names[0]]);
+      assert.deepEqual(body.signals, names);
+      assert.equal(body.modes.length, 2);
+      assert.equal(body.modes[0].fit[0].datasetId, fitA.id);
+      assert.ok(body.modes[0].fit[0].range[1] < body.modes[0].calibration[0].range[0]);
+      model = { id: 'model-1', createdAt, name: body.name, config: body, sources: { [fitA.id]: fitA, [fitB.id]: fitB }, referenceDatasetId: fitA.id,
+        model: { version: '1', modes: { 'mode-1': fittedMode, 'mode-2': fittedMode }, comparisons: [], globalDetector: detector, singleDetector: detector } };
+      return response(model);
+    }
+    if (url === endpoint + '/models/model-1') return response(model);
+    if (url === endpoint + '/runs' && body) {
+      assert.equal(body.modelId, model.id);
+      assert.equal(body.evaluation.datasetId, evaluation.id);
+      const times = [0, 1, 2, 3];
+      const decisions = times.map((time, i) => ({
+        time, mode: i === 0 ? 'mode-1' : i === 3 ? 'mode-2' : null, activeMode: i === 3 ? 'mode-2' : 'mode-1',
+        candidateMode: i > 1 ? 'mode-2' : null, scoringMode: i > 1 ? 'mode-2' : 'mode-1',
+        recognition: i === 1 ? 'unknown' : 'supported', evidence: { 'mode-1': { distance: 1, threshold: 4, discriminant: 1.5, supported: true } },
+        margin: null, status: ['normal', 'unknown', 'abnormal', 'normal'][i], transition: i === 2, candidateSamples: i === 2 ? 1 : 0,
+        alarm: i === 2, score: i === 2 ? 9 : 0, threshold: 0, globalScore: 1, globalThreshold: 2, globalAlarm: false,
+        singleScore: i === 2 ? 9 : 0, singleThreshold: 4, singleAlarm: i === 2,
+      }));
+      run = { id: 'run-1', analysisId: 'run-1', modelId: model.id, datasetId: evaluation.id, name: body.name, createdAt, evaluation: body.evaluation, model,
+        source: evaluation, gapThreshold: 5, labelSet: null, protocol: 'distinct-dataset', times, decisions,
+        series: { time: times, values: { [names[0]]: [10, 11, 12, 13] } },
+        intervals: [{ start: 2, end: 2, peakTime: 2, peakScore: 9, samples: 1, kind: 'transition', mode: 'mode-2', signals: [names[0]], contributions: [{ signal: names[0], value: 9 }] }],
+        transitions: [{ fromMode: 'mode-1', toMode: 'mode-2', startTime: 1, candidateTime: 2, confirmedTime: 3, endTime: 3, resolvedTime: 3, outcome: 'confirmed', initialMargin: null }],
+        metrics: { regime: comparison, global: comparison, single: comparison } };
+      return response(run);
+    }
+    if (url === endpoint + '/runs/run-1') return response(run);
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [emptyIncident()] });
+    if (url === '/api/incidents/event-one/links') { incidentLink = body; return response(emptyIncident()); }
+    throw new Error(`Unexpected request ${url}`);
+  };
+  const page = props => React.createElement(RegimeWorkspace, { workspaceId: 'test', datasets, ...props });
+  await mount(page());
+  await setField(inputFor('Model name'), 'Reactor regimes');
+  const modes = container.querySelectorAll('.regime-mode');
+  await setField(inputFor('Operating-mode label', modes[0]), 'Low load');
+  await setField(inputFor('Operating-mode label', modes[1]), 'High load');
+  assert.ok(button('Fit and save model').disabled, 'an explicit context signal is required');
+  await click(container.querySelector(`[aria-label="Recognize using ${names[0]}"]`));
+  await click(button('Fit and save model'));
+  assert.equal(window.location.hash, '#/workspaces/test/regimes/models/model-1');
+  await act(async () => root.render(page({ section: 'models', itemId: 'model-1' })));
+  assert.match(container.textContent, /Frozen model evidence/);
+  await setField(inputFor('Run name'), 'Shift replay');
+  await click(button('Run and save evaluation'));
+  assert.equal(window.location.hash, '#/workspaces/test/regimes/runs/run-1');
+  await act(async () => root.render(page({ section: 'runs', itemId: 'run-1' })));
+  assert.match(container.textContent, /Detector comparison.*Global detector.*Single-mode detector/s);
+  await click(button('Inspect transition'));
+  assert.match(container.querySelector('.regime-cursor output').textContent, /2 s.*Sample 3/);
+  assert.match(container.querySelector('.regime-evidence').textContent, /Abnormal.*Candidate modeHigh load/s);
+  assert.match(container.textContent, /Alarm peak evidence/);
+  assert.match(container.textContent, /Operating regime monitoring.*Detector comparison/s);
+  assert.match(container.textContent, /Low load.*High load/s, 'mode labels remain user-owned');
+  await click(button('Link to incident'));
+  await click(button("Add to existing incident"));
+  await click(button("Add and open incident"));
+  assert.deepEqual(incidentLink, { kind: 'interval', datasetId: evaluation.id, analysisId: 'run-1', intervalIndex: 0 });
+  assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
+});
 
 test('result interval cards and complete record create or join a persistent incident with editable event fields', async () => {
   const result = incidentResult(), writes = [], saved = emptyIncident();
@@ -429,12 +694,12 @@ test('result interval cards and complete record create or join a persistent inci
   await mount(React.createElement(ResultView, { result, dataset: dataset('incident-data'), signalPicker: () => null }));
   const card = container.querySelector('.ws-finding');
   const cardStart = Number(card.querySelector('button[aria-label]').getAttribute('aria-label').match(/interval (\d+)/)[1]);
-  await click([...card.querySelectorAll('button')].find(n => n.textContent === t('创建事件')));
-  assert.equal(dialogField('开始时间').value, String(cardStart));
-  await setField(dialogField('事件标题'), '用户确认的事件');
-  await setField(dialogField('开始时间'), 320);
-  await setField(dialogField('事件说明'), '等待现场复核');
-  await click(button('创建并打开事件'));
+  await click([...card.querySelectorAll('button')].find(n => n.textContent === t("Create incident")));
+  assert.equal(dialogField("Start time").value, String(cardStart));
+  await setField(dialogField("Incident title"), '用户确认的事件');
+  await setField(dialogField("Start time"), 320);
+  await setField(dialogField("Incident description"), '等待现场复核');
+  await click(button("Create and open incident"));
   assert.equal(writes[0].url, '/api/workspaces/test/incidents');
   assert.equal(writes[0].body.title, '用户确认的事件');
   assert.equal(writes[0].body.start_time, 320);
@@ -442,9 +707,9 @@ test('result interval cards and complete record create or join a persistent inci
   assert.deepEqual(writes[0].body.source, { kind: 'interval', analysisId: result.id, datasetId: 'incident-data', intervalIndex: result.intervals.findIndex(i => i.start === cardStart) });
   assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
   const row = container.querySelector('tbody tr');
-  await click([...row.querySelectorAll('button')].find(n => n.textContent === t('添加到已有事件')));
-  assert.equal(dialogField('选择事件').value, saved.id);
-  await click(button('添加并打开事件'));
+  await click([...row.querySelectorAll('button')].find(n => n.textContent === t("Add to existing incident")));
+  assert.equal(dialogField("Select incident").value, saved.id);
+  await click(button("Add and open incident"));
   assert.equal(writes[1].url, '/api/incidents/event-one/links');
   assert.equal(writes[1].body.intervalIndex, 0);
 });
@@ -470,40 +735,40 @@ test('incident workstation edits notes, hypotheses, evidence relationships and c
   };
   await mount(React.createElement(IncidentDetail, { initial: structuredClone(saved), datasets: [data], jobs: [] }));
   assert.ok(curve(names[0]), 'linked interval plots the raw dataset');
-  assert.match([...container.querySelectorAll('a')].find(a => a.textContent === t('打开原始分析 ↗')).getAttribute('href'), /incident-detail-analysis\/0$/);
-  await click(button('＋ 添加候选解释'));
-  await setField(dialogField('记录标题'), '冷却侧变化');
-  await setField(dialogField('记录内容'), '先核对冷却回路');
-  await click(button('保存调查记录'));
-  await click(button('＋ 添加证据'));
-  await setField(dialogField('记录标题'), '温度首先升高');
-  await setField(dialogField('记录内容'), '温度在区间开始前已偏离。');
-  await setField(dialogField('关联候选解释'), 'entry-1');
-  await setField(dialogField('证据关系'), 'support');
-  await setField(dialogField('观察时间'), 345);
-  await click(button('保存调查记录'));
+  assert.match([...container.querySelectorAll('a')].find(a => a.textContent === t("Open original analysis ↗")).getAttribute('href'), /incident-detail-analysis\/0$/);
+  await click(button("＋ Add hypothesis"));
+  await setField(dialogField("Record title"), '冷却侧变化');
+  await setField(dialogField("Record content"), '先核对冷却回路');
+  await click(button("Save investigation record"));
+  await click(button("＋ Add evidence"));
+  await setField(dialogField("Record title"), '温度首先升高');
+  await setField(dialogField("Record content"), '温度在区间开始前已偏离。');
+  await setField(dialogField("Related hypothesis"), 'entry-1');
+  await setField(dialogField("Evidence relationship"), 'support');
+  await setField(dialogField('Observation time'), 345);
+  await click(button("Save investigation record"));
   const evidence = saved.entries.find(e => e.kind === 'evidence');
   assert.equal(evidence.hypothesis_id, 'entry-1'); assert.equal(evidence.stance, 'support');
   assert.equal(evidence.source_link_id, 'source-one'); assert.equal(evidence.observed_at, 345);
-  await click(button('＋ 添加笔记'));
-  await setField(dialogField('记录标题'), '现场复核'); await setField(dialogField('记录内容'), '已检查交接记录。');
-  await click(button('保存调查记录'));
+  await click(button("＋ Add note"));
+  await setField(dialogField("Record title"), '现场复核'); await setField(dialogField("Record content"), '已检查交接记录。');
+  await click(button("Save investigation record"));
   const noteCard = [...container.querySelectorAll('article')].find(a => a.textContent.includes('现场复核'));
-  await click([...noteCard.querySelectorAll('button')].find(b => b.textContent === t('编辑')));
-  await setField(dialogField('记录内容'), '已检查交接记录，等待冷却水记录。');
-  await click(button('保存调查记录'));
-  await setField(inputFor('事件标题'), '反应器持续调查');
-  await setField(inputFor('调查状态'), 'investigating');
-  await click(button('保存基本信息'));
-  await setField(inputFor('调查结论'), '暂时支持冷却侧变化，继续验证。');
-  await click(button('保存调查结论'));
+  await click([...noteCard.querySelectorAll('button')].find(b => b.textContent === t("Edit")));
+  await setField(dialogField("Record content"), '已检查交接记录，等待冷却水记录。');
+  await click(button("Save investigation record"));
+  await setField(inputFor("Incident title"), '反应器持续调查');
+  await setField(inputFor("Investigation status"), 'investigating');
+  await click(button("Save information"));
+  await setField(inputFor("Investigation conclusion"), '暂时支持冷却侧变化，继续验证。');
+  await click(button("Save investigation conclusion"));
   assert.ok(writes.some(w => w.method === 'PATCH' && w.body.conclusion === '暂时支持冷却侧变化，继续验证。'));
   await act(async () => root.unmount()); container.remove(); root = null;
   await mount(React.createElement(IncidentsPage, { workspaceId: 'test', incidentId: saved.id, datasets: [data], jobs: [] }));
-  assert.equal(inputFor('事件标题').value, '反应器持续调查');
-  assert.equal(inputFor('调查结论').value, saved.conclusion);
+  assert.equal(inputFor("Incident title").value, '反应器持续调查');
+  assert.equal(inputFor("Investigation conclusion").value, saved.conclusion);
   assert.match(container.textContent, /等待冷却水记录/);
-  assert.match(container.textContent, /Supports：冷却侧变化/);
+  assert.match(container.textContent, /Supports: 冷却侧变化/);
   assert.ok(curve(names[0]));
 });
 
@@ -513,13 +778,13 @@ test('incident list filters by status, title and time using the workspace API', 
   await mount(React.createElement(IncidentsPage, { workspaceId: 'test', datasets: [], jobs: [] }));
   await act(async () => new Promise(resolve => setTimeout(resolve, 220)));
   assert.match(container.textContent, /2 analyses · 3 intervals/);
-  await setField(inputFor('调查状态'), 'investigating');
-  await setField(inputFor('查找事件'), '反应器');
-  await setField(inputFor('相交区间起点'), 300);
-  await setField(inputFor('相交区间终点'), 600);
+  await setField(inputFor("Investigation status"), 'investigating');
+  await setField(inputFor("Find incidents"), "reactor");
+  await setField(inputFor('Intersecting range start'), 300);
+  await setField(inputFor('Intersecting range end'), 600);
   await act(async () => new Promise(resolve => setTimeout(resolve, 220)));
   const query = new URL(requests.at(-1), 'http://localhost').searchParams;
-  assert.equal(query.get('status'), 'investigating'); assert.equal(query.get('q'), '反应器');
+  assert.equal(query.get('status'), 'investigating'); assert.equal(query.get('q'), "reactor");
   assert.equal(query.get('start'), '300'); assert.equal(query.get('end'), '600');
   assert.equal(container.querySelector('.ws-history-row').getAttribute('href'), '#/workspaces/test/incidents/event-one');
 });
@@ -543,9 +808,9 @@ test('saved runtime experiment reopens its observation and intervention paramete
   assert.equal(field('Observe through').value, '156'); assert.equal(field('Intervention starts at').value, '162');
   assert.equal(field('Prediction ends at').value, '400'); assert.equal(field('Bypass cooling flow').value, '63');
   assert.ok(container.querySelector('.runtime-forecast'), 'stored forecast opens without recomputation');
-  await click(button('关联最近一次已完成结果'));
-  await click([...container.querySelectorAll('dialog button')].find(b => b.textContent === t('添加到已有事件')));
-  await click(button('添加并打开事件'));
+  await click(button("Link most recent completed result"));
+  await click([...container.querySelectorAll('dialog button')].find(b => b.textContent === t("Add to existing incident")));
+  await click(button("Add and open incident"));
   assert.deepEqual(writes[0], { kind: 'run', simulationId: 'A', runId: 'saved-trial', hypothesis: 'cooling_valve' });
   assert.equal(window.location.hash, '#/workspaces/test/incidents/event-one');
 });
@@ -567,7 +832,7 @@ test('restored tool output stays tied to its saved observation window after swit
 
 function incidentView(incident, results, selected = results.map(r => r.id)) {
   const axisId = 'dataset:incident-data';
-  const analyses = results.map(r => ({ id: r.id, result: r, datasetId: r.datasetId, datasetName: '现场数据', axisId, offset: 0, scope: '完整分析', linkId: `link-${r.id}`, observedSpans: [[200, 699]],
+  const analyses = results.map(r => ({ id: r.id, result: r, datasetId: r.datasetId, datasetName: '现场数据', axisId, offset: 0, scope: "Full analysis", linkId: `link-${r.id}`, observedSpans: [[200, 699]],
     intervals: r.intervals.map((i, index) => ({ ...i, index, linkId: `link-${r.id}` })) }));
   return { incident, workspace: { id: 'test', name: '工业调查' }, generatedAt: incident.updated_at, primaryAxisId: axisId, datasets: [dataset('incident-data')],
     axes: [{ id: axisId, label: '现场数据', origin: null, start: 330, end: 560 }], analyses,
@@ -593,49 +858,49 @@ test('incident timeline filters, navigates alarms and evidence, and shares curso
   await mount(React.createElement(IncidentDetail, { initial: saved, datasets: [dataset('incident-data')], jobs: [] }));
   const timeline = container.querySelector('#incident-timeline'), comparison = container.querySelector('#incident-comparison');
   assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 5);
-  await setField(inputFor('分析结果', timeline), pca.id);
+  await setField(inputFor("Analysis result", timeline), pca.id);
   assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 2);
-  await setField(inputFor('筛选起点', timeline), 500);
+  await setField(inputFor('Filter start', timeline), 500);
   assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 1);
   await click(timeline.querySelector('.incident-event-list button'));
-  assert.ok(Number(inputFor('窗口起点').value) < 510);
-  assert.ok(Number(inputFor('窗口终点').value) > 554);
-  assert.equal(inputFor('观察时刻（来源秒数）').value, '520');
+  assert.ok(Number(inputFor('Window start').value) < 510);
+  assert.ok(Number(inputFor('Window end').value) > 554);
+  assert.equal(inputFor("Observation time (source seconds)").value, '520');
   assert.ok(container.querySelector('.incident-preview svg [data-selected-time="520"]'));
   assert.match(container.querySelector('.incident-comparison-scores').textContent, /PCA 分析/);
-  await setField(inputFor('同步观察时刻'), 530);
+  await setField(inputFor("Synchronized observation time"), 530);
   assert.ok(container.querySelector('.incident-preview svg [data-selected-time="530"]'));
   assert.ok(container.querySelector('.incident-comparison-scores svg [data-selected-time="530"]'));
   await act(async () => new Promise(resolve => setTimeout(resolve, 130)));
-  assert.match(container.querySelector("[aria-label=\"" + t("同一时刻的多变量观测") + "\"]").textContent, /30/);
+  assert.match(container.querySelector("[aria-label=\"" + t("Multivariable observations at the same time") + "\"]").textContent, /30/);
   assert.ok(samples.some(url => url.includes('at=530')));
   await click(comparison.querySelector('.ws-option-grid input'));
   assert.match(queries.at(-1), /analysis=timeline-pca/);
   assert.equal(comparison.querySelectorAll('tbody')[0].rows.length, 1);
-  await setField(inputFor('分析结果', timeline), ''); await setField(inputFor('筛选起点', timeline), ''); await setField(inputFor('事件类别', timeline), 'note');
+  await setField(inputFor("Analysis result", timeline), ''); await setField(inputFor('Filter start', timeline), ''); await setField(inputFor("Event category", timeline), 'note');
   assert.equal(timeline.querySelectorAll('.incident-event-list li').length, 1);
   await click(timeline.querySelector('.incident-event-list button'));
-  assert.equal(dialogField('记录标题').value, '现场温升记录');
-  assert.equal(dialogField('观察时间').value, '345');
+  assert.equal(dialogField("Record title").value, '现场温升记录');
+  assert.equal(dialogField('Observation time').value, '345');
 });
 
 test('professional report preview/export uses current saved content and invalidates an older generation', async () => {
-  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+  const { IncidentReport } = require('../src/workspace/investigation/IncidentReport.tsx');
   let saved = emptyIncident(), reports = 0;
   globalThis.fetch = async url => {
-    assert.match(url, /report\.html\?lang=en$/); reports++;
+    assert.match(url, /report\.html$/); reports++;
     return { ok: true, headers: { get: () => 'text/html; charset=utf-8' }, text: async () => `<!doctype html><html><body><h1>真实事件报告</h1><p>${saved.conclusion || '尚未形成结论'}</p><svg><path d="M0 0 L1 2"/></svg></body></html>` };
   };
   await mount(React.createElement(IncidentReport, { incident: saved }));
-  assert.equal(button('导出离线 HTML').disabled, true);
-  await click(button('生成报告'));
+  assert.equal(button("Export offline HTML").disabled, true);
+  await click(button("Generate report"));
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /尚未形成结论/);
   let printed = 0;
   const frame = container.querySelector('iframe');
   frame.contentWindow.print = () => printed++;
   frame.contentWindow.focus = () => {};
   await act(async () => frame.dispatchEvent(new window.Event('load')));
-  await click(button('打印 / 保存 PDF'));
+  await click(button("Print / Save PDF"));
   assert.equal(printed, 1);
   const originalCreate = URL.createObjectURL, originalRevoke = URL.revokeObjectURL, originalClick = window.HTMLAnchorElement.prototype.click;
   let blob, filename;
@@ -643,24 +908,24 @@ test('professional report preview/export uses current saved content and invalida
   URL.revokeObjectURL = () => {};
   window.HTMLAnchorElement.prototype.click = function () { filename = this.download; };
   try {
-    await click(button('导出离线 HTML'));
+    await click(button("Export offline HTML"));
     assert.match(filename, /l5-incident-event-one\.html/);
     assert.match(await blob.text(), /<svg>/);
   } finally { URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; window.HTMLAnchorElement.prototype.click = originalClick; }
   saved = { ...saved, conclusion: '更新后的现场结论', updated_at: '2026-10-24T03:00:00Z' };
   await act(async () => root.render(React.createElement(IncidentReport, { incident: saved })));
   assert.equal(container.querySelector('iframe'), null);
-  assert.equal(button('打印 / 保存 PDF').disabled, true);
-  await click(button('生成报告'));
+  assert.equal(button("Print / Save PDF").disabled, true);
+  await click(button("Generate report"));
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /更新后的现场结论/);
   assert.equal(reports, 2);
 });
 
 test('timeline experiment links reopen the stored run rather than the current cursor window', async () => {
-  const { IncidentTimeline } = require('../src/workspace/IncidentTimeline.tsx');
+  const { IncidentTimeline } = require('../src/workspace/investigation/IncidentTimeline.tsx');
   const saved = emptyIncident();
-  saved.links = [{ id: 'trial-link', kind: 'run', details: { title: '保存实验', simulationId: 'sim-one', run: { id: 'trial-one', request: { asOf: 93, windowStart: 0 }, kind: 'intervention' } } }];
-  const view = { ...incidentView(saved, []), axes: [{ id: 'simulation:sim-one', label: '冷却模拟', start: 0, end: 100, origin: null }], primaryAxisId: 'simulation:sim-one', events: [{ id: 'trial-event', kind: 'experiment', title: '干预实验', start: 93, end: 93, axisId: 'simulation:sim-one', linkId: 'trial-link', observationWindow: [0, 93], actionAt: 96, recordedAt: saved.created_at, target: 'source' }] };
+  saved.links = [{ id: 'trial-link', kind: 'run', details: { title: "Save experiment", simulationId: 'sim-one', run: { id: 'trial-one', request: { asOf: 93, windowStart: 0 }, kind: 'intervention' } } }];
+  const view = { ...incidentView(saved, []), axes: [{ id: 'simulation:sim-one', label: '冷却模拟', start: 0, end: 100, origin: null }], primaryAxisId: 'simulation:sim-one', events: [{ id: 'trial-event', kind: 'experiment', title: "Intervention experiment", start: 93, end: 93, axisId: 'simulation:sim-one', linkId: 'trial-link', observationWindow: [0, 93], actionAt: 96, recordedAt: saved.created_at, target: 'source' }] };
   globalThis.fetch = async () => response(view);
   let selected;
   await mount(React.createElement(IncidentTimeline, { incident: saved, selection: null, onSelect: value => selected = value, onRecord() {}, onSection() {} }));
@@ -670,7 +935,7 @@ test('timeline experiment links reopen the stored run rather than the current cu
 });
 
 test('removing an analysis source reconciles the incident comparison selection without stale source requests', async () => {
-  const { IncidentTimeline } = require('../src/workspace/IncidentTimeline.tsx');
+  const { IncidentTimeline } = require('../src/workspace/investigation/IncidentTimeline.tsx');
   const results = [incidentResult('remove-maxz'), { ...incidentResult('remove-pca'), name: 'PCA' }];
   let saved = emptyIncident();
   saved.links = results.map(r => ({ id: `link-${r.id}`, details: { analysisId: r.id } }));
@@ -691,16 +956,16 @@ test('removing an analysis source reconciles the incident comparison selection w
 });
 
 test('late report responses cannot replace a newer saved incident generation', async () => {
-  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+  const { IncidentReport } = require('../src/workspace/investigation/IncidentReport.tsx');
   let resolveOld;
   globalThis.fetch = () => new Promise(resolve => resolveOld = resolve);
   let saved = emptyIncident();
   await mount(React.createElement(IncidentReport, { incident: saved }));
-  await click(button('生成报告'));
+  await click(button("Generate report"));
   saved = { ...saved, conclusion: '最新结论' };
   await act(async () => root.render(React.createElement(IncidentReport, { incident: saved })));
   globalThis.fetch = async () => ({ ok: true, headers: { get: () => 'text/html' }, text: async () => '<html><body>最新结论</body></html>' });
-  await click(button('生成报告'));
+  await click(button("Generate report"));
   await act(async () => resolveOld({ ok: true, headers: { get: () => 'text/html' }, text: async () => '<html><body>旧结论</body></html>' }));
   assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /最新结论/);
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /旧结论/);
@@ -789,11 +1054,9 @@ test('explorer restores saved windows, groups only compatible units and reads fu
   assert.equal(save.body.displayMode, 'overlay');
   assert.match(container.textContent, /Saved: Saved motor review/);
   const requestCount = api.requests.length, nameInput = container.querySelector('input[value="Saved motor review"]');
-  await act(async () => setLocale('zh-CN'));
-  assert.match(container.querySelector('.ws-saved').textContent, /已保存：Saved motor review/);
+  assert.match(container.querySelector('.ws-saved').textContent, /Saved: Saved motor review/);
   assert.equal(container.querySelector('input[value="Saved motor review"]'), nameInput);
   assert.equal(api.requests.length, requestCount, 'language does not reload explorer data');
-  await act(async () => setLocale('en'));
   await click(button('Configure analysis for this window'));
   assert.deepEqual(analyses[0], ['temperature', ['temp'], [2, 8]]);
   const paths = container.querySelector('.explorer-lane svg').querySelectorAll('path');
@@ -1161,8 +1424,7 @@ test('scenario edits save a new version before a run and retain the original inp
   assert.equal(saved[0].version,2);assert.equal(JSON.stringify(scenario),original);
   const name = inputFor('Scenario name'), requestCount = writes.length;
   assert.match(container.querySelector('[role="status"]').textContent, /Saved scenario v2/);
-  await act(async () => setLocale('zh-CN'));
-  assert.match(container.querySelector('[role="status"]').textContent, /已保存场景版本 2/);
+  assert.match(container.querySelector('[role="status"]').textContent, /Saved scenario v2/);
   assert.equal(inputFor('Scenario name'), name);
   assert.equal(writes.length, requestCount, 'relocalizing a saved notice does not run the model again');
   assert.equal(JSON.stringify(scenario), original);
@@ -1428,40 +1690,26 @@ test('new experiments retain dataset signal selection and start single-signal da
   assert.deepEqual(newExperimentConfig(source,[names[6]]).signals,[names[6]]);
 });
 
-test('locale selection respects the primary browser language, saved choice and blocked storage', () => {
-  assert.equal(preferredLocale(undefined, ['zh-TW', 'en-US']), 'zh-CN');
-  assert.equal(preferredLocale(undefined, ['en-GB', 'zh-CN']), 'en');
-  assert.equal(preferredLocale({ getItem: () => 'en' }, ['zh-CN']), 'en');
-  assert.equal(preferredLocale({ getItem: () => 'zh-CN' }, ['en']), 'zh-CN');
-  assert.equal(preferredLocale({ getItem: () => 'invalid' }, ['zh-CN']), 'zh-CN');
-  assert.equal(preferredLocale({ getItem() { throw new Error('Storage blocked'); } }, ['en']), 'en');
-});
 
-test('the global switch changes real home copy, persists and retains an unsaved project name', async () => {
+
+test('the workspace stays in English with a saved language from an earlier version', async () => {
   window.location.hash = '#/';
-  globalThis.fetch = async () => response({ workspaces: [] });
-  await mount(React.createElement(App));
-  const name = container.querySelector('#workspace-name');
-  await setField(name, 'Analysis · 现场项目');
-  const route = window.location.hash;
-  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
-  assert.equal(document.documentElement.lang, 'zh-CN');
-  assert.equal(window.localStorage.getItem('l5.locale'), 'zh-CN');
-  assert.match(container.querySelector('h1').textContent, /工作区/);
-  assert.ok(button('Create workspace ↗'));
-  assert.equal(container.querySelector('#workspace-name'), name, 'form stays mounted');
-  assert.equal(name.value, 'Analysis · 现场项目', 'user text is never translated');
-  assert.equal(window.location.hash, route);
-  await act(async () => { root.unmount(); }); container.remove(); root = null;
-  await mount(React.createElement(App));
-  assert.equal(getLocale(), 'zh-CN');
-  assert.match(container.querySelector('h1').textContent, /工作区/);
-  await click(container.querySelector('.language-switch button[lang="en"]'));
-  assert.equal(document.documentElement.lang, 'en');
-  assert.match(container.querySelector('h1').textContent, /Workspaces/);
+  window.localStorage.setItem('l5.locale', 'zh-CN');
+  try {
+    globalThis.fetch = async () => response({ workspaces: [] });
+    await mount(React.createElement(App));
+    assert.equal(document.documentElement.lang, 'en');
+    assert.match(container.innerText || container.textContent, /workspace/i);
+    assert.equal(container.querySelector('.language-switch'), null);
+    const name = container.querySelector('#workspace-name');
+    await setField(name, 'Analysis · 现场项目');
+    assert.equal(name.value, 'Analysis · 现场项目');
+  } finally {
+    window.localStorage.removeItem('l5.locale');
+  }
 });
 
-test('switching language keeps an analysis request, its raw inputs and current route', async () => {
+test('rerendering keeps an analysis request, its raw inputs and current route', async () => {
   const source = dataset('incident-data');
   source.metadata.suggestedRanges = { baselineRange: [0,199], analysisRange: [200,899] };
   let pending, requestSignal, requests = 0;
@@ -1470,14 +1718,13 @@ test('switching language keeps an analysis request, its raw inputs and current r
     requests++; requestSignal = options.signal;
     return new Promise(resolve => pending = resolve);
   };
-  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(AnalysisPage, {
-    workspaceId: 'test', datasets: [source], selected: source.id, setSelected() {}, preferences: {}, refresh() {},
-  })));
+  const props = { workspaceId: 'test', datasets: [source], selected: source.id, setSelected() {}, preferences: {}, refresh() {} };
+  await mount(React.createElement(AnalysisPage, props));
   const start = inputFor('Analysis start (s)'), name = inputFor('Analysis name (optional)');
   await setField(start, 300); await setField(name, '状态 / original name');
   await click(button('Run analysis and save'));
   const route = window.location.hash;
-  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
+  await act(async () => root.render(React.createElement(AnalysisPage, props)));
   assert.equal(container.querySelector('input[value="状态 / original name"]'), name);
   assert.equal(inputFor('Analysis start (s)'), start);
   assert.equal(start.value, '300');
@@ -1486,142 +1733,276 @@ test('switching language keeps an analysis request, its raw inputs and current r
   assert.equal(requests, 1);
   assert.equal(window.location.hash, route);
   await act(async () => pending(response({ ...incidentResult('bilingual-analysis'), datasetId: source.id })));
-  assert.match(container.textContent, /主要发现/);
+  assert.match(container.textContent, /Key findings/);
 });
 
-test('shared locale survives workspace navigation and TripLens, retaining simulation edits', async () => {
+test('TripLens opens in English from workspace navigation and preserves a draft name', async () => {
   window.location.hash = '#/workspaces/test/history';
   globalThis.fetch = async url => response(url === '/api/workspaces' ? { workspaces: [{ id:'test', name:'User workspace' }] } : url.endsWith('/datasets') ? { datasets: [] } : url.endsWith('/analyses') ? { jobs: [] } : { id:'test', name:'User workspace' });
   await mount(React.createElement(App));
-  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
-  assert.match(container.querySelector('h1').textContent, /保留每次运行/);
-  const delegate = runtimeAPI();
+  runtimeAPI();
   await act(async () => { window.location.hash = '#/examples'; window.dispatchEvent(new window.HashChangeEvent('hashchange')); });
-  assert.ok(container.querySelector('.topbar .language-switch'), 'TripLens has the shared control');
-  assert.match(container.querySelector('.ws-example-banner').textContent, /L5 工作区/);
+  assert.match(container.querySelector('.ws-example-banner').textContent, /L5 Workspaces/);
   const field = inputFor('Scenario name');
   await setField(field, '我的场景 / draft');
-  const before = delegate.analyses.length;
-  await click(container.querySelector('.language-switch button[lang="en"]'));
-  assert.equal(inputFor('Scenario name'), field);
   assert.equal(field.value, '我的场景 / draft');
-  assert.equal(delegate.analyses.length, before, 'language does not restart analysis');
   assert.equal(window.location.hash, '#/examples');
-  assert.match(container.querySelector('.ws-example-banner').textContent, /L5 Workspaces/);
 });
 
-test('known API errors localize at display time and unknown diagnostics remain intact', () => {
-  setLocale('zh-CN');
-  assert.equal(errorMessage('Choose a nonempty CSV file.'), '请选择非空 CSV 文件。');
-  assert.equal(errorMessage("'Dataset not found.'"), '未找到数据集。');
-  assert.equal(errorMessage('alpha must be a finite number.'), 'alpha 必须为有限数值。');
-  assert.equal(errorMessage('Request failed (503).'), '请求失败（503）。');
-  assert.equal(t('Saved: {0}', {0: 'Status'}), '已保存：Status', 'parameters retain user text even when it matches a UI key');
-  assert.equal(t('Saved: Status'), 'Saved: Status', 'rendered or user-authored text is not parsed as a template');
-  assert.equal(t('missing'), '缺测');
-  assert.equal(t('Missing'), '缺失');
-  assert.equal(errorMessage('Experiment belongs to another workspace.'), '此实验属于另一个工作区。');
-  assert.equal(runtimeText('Cooling flow falls — not observed'), '冷却流量下降 — 未观测到');
+test('English API errors and formatting preserve raw diagnostics and parameters', () => {
+  assert.equal(errorMessage('Choose a nonempty CSV file.'), 'Choose a nonempty CSV file.');
+  assert.equal(errorMessage("'Dataset not found.'"), 'Dataset not found.');
+  assert.equal(errorMessage('alpha must be a finite number.'), 'alpha must be a finite number.');
+  assert.equal(errorMessage('Request failed (503).'), 'Request failed (503).');
+  assert.equal(t('Saved: {0}', {0: 'Status'}), 'Saved: Status');
+  assert.equal(t('Saved: Status'), 'Saved: Status');
+  assert.equal(runtimeText('Cooling flow falls — not observed'), 'Cooling flow falls — not observed');
   const diagnostic = '用户数据 / Original diagnostic #42';
   assert.equal(errorMessage(diagnostic), diagnostic);
-  setLocale('en');
-  assert.equal(errorMessage('请选择有限的观察时间。'), 'Choose a finite observation time.');
 });
 
-test('report generation uses the selected locale and discards responses from an earlier language', async () => {
-  const { IncidentReport } = require('../src/workspace/IncidentReport.tsx');
+test('report generation discards the earlier incident response after the saved incident changes', async () => {
+  const { IncidentReport } = require('../src/workspace/investigation/IncidentReport.tsx');
   const requests = [];
   globalThis.fetch = url => new Promise(resolve => requests.push({url,resolve}));
-  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(IncidentReport, { incident: emptyIncident() })));
-  await click(button('生成报告'));
-  assert.match(requests[0].url, /lang=en/);
-  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
-  await click(button('生成报告'));
-  assert.match(requests[1].url, /lang=zh-CN/);
+  const incident = emptyIncident();
+  await mount(React.createElement(IncidentReport, { incident }));
+  await click(button('Generate report'));
+  assert.equal(requests[0].url, '/api/incidents/event-one/report.html');
+  await act(async () => root.render(React.createElement(IncidentReport, { incident: { ...incident, id: 'event-two' } })));
+  await click(button('Generate report'));
+  assert.equal(requests[1].url, '/api/incidents/event-two/report.html');
   const report = html => ({ok:true,headers:{get:()=> 'text/html'},text:async()=> html});
-  await act(async () => requests[1].resolve(report('<html lang="zh-CN"><body>新报告</body></html>')));
+  await act(async () => requests[1].resolve(report('<html lang="en"><body>New report</body></html>')));
   await act(async () => requests[0].resolve(report('<html lang="en"><body>Old report</body></html>')));
-  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /新报告/);
+  assert.match(container.querySelector('iframe').getAttribute('srcdoc'), /New report/);
   assert.doesNotMatch(container.querySelector('iframe').getAttribute('srcdoc'), /Old report/);
 });
 
-test('static dictionaries own each key once, provide both languages and retain interpolation parameters', () => {
-  const owners = new Map();
-  for (const file of ['messages', 'common', 'catalog', 'service-errors']) {
-    const source = ts.parseJsonText(`${file}.json`, readFileSync(new URL(`../src/i18n/${file}.json`, import.meta.url), 'utf8'));
-    for (const property of source.statements[0].expression.properties) {
-      const key = property.name.text;
-      assert.ok(!owners.has(key), `${key}: duplicate in ${owners.get(key)} and ${file}`);
-      owners.set(key, file);
+function twinFixture() {
+  const source={...dataset('tank-calibration',201),metadata:{...dataset('tank-calibration',201).metadata,
+    columns:['level1','level2','pump','valve','outlet'].map(name=>({name,missing:0,min:0,max:150}))}};
+  const reference={...observationReference(source),unitsConfirmed:true,datasetName:source.name};
+  const metric={samples:200,rmse:.002,mae:.0015,bias:.0001,std:.002,lag1:.01,quantiles:[-.003,0,.003],normalizedRmse:1,systematic:false,histogram:{edges:[-.004,0,.004],counts:[99,101]}};
+  const evaluation={reference,times:[0,100,200],observed:{level1:[1,1.1,1.2],level2:[.8,.9,1]},predicted:{level1:[1,1.101,1.201],level2:[.8,.901,1.001]},original:{level1:[1,1.3,1.5],level2:[.8,1.1,1.3]},residuals:{level1:[0,.001,.001],level2:[0,.001,.001]},metrics:{level1:metric,level2:metric},originalMetrics:{level1:{...metric,rmse:.2},level2:{...metric,rmse:.2}},initializationExcluded:false,numericalStepDifferenceRmse:{level1:1e-7,level2:1e-7},massBalanceError:1e-14,parameterEnvelope:null};
+  const parameters=Object.fromEntries(['pumpRate','connection','outlet'].map(k=>[k,{initial:.03,lower:.01,upper:.08,value:.035,unit:'m³/s'}]));
+  const identity={rank:2,parameterCount:3,status:'rank-deficient',conditionNumber:null,singularValues:[1000,100,1e-9],rankTolerance:.001,sensitivityNorms:{pumpRate:1,connection:1,outlet:1},sensitivityCosine:[[1,0,1],[0,1,0],[1,0,1]],correlation:null,weakCombinations:[{singularValue:1e-9,combination:{pumpRate:.7,connection:0,outlet:-.7}}],activeBounds:[]};
+  const uncertainty={available:false,standardErrors:null,covariance:null,method:'local-linearized-known-noise',assumptions:[]};
+  const run={id:'calibration-run',workspaceId:'test',name:'Frozen calibration',status:'completed',createdAt:'2026-11-10T00:00:00Z',progress:{stage:'completed',evaluations:8},error:null,
+    config:{calibration:reference,validation:{...reference,datasetId:'tank-validation'},parameters:Object.fromEntries(Object.entries(parameters).map(([k,p])=>[k,{initial:p.initial,lower:p.lower,upper:p.upper}])),nominal:{pumpRate:.03,connection:.04,outlet:.03},noise:{level1:.002,level2:.002},integrationStep:.05,maxEvaluations:80},
+    result:{parameters,optimizer:{converged:true,evaluations:8,simulationCalls:50,cost:200,optimality:1e-7,trace:[]},identifiability:identity,uncertainty,warnings:['rank-deficient'],reducedChiSquare:1,calibration:evaluation,validation:{...evaluation,reference:{...reference,datasetName:'Independent measurements',datasetId:'tank-validation'},initializationExcluded:true,multiStep:[]},durationMs:2000}};
+  return {source,run,identity,uncertainty};
+}
+
+test('calibration setup submits mapped observations and physical bounds, with an explicit independent validation source', async () => {
+  const {source,run}=twinFixture(),writes=[];
+  const validation={...source,id:'tank-validation',name:'Independent measurements'};
+  const catalog={parameters:Object.fromEntries(['pumpRate','connection','outlet'].map(key=>[key,{label:key,unit:'m³/s',min:.0001,max:.2,scale:.03}])),nominal:{pumpRate:.03,connection:.04,outlet:.03}};
+  globalThis.fetch=async(url,options={})=>{
+    if(options.method==='POST'){writes.push(JSON.parse(options.body));return response({...run,status:'queued',result:null});}
+    if(url.endsWith('/catalog'))return response(catalog);
+    return response(url.endsWith('/twins') ? {twins:[]} : {runs:[]});
+  };
+  await mount(React.createElement(CalibrationWorkspace,{workspaceId:'test',datasets:[source,validation]}));
+  await setField(container.querySelector('[aria-label="pumpRate upper"]'),.06);
+  await setField(container.querySelector('[aria-label="Calibration observations level2"]'),'outlet');
+  await setField(container.querySelector('[aria-label="Calibration observations level2"]'),'level2');
+  const check=text=>[...container.querySelectorAll('label')].find(n=>n.textContent.includes(text)).querySelector('input');
+  await click(check('I confirm the mapped signals'));
+  await click(check('Add independent validation'));
+  await setField(container.querySelector('[aria-label="Validation observations Dataset"]'),'tank-validation');
+  await click([...container.querySelectorAll('.twin-check')].at(-1).querySelector('input'));
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].config.parameters.pumpRate.upper,.06);
+  assert.equal(writes[0].config.calibration.mapping.level2,'level2');
+  assert.equal(writes[0].config.validation.datasetId,'tank-validation');
+  assert.equal(writes[0].config.validation.unitsConfirmed,true);
+  assert.match(window.location.hash,/calibration\/calibration-run/);
+  assert.match(container.textContent,/Calibrate a digital twin/);
+  assert.equal(container.querySelector('[aria-label="pumpRate upper"]').value,'0.06');
+});
+
+test('rank-deficient results withhold uncertainty, keep independent metrics and save append-only twin revisions', async () => {
+  const {source,run,identity,uncertainty}=twinFixture(),writes=[];
+  const twin={id:'saved-twin',workspaceId:'test',name:run.name,revision:2,runId:run.id,createdAt:run.createdAt,validated:true,identifiability:identity,uncertainty,warnings:run.result.warnings};
+  globalThis.fetch=async(url,options={})=>{
+    if(options.method==='PATCH'){writes.push({url,body:JSON.parse(options.body)});return response({...twin,revision:3});}
+    if(url.endsWith('/catalog'))return response({parameters:{},nominal:{}});
+    if(url.endsWith('/revisions'))return response({revisions:[twin]});
+    if(url.endsWith('/twins'))return response({twins:[twin]});
+    if(url.endsWith(`/${run.id}`))return response(run);
+    return response({runs:[run]});
+  };
+  await mount(React.createElement(CalibrationWorkspace,{workspaceId:'test',datasets:[source],runId:run.id}));
+  assert.match(container.textContent,/not a unique physical estimate/);
+  assert.match(container.textContent,/Independent measurements/);
+  assert.match(container.textContent,/Withheld/);
+  assert.equal(container.querySelectorAll('svg[aria-label="Residual histogram"]').length,2);
+  await setField(container.querySelector('[aria-label="Save twin target"]'),'saved-twin');
+  await click(button('Save next twin revision'));
+  assert.deepEqual(writes[0].body,{runId:run.id,name:run.name,expectedRevision:2});
+  assert.match(writes[0].url,/twins\/saved-twin$/);
+  await act(async()=>root.render(React.createElement(CalibrationResults,{run:{...run,result:{...run.result,optimizer:{...run.result.optimizer,converged:false},warnings:['optimizer-incomplete']}}})));
+  assert.match(container.textContent,/Optimizer incomplete/);
+  assert.match(container.textContent,/Optimizer incomplete/);
+  assert.match(container.textContent,/Independent validation/);
+});
+
+test('process safety saves a versioned limit, evaluates it, and attaches raw observed evidence', async () => {
+  const source = dataset('tank-data', 3), createdAt = '2026-11-13T08:00:00Z';
+  const signal = { id: 'tank-level', name: 'level1', displayName: 'Tank level', unit: 'm', missing: 1, datasetId: source.id };
+  source.metadata.columns = [signal];
+  source.metadata.model = { id: 'coupled-tanks', name: 'Coupled-Tank Process' };
+  const incident = emptyIncident(), requests = [], configurations = [], assessments = [];
+  const base = '/api/workspaces/test/safety';
+  function assessment(body, saved) {
+    const constraint = body.constraints[0];
+    const interval = { state: 'violation', start: 1, end: 1, duration: 0, samples: 1, confirmedAt: 1, peakTime: 1, peakValue: 2.7, minimumMargin: -.2, maximumExceedance: .2 };
+    return {
+      ...(saved ? { id: 'safety-assessment' } : {}), workspaceId: 'test', datasetId: source.id, name: body.name, createdAt,
+      source: { datasetName: source.name, time: source.metadata.time, signals: [signal] },
+      configuration: { id: body.configurationId, revision: body.configurationRevision, name: configurations[0]?.name, constraints: [constraint] },
+      forecastOptions: body.forecast,
+      observed: [{ constraint, signalIds: [signal.id], marginUnit: 'm', sourceUnits: { [signal.id]: 'm' },
+        current: { time: 2, value: null, margin: null, state: 'unavailable', rawState: 'unavailable' },
+        coverage: { evaluatedSamples: 2, totalSamples: 3, sampleFraction: 2 / 3, observedDuration: 1, durationFraction: .5 },
+        quality: { missingSamples: 1, unobservedSamples: 0, duplicateCount: 0, rateUnavailableSamples: 0, numericalUnavailableSamples: 0, gaps: [] },
+        intervals: [interval], rawViolationIntervals: [interval], minimumMargin: -.2, maximumExceedance: .2, violationDuration: 0,
+        series: { times: [0, 1, 2], values: [2.4, 2.7, null], margins: [.1, -.2, null], measurements: { [signal.id]: [2.4, 2.7, null] },
+          states: ['normal', 'violation', 'unavailable'], rawStates: ['normal', 'violation', 'unavailable'], segmentIds: [0, 0, 1] },
+      }],
+      forecast: { status: 'unavailable', reasonCode: 'missing-observation', observedThrough: 2, requestedAsOf: 2, model: null,
+        inputMeasurements: null, assumptions: {}, trajectory: null, constraints: [], uncertainty: null },
+    };
+  }
+  globalThis.fetch = async (url, options = {}) => {
+    const method = options.method || 'GET', body = options.body && JSON.parse(options.body);
+    requests.push({ url, method, body });
+    if (url === '/api/workspaces') return response({ workspaces: [{ id: 'test', name: 'Safety project' }] });
+    if (url === '/api/workspaces/test') return response({ id: 'test', name: 'Safety project' });
+    if (url.endsWith('/datasets')) return response({ datasets: [source] });
+    if (url.endsWith('/analyses')) return response({ jobs: [] });
+    if (url.endsWith('/signals')) return response({ signals: [signal] });
+    if (url === '/api/simulations?workspaceId=test') return response({ simulations: [] });
+    if (url === `${base}/configurations` && method === 'GET') return response({ configurations });
+    if (url === `${base}/configurations` && method === 'POST') {
+      const saved = { ...body, id: 'limit-config', workspaceId: 'test', revision: 1, createdAt, updatedAt: createdAt };
+      configurations.push(saved);
+      return response(saved);
     }
-    for (const [key, pair] of Object.entries(require(`../src/i18n/${file}.json`))) {
-      assert.equal(pair.length, 2, key);
-      assert.ok(pair.every(value => typeof value === 'string' && value.length), key);
-      assert.doesNotMatch(pair[1], /[\u3400-\u9fff]/, `English copy: ${key}`);
-      const tokens = value => [...value.matchAll(/\{\d+\}/g)].map(m => m[0]).sort();
-      assert.deepEqual(tokens(pair[0]), tokens(pair[1]), key);
+    if (url === `${base}/configurations/limit-config` && method === 'PATCH') {
+      configurations[0] = { ...configurations[0], ...body, revision: 2 };
+      return response(configurations[0]);
     }
+    if (url === `${base}/assessments` && method === 'GET') return response({ assessments });
+    if (url === `${base}/evaluate`) return response(assessment(body, false));
+    if (url === `${base}/assessments` && method === 'POST') {
+      const saved = assessment(body, true);
+      assessments.push(saved);
+      return response(saved);
+    }
+    if (url === `${base}/assessments/safety-assessment`) return response(assessments[0]);
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [incident] });
+    if (url === `${base}/assessments/safety-assessment/incident-evidence`) return response(incident);
+    throw new Error(`Unexpected safety request ${url}`);
+  };
+  window.location.hash = '#/workspaces/test/safety?dataset=tank-data';
+  await mount(React.createElement(App));
+  assert.equal(container.querySelector('[aria-current="page"]').textContent.trim(), 'Process safety');
+  assert.equal(inputFor('Dataset').value, source.id);
+  await click(button('Add constraint'));
+  await setField(inputFor('Constraint name'), 'Tank operating ceiling');
+  await setField(inputFor('Critical upper limit'), 2.6);
+  await setField(inputFor('Configuration name'), 'Tank limits');
+  await click(button('Save configuration'));
+  const original = requests.find(item => item.method === 'POST' && item.url.endsWith('/configurations')).body.constraints[0];
+  assert.equal(original.terms[0].signalId, signal.id);
+  assert.equal(original.unit, 'm');
+  await setField(inputFor('Critical upper limit'), 2.5);
+  await click(button('Save new revision'));
+  const edit = requests.find(item => item.method === 'PATCH');
+  assert.equal(edit.body.revision, 1);
+  assert.equal(edit.body.constraints[0].id, original.id);
+  assert.equal(edit.body.constraints[0].upper, 2.5);
+  await click(inputFor('Include a forecast'));
+  await click(button('Evaluate limits'));
+  const evaluation = requests.find(item => item.url.endsWith('/evaluate'));
+  assert.equal(evaluation.body.configurationRevision, 2);
+  assert.equal(evaluation.body.forecast.input.mode, 'hold');
+  assert.match(container.textContent, /A measured level or control input is unavailable/);
+  await click(button('Evaluate again and save'));
+  await act(async () => window.dispatchEvent(new window.HashChangeEvent('hashchange')));
+  assert.equal(window.location.hash, '#/workspaces/test/safety/safety-assessment');
+  assert.ok(container.querySelector('a[download][href*="format=csv"]'));
+  const raw = [...container.querySelectorAll('details')].find(node => node.querySelector('summary').textContent.startsWith('Raw critical exceedances'));
+  raw.open = true;
+  await click([...raw.querySelectorAll('button')].find(node => node.textContent === 'Attach to Incident'));
+  await setField(dialogField('Incident'), incident.id);
+  await click(button('Attach evidence'));
+  const link = requests.find(item => item.url.endsWith('/incident-evidence'));
+  assert.deepEqual(link.body, { kind: 'observed', constraintId: original.id, intervalIndex: 0, raw: true, incidentId: incident.id });
+  assert.ok(container.querySelector('a[href="#/workspaces/test/incidents/event-one"]'));
+  assert.equal(container.querySelector('h1').textContent, "Process safety & predictive risk");
+  assert.equal(inputFor('Critical upper limit').value, '2.5');
+});
+
+test('shared application labels have unique English display names by key', () => {
+  const file = new URL('../l5/labels.json', import.meta.url);
+  const source = ts.parseJsonText('labels.json', readFileSync(file, 'utf8'));
+  const names = new Set();
+  for (const property of source.statements[0].expression.properties) {
+    const key = property.name.text;
+    assert.ok(!names.has(key), key);
+    names.add(key);
+    assert.ok(property.initializer.text.length, key);
+    assert.doesNotMatch(property.initializer.text, /[\u3400-\u9fff]/, key);
   }
 });
 
-test('fixed local validation and report errors follow both language switches without changing input', async () => {
-  const source = dataset('locale-error');
+test('local validation and report errors display in English and preserve input', async () => {
+  const source = dataset('report-error');
   globalThis.fetch = async url => url.endsWith('/labels') ? response({labels: []}) : new Response('', {status: 503});
-  setLocale('zh-CN');
-  await mount(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(ExperimentLabels, {dataset: source, onChange(){}})));
+  await mount(React.createElement(ExperimentLabels, {dataset: source, onChange(){}}));
   await setField(inputFor('Label JSON'), '{}');
   await click(button('Load JSON into editor'));
-  assert.match(container.querySelector('[role="alert"]').textContent, /导入 JSON/);
-  await click(container.querySelector('.language-switch button[lang="en"]'));
   assert.equal(container.querySelector('[role="alert"]').textContent, 'Import JSON needs timeBasis: dataset-seconds, timeSource, and intervals.');
   assert.equal(inputFor('Label JSON').value, '{}');
-  await click(container.querySelector('.language-switch button[lang="zh-CN"]'));
-  assert.match(container.querySelector('[role="alert"]').textContent, /导入 JSON/);
   const fixture = researchFixture();
-  await act(async () => root.render(React.createElement(React.Fragment, null, React.createElement(LanguageSwitch), React.createElement(ExperimentReport, {experiment: fixture.experiment, dirty: false}))));
+  await act(async () => root.render(React.createElement(ExperimentReport, {experiment: fixture.experiment, dirty: false})));
   await click(button('Preview experiment report'));
-  assert.equal(container.querySelector('[role="alert"]').textContent, '无法从本地服务生成实验报告。');
-  await click(container.querySelector('.language-switch button[lang="en"]'));
   assert.equal(container.querySelector('[role="alert"]').textContent, 'Unable to generate experiment report from the local service.');
 });
 
-test('system timeline labels follow locale while user titles and dataset clock names stay verbatim', () => {
+test('system timeline labels are English and user records preserve their text', () => {
   const {axisLabel, timelineTitle} = require('../src/workspace/types.ts');
   const source = dataset('raw-user-names'), result = incidentResult();
   const view = {analyses: [{id: result.id, result}], datasets: [source]};
-  const alarm = {id: 'interval:'+result.id+':0', kind: 'alarm', analysisId: result.id, title: 'Robust Max-Z · 异常区间'};
-  const userNote = {id: 'entry:raw', kind: 'note', title: '状态变更'};
-  setLocale('en');
-  assert.equal(axisLabel({id:'incident:event-one',label:'事件独立时间轴',origin:null}), 'Independent incident time axis');
-  assert.equal(timelineTitle({id:'history:status',kind:'status',title:'状态变更'},view), 'Status change');
+  const alarm = {id: 'interval:'+result.id+':0', kind: 'alarm', analysisId: result.id, title: 'Robust Max-Z · Anomaly interval'};
+  const userNote = {id: 'entry:raw', kind: 'note', title: '现场状态变更'};
+  assert.equal(axisLabel({id:'incident:event-one',label:'Independent incident time axis',origin:null}), 'Independent incident time axis');
+  assert.equal(timelineTitle({id:'history:status',kind:'status',title:'Status change'},view), 'Status change');
   assert.equal(timelineTitle(alarm,view), 'Robust Max-Z · Anomaly interval');
-  assert.equal(timelineTitle(userNote,view), '状态变更');
-  setLocale('zh-CN');
-  assert.equal(axisLabel({id:'utc',label:'UTC absolute time',origin:'1970-01-01T00:00:00Z'}), 'UTC 绝对时间');
-  assert.equal(axisLabel({id:'dataset:raw',label:'UTC absolute time',origin:null}), 'UTC absolute time');
-  assert.equal(timelineTitle(alarm,view), '稳健最大 Z 分数 · 异常区间');
+  assert.equal(timelineTitle(userNote,view), '现场状态变更');
+  assert.equal(axisLabel({id:'utc',label:'UTC',origin:'1970-01-01T00:00:00Z'}), 'UTC absolute time');
+  assert.equal(axisLabel({id:'dataset:raw',label:'现场时钟',origin:null}), '现场时钟');
 });
 
-test('scripted example prose switches with the UI and never rewrites the original brief or scenario', async () => {
+test('scripted example prose is English and preserves the original brief and scenario', async () => {
   const {RootCauses, AnalystPanel} = require('../src/components/Investigation.tsx');
   const {scenario} = require('../src/lib/engine.ts');
   const brief = {schemaVersion:1,incidentId:scenario.id,provider:'local',prompt:scenario.analyst.prompt,steps:scenario.analyst.steps,summary:scenario.analyst.summary,limitation:scenario.analyst.limitation};
   const before = JSON.stringify({scenario, brief});
-  setLocale('zh-CN');
   await mount(React.createElement(React.Fragment,null,
     React.createElement(RootCauses,{ready:true,selected:scenario.candidates[0].id,onSelect(){},onInspect(){}}),
     React.createElement(AnalystPanel,{brief,step:0,running:false,error:null,onRun(){},onExport(){},onCompare(){},ready:true})));
-  assert.match(container.textContent,/阀位最先变化/);
-  assert.match(container.textContent,/压力上升是下游表现/);
-  assert.doesNotMatch(container.textContent,/Valve position changes first|The pressure rise is a downstream symptom/);
-  await act(async () => setLocale('en'));
   assert.match(container.textContent,/The pressure rise is a downstream symptom/);
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
   assert.equal(JSON.stringify({scenario,brief}),before);
 });
 
-test('model action IDs and deterministic runtime summaries use translated display copy', async () => {
-  const {ModelForecastView} = require('../src/workspace/ModelResults.tsx');
+test('model action IDs use English labels and summaries preserve observations', async () => {
+  const {ModelForecastView} = require('../src/workspace/modeling/ModelResults.tsx');
   const baseline = {times:[0,1],values:{level1:[1,1]},metrics:{peakLevel:1}};
   const forecast = {format:'model-forecast-v1',mode:'known',observedThrough:0,at:0,horizon:1,
     baseline,branches:[{...baseline,action:'adjust_pump'}],
@@ -1629,17 +2010,588 @@ test('model action IDs and deterministic runtime summaries use translated displa
     signalDefinitions:[{key:'level1',label:'Tank 1 physical level',unit:'m'}],
     uncertainty:'Known illustrative model; no parameter fitting or predictive uncertainty bounds. Metrics start at the action time.'};
   const before=JSON.stringify(forecast);
-  setLocale('zh-CN');
-  assert.equal(runtimeText('10/12 samples · age 2s · extreme step'),'10/12 个样本 · 值龄 2s · 极端跳变');
-  assert.equal(runtimeText('Observed 10 samples through 9s. Status: nominal. Leading support: Cooling valve sticking (20/100).'),'已观测 10 个样本，截至 9 秒。状态：正常。首要候选：冷却阀卡涩（20/100）。');
-  assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'事件标题必须是文本，最多 160 个字符。');
   await mount(React.createElement(ModelForecastView,{forecast}));
-  assert.match(container.textContent,/调整进水泵指令/);
-  assert.match(container.textContent,/实际液位峰值/);
-  assert.doesNotMatch(container.textContent,/adjust_pump|Peak physical level|Known illustrative/);
-  await act(async()=>setLocale('en'));
   assert.match(container.textContent,/Adjust inlet pump command/);
+  assert.match(container.textContent,/Peak physical level/);
+  assert.equal(runtimeText('10/12 samples · age 2s · extreme step'), '10/12 samples · age 2s · extreme step');
   assert.doesNotMatch(container.textContent,/[\u3400-\u9fff]/);
-  assert.equal(errorMessage('事件标题必须是文本，最多 160 个字符。'),'Incident title must be text of at most 160 characters.');
   assert.equal(JSON.stringify(forecast),before);
+});
+
+function healthResult() {
+  const episode = {start:220,end:240,detectedAt:220,samples:21,severity:2,indicatorIds:['shift'],signals:['temperature'],assessment:'sensor',evidenceCoverage:1,
+    candidates:[{key:'level2_offset',category:'sensor',fitError:.5,penalizedError:1.5,improvement:.95,parameters:{offset:.2},constraints:['hydraulic2','balance2']}]};
+  return {id:'health-1',workspaceId:'test',datasetId:'sensor-data',name:'Saved health',version:'1.0.0',createdAt:'2026-01-01T00:00:00Z',sourceDigest:'abc123',
+    config:{signals:['temperature'],baselineRange:[0,149],analysisRange:[150,299],window:21,persistence:3,z:6,relationships:[]},
+    times:[200,220,240],signals:{temperature:{referenceMedian:1,referenceScale:.01,measuredFraction:1,observed:[1,1.2,1.2],segmentIds:[1,1,1]}},
+    indicators:[{id:'shift',kind:'level_shift',signals:['temperature'],threshold:6,scores:[0,10,10],intervals:[{...episode,peakTime:220,evidenceValue:10}],evidence:{referenceMedian:1,referenceScale:.01,interpretation:'A level shift can be a sensor offset or a real process change.'}}],
+    episodes:[episode],warnings:[],limitations:['integrity_is_not_causality'],reference:{times:[0,1,2],values:{temperature:[1,1.01,.99]},fitSamples:105,calibrationSamples:45},relationships:[],
+    physical:{kind:'coupled-tanks',mapping:{level2:'temperature'},parameters:{area2:1},expected:{temperature:[1,1,1]},segmentIds:{temperature:[1,1,1]},measuredCoverage:1,assumptions:['independent_flow_measurements'],residuals:[{key:'hydraulic2',unit:'m',values:[0,.2,.2],scale:.01,threshold:.06}]},
+    datasetSnapshot:{name:'sensor-data',time:{kind:'numeric',column:'t',origin:null,start:0,end:299},createdAt:'2026-01-01'},summary:{samples:3,flaggedSamples:2,episodes:1,firstDetection:220}};
+}
+
+test('sensor workspace declares normal, saves numerical configuration and links a real interval to an existing incident', async () => {
+  const source=dataset('sensor-data',300); source.metadata.columns=[{name:'temperature',missing:0,min:0,max:2}];
+  source.metadata.suggestedRanges={baselineRange:[0,1],analysisRange:[2,299]};
+  assert.notDeepEqual(newHealthConfig(source).baselineRange,[0,1]);
+  const saved=healthResult(), requests=[];
+  globalThis.fetch=async (url,options={})=>{
+    if(url.endsWith('/sensor-model')) return response({model:null});
+    if(url.startsWith('/api/simulations')) return response({simulations:[]});
+    if(url.endsWith('/sensor-health') && options.method==='POST'){requests.push(JSON.parse(options.body));return response(saved);}
+    if(url.endsWith('/sensor-health')) return response({diagnostics:[]});
+    if(url.endsWith('/incidents')) return response({incidents:[{id:'incident-1',title:'Existing incident',status:'investigating'}]});
+    if(url.endsWith('/incidents/incident-1/links')){requests.push(JSON.parse(options.body));return response({id:'incident-1'});}
+    throw new Error(url);
+  };
+  await mount(React.createElement(SensorHealthWorkspace,{workspaceId:'test',datasets:[source],onChanged(){}}));
+  assert.equal(button('Run and save diagnostics').disabled,true);
+  await click(container.querySelector('.health-confirm input'));
+  assert.equal(button('Run and save diagnostics').disabled,false);
+  await act(async()=>container.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(requests[0].datasetId,'sensor-data');
+  assert.deepEqual(requests[0].signals,['temperature']);
+  assert.equal(requests[0].z,6);
+  assert.match(window.location.hash,/sensor-health\/health-1/);
+  assert.match(container.textContent,/Tank 2 level sensor offset/);
+  await click(button('Link this interval to Incident'));
+  assert.ok(container.querySelector('dialog[open]'));
+  await act(async()=>container.querySelector('dialog form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.deepEqual(requests[1],{kind:'sensor-health',diagnosticId:'health-1',episodeIndex:0});
+  assert.match(window.location.hash,/incidents\/incident-1/);
+});
+
+test('saved sensor results switch languages without rewriting evidence and share graph cursor selection', async () => {
+  const saved=healthResult(), before=JSON.stringify(saved);
+  await mount(React.createElement(SensorHealthResult,{result:saved}));
+  const svg=container.querySelector('svg');
+  await act(async()=>svg.dispatchEvent(new window.MouseEvent('pointermove',{bubbles:true,clientX:100})));
+  assert.ok(container.querySelectorAll('[data-selected-time]').length>=2);
+  assert.match(container.textContent,/Tank 2 level sensor offset/);
+  assert.match(container.textContent,/Tank 2 level sensor offset/);
+  assert.match(container.textContent,/Physical constraint residual/);
+  assert.doesNotMatch(container.textContent,/Rankings compare residual corrections/);
+  assert.equal(JSON.stringify(saved),before);
+});
+
+test('sensor deep links ignore an aborted older response and preserve saved results after reopening', async () => {
+  const saved=healthResult(); let resolveOld;
+  const old=new Promise(resolve=>{resolveOld=resolve;});
+  globalThis.fetch=async url=>url.endsWith('/sensor-health/old') ? old : url.endsWith('/sensor-health/new') ? response({...saved,id:'new',name:'Newest diagnostic'}) : url.endsWith('/sensor-model') ? response({model:null}) : url.startsWith('/api/simulations') ? response({simulations:[]}) : response({diagnostics:[]});
+  const props={workspaceId:'test',datasets:[dataset('sensor-data',300)],onChanged(){}};
+  await mount(React.createElement(SensorHealthWorkspace,{...props,diagnosticId:'old'}));
+  await act(async()=>root.render(React.createElement(SensorHealthWorkspace,{...props,diagnosticId:'new'})));
+  assert.match(container.textContent,/Newest diagnostic/);
+  await act(async()=>resolveOld(response({...saved,name:'Stale diagnostic'})));
+  assert.doesNotMatch(container.textContent,/Stale diagnostic/);
+});
+
+function controlFixture(){
+  const protocol=defaultProtocol();protocol.reference=[{time:0,level:1},{time:2,level:1.2}];
+  const rows=[0,2,4].map(t=>({t,level1:1.5625+t*.01,level2:1+t*.02,reference:t<2?1:1.2,error:t<2?0:.2-t*.02,pump:100+t*2,valve:1,inlet:.03,transfer:.03,outlet:.03}));
+  return {id:'control-run',name:'Control comparison evidence',workspaceId:'test',createdAt:'2026-11-09T00:00:00Z',format:'tank-control-1',modelId:'coupled-tanks',modelVersion:'1.0.0',scenarioSnapshot:null,config:{fault:'healthy',duration:4,start:2,step:.2,seed:3,tankHeight:2.5},protocol,datasets:{},noiseFingerprint:'fixed-common-noise',solver:{name:'QP'},
+    results:['open-loop','pi','mpc'].map((controller,i)=>({controller,settings:{kind:controller},rows,physical:rows,metrics:{iae:10-i,solverFailures:0,maxLevelViolation:0,recovery:[]},decisions:rows.slice(0,2).map(r=>({time:r.t,measurement:r,command:{pump:r.pump,valve:1},reference:r.reference,durationMs:1,solver:{status:controller==='mpc'?'solved':controller,iterations:4,primalResidual:1e-9,stationarityResidual:1e-9,...(controller==='mpc'?{prediction:[[1.6,1.1],[1.7,1.2]],targets:[1.2,1.2],plan:[[1.1,1],[1.2,1]]}:{})}}))})),metricDefinitions:[{key:'iae',label:'Measured tracking IAE',unit:'m·s'}]};
+}
+
+test('Control editor sends selected scenario version, reference, constraints and controller parameters',async()=>{
+  const {model,scenario}=modelFixture('coupled-tanks');model.defaults.tankHeight=2.5;
+  const requests=[];
+  globalThis.fetch=async(url,options)=>{
+    if(options?.method==='POST'){requests.push(JSON.parse(options.body));return response(controlFixture());}
+    return response(url==='/api/models/coupled-tanks'?model:url.endsWith('/scenarios')?{scenarios:[scenario]}:{experiments:[]});
+  };
+  await mount(React.createElement(ControlWorkspace,{workspaceId:'test',onSaved(){}}));
+  await setField(inputFor('Tank scenario'),scenario.id);
+  await setField(inputFor('Proportional gain (%/m)'),210);
+  await setField(inputFor('Control interval (s)'),3);
+  await setField(inputFor('Maximum pump (%)'),130);
+  await setField(inputFor('Experiment name'),'Specific control run');
+  await click(button('+ Setpoint change'));
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].scenarioId,scenario.id);assert.equal(requests[0].scenarioVersion,1);
+  assert.equal(requests[0].config,undefined);
+  assert.equal(requests[0].protocol.controllers.find(c=>c.kind==='pi').kp,210);
+  assert.equal(requests[0].protocol.constraints.pumpMax,130);
+  assert.equal(requests[0].protocol.sampleInterval,3);
+  assert.equal(requests[0].protocol.reference.length,3);
+  assert.ok(container.textContent.includes('Control comparison evidence'));
+  assert.equal(container.querySelectorAll('.control-results > figure svg').length,5);
+});
+
+test('Control saved results share cursor, retain evidence, export and connect Dataset workflow in both languages',async()=>{
+  const experiment=controlFixture(),before=JSON.stringify(experiment),saved=[];
+  globalThis.fetch=async(url,options)=>{assert.equal(JSON.parse(options.body).controller,'mpc');return response({...dataset('control-dataset'),metadata:{...dataset('control-dataset').metadata,model:{simulationId:'control-session'}}});};
+  await mount(React.createElement(ControlResults,{experiment,onSaved:(d,kind)=>saved.push([d.id,kind])}));
+  await setField(container.querySelector('input[type=range]'),1);
+  assert.match(container.querySelector('.control-readout').textContent,/1.2/);
+  assert.deepEqual([...container.querySelectorAll('.control-results > figure [data-selected-time]')].map(n=>n.getAttribute('data-selected-time')),['2','2','2','2','2']);
+  assert.ok(container.textContent.includes('2 s / 4 s'));
+  await click(button('Save selected controller as Dataset'));
+  assert.deepEqual(saved,[['control-dataset','mpc']]);
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/control-dataset"]'));
+  assert.ok(button('Link Dataset to Incident'));
+  const report=container.querySelector('a[href*="report.html"]');assert.ok(report.href.endsWith('report.html'));
+  assert.match(container.textContent,/Measured tracking IAE|Link Dataset to Incident/);
+
+  assert.equal(JSON.stringify(experiment),before);
+});
+
+test('Control reopening drops stale responses and restores the saved protocol',async()=>{
+  const {model}=modelFixture('coupled-tanks'),fixture=controlFixture();let resolveOld;
+  globalThis.fetch=async url=>{
+    if(url.endsWith('/old'))return new Promise(resolve=>{resolveOld=resolve;});
+    if(url.endsWith('/new'))return response({...fixture,id:'new',name:'New saved control'});
+    return response(url==='/api/models/coupled-tanks'?model:url.endsWith('/scenarios')?{scenarios:[]}:{experiments:[]});
+  };
+  await mount(React.createElement(ControlWorkspace,{workspaceId:'test',experimentId:'old',onSaved(){}}));
+  await act(async()=>root.render(React.createElement(ControlWorkspace,{workspaceId:'test',experimentId:'new',onSaved(){}})));
+  await act(async()=>resolveOld(response({...fixture,id:'old',name:'Stale control result'})));
+  assert.ok(container.textContent.includes('New saved control'));
+  assert.ok(!container.textContent.includes('Stale control result'));
+  assert.equal(inputFor('Control interval (s)').value,'2');
+  assert.equal(container.querySelectorAll('.control-summary-cards button').length,3);
+});
+
+function estimationFixture(id='estimation-1') {
+  const rows=[0,.3,1.1].map((t,i)=>({t,estimate:[1.4-i*.01,1-i*.01],prediction:[1.3,.9],openLoop:[1.2,.8],
+    direct:[i===0 ? 1.45 : null,i===2 ? .99 : null],observed:[i===0 ? 1.45 : null,i===2 ? .99 : null],
+    covariance:[[.002,.001],[.001,.003]],lower:[1.3,.9],upper:[1.5,1.1],innovation:[i===0 ? .15 : null,i===2 ? .09 : null],
+    residual:[i===0 ? .05 : null,i===2 ? .01 : null],innovationSd:[i===0 ? .1 : null,i===2 ? .1 : null],nis:i===1 ? null : 1,dof:i===1 ? 0 : 1}));
+  return {id,name:id,workspaceId:'test',createdAt:'2026-11-10T00:00:00Z',format:'tank-estimation-v1',inputSha256:'abc123',
+    source:{kind:'simulation'},request:{sensors:['level1','level2']},inputs:{observations:rows.map(r=>({t:r.t}))},
+    result:{rows,sensors:['level1','level2'],config:{initialState:[1.2,.7],initialTime:0,maxStep:.1,jacobianStep:1e-5,initialCovariance:[[.16,0],[0,.16]],processCovariance:[[1e-6,0],[0,1e-6]],measurementCovariance:[[.0004,0],[0,.0004]]},model:{},predictionOnly:1,warnings:[],innovationMean:[.15,.09],
+      innovationConsistency:{1:{count:2,meanNIS:1,expectedMean:1,fraction95:1}}},score:null,
+    comparisons:[{sensors:['level1','level2'],predictionOnly:1,score:null}],
+    observability:[{point:[1.5625,1],sensors:['level2'],A:[[-.02,.02],[.02,-.035]],H:[[0,1]],matrix:[[0,1],[.02,-.035]],
+      rank:2,singularValues:[1,.02],condition:50,poorlyObservable:false,status:'local-linearization',equilibrium:true,drift:[0,0]}]};
+}
+
+test('estimation uses selected sensors and full covariance, preserves missing samples and exports a saved Dataset',async()=>{
+  const saved=[],writes=[],run=estimationFixture(),generated=dataset('estimated-dataset');
+  globalThis.fetch=async(url,options={})=>{
+    if(url.endsWith('/scenarios'))return response({scenarios:[]});
+    if(options.method==='POST') {
+      writes.push({url,body:JSON.parse(options.body)});
+      return response(url.endsWith('/dataset') ? generated : run);
+    }
+    return response({runs:[]});
+  };
+  await mount(React.createElement(EstimationWorkspace,{workspaceId:'test',datasets:[],onSaved:d=>saved.push(d)}));
+  await click([...container.querySelectorAll('label')].find(l=>l.textContent==='Observe Tank 1').querySelector('input'));
+  await setField(inputFor('R · measurement covariance (m²)'), '[[0.0004,0.0001],[0.0001,0.0009]]');
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.deepEqual(writes[0].body.sensors,['level2']);
+  assert.deepEqual(writes[0].body.config.measurementCovariance,[[.0004,.0001],[.0001,.0009]]);
+  assert.equal(writes[0].body.source.irregular,true);
+  assert.ok(!('truth' in writes[0].body));
+  assert.equal(container.querySelectorAll('[data-uncertainty-band]').length,2);
+  assert.equal(container.querySelectorAll('[data-measurement-points] circle').length,2,'isolated observations remain visible without filling gaps');
+  assert.ok(container.textContent.includes('Inferred at this time'));
+  await click(button('Export estimates as Dataset'));
+  assert.equal(saved[0].id,generated.id);
+  assert.equal(writes[1].url,'/api/estimations/estimation-1/dataset');
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/estimated-dataset"]'));
+});
+
+test('estimation charts share cursor and window and relocalize without rerunning inference',async()=>{
+  let exports=0;
+  await mount(React.createElement(EstimationResults,{run:estimationFixture(),onExport(){exports++;},busy:false}));
+  const svg=container.querySelector('svg');
+  svg.getBoundingClientRect=()=>({left:0,width:960,top:0,height:190,right:960,bottom:190});
+  await act(async()=>svg.dispatchEvent(new dom.window.MouseEvent('pointermove',{bubbles:true,clientX:500})));
+  const cursors=[...container.querySelectorAll('[data-selected-time]')];
+  assert.equal(cursors.length,6);
+  assert.equal(new Set(cursors.map(n=>n.getAttribute('data-selected-time'))).size,1);
+  await setField(inputFor('Window end (s)'),.3);
+  assert.equal(container.querySelectorAll('[data-measurement-points] circle').length,1);
+  assert.ok(container.textContent.includes("Local observability"));
+  assert.ok(container.textContent.includes("Export estimates as Dataset"));
+  assert.ok(container.textContent.includes('Local observability'));
+  assert.equal(exports,0);
+});
+
+test('late estimation load cannot overwrite a newer run or reappear after unmount',async()=>{
+  let resolveFirst;
+  globalThis.fetch=(url)=>{
+    if(url.endsWith('/scenarios'))return Promise.resolve(response({scenarios:[]}));
+    if(url.endsWith('/estimations'))return Promise.resolve(response({runs:[]}));
+    if(url.endsWith('/first'))return new Promise(resolve=>{resolveFirst=resolve;});
+    return Promise.resolve(response(estimationFixture('second')));
+  };
+  const props={workspaceId:'test',datasets:[],onSaved(){}};
+  await mount(React.createElement(EstimationWorkspace,{...props,runId:'first'}));
+  await act(async()=>root.render(React.createElement(EstimationWorkspace,{...props,runId:'second'})));
+  await act(async()=>resolveFirst(response(estimationFixture('first'))));
+  assert.equal(container.querySelector('.estimation-results h2').textContent,'second');
+  assert.ok(!container.querySelector('[role="status"]'));
+});
+
+test('generated estimation Dataset retains a route to its frozen run and processed-value explanation',async()=>{
+  const d=dataset('generated-estimates');d.metadata.estimation={runId:'frozen-run',createdAt:'2026-11-10T00:00:00Z',inputSha256:'frozen-hash',source:{kind:'simulation'},request:{}};
+  await mount(React.createElement(EstimationProvenance,{dataset:d}));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/estimations/frozen-run"]'));
+  assert.ok(container.textContent.includes('processed-value observation policy'));
+  assert.ok(container.textContent.includes('frozen-hash'));
+});
+
+test('reopened estimation restores covariance, source scenario version and sensor settings for a reproducible rerun',async()=>{
+  const run=estimationFixture('restored');
+  run.source={kind:'scenario',scenarioId:'scenario-1',scenarioSnapshot:{version:1},noise:[.03,.04],every:[2,7],dropout:.2,irregular:true};
+  run.request={model:{connection:.031},knownControls:['pumpControl'],compareSensors:true,operatingPoint:[1.8,.9]};
+  run.result.sensors=['level2'];run.result.config.initialState=[.8,.5];run.result.config.measurementCovariance=[[.0009,.0001],[.0001,.0016]];
+  let submitted;
+  globalThis.fetch=async(url,options={})=>{
+    if(url.endsWith('/scenarios'))return response({scenarios:[{id:'scenario-1',modelId:'coupled-tanks',name:'Newer scenario',version:2}]});
+    if(options.method==='POST'){submitted=JSON.parse(options.body);return response({...run,id:'restored-rerun'});}
+    if(url.endsWith('/estimations'))return response({runs:[{id:run.id,name:run.name,created_at:run.createdAt}]});
+    return response(run);
+  };
+  await mount(React.createElement(EstimationWorkspace,{workspaceId:'test',datasets:[],runId:run.id,onSaved(){}}));
+  assert.equal(inputFor('R · measurement covariance (m²)').value,'[[0.0009,0.0001],[0.0001,0.0016]]');
+  await act(async()=>container.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.equal(submitted.source.version,1,'rerun stays on the saved scenario version');
+  assert.deepEqual(submitted.source.noise,[.03,.04]);
+  assert.deepEqual(submitted.config.initialState,[.8,.5]);
+  assert.deepEqual(submitted.sensors,['level2']);
+  assert.deepEqual(submitted.knownControls,['pumpControl']);
+});
+
+test('alarm workspace reopens and acknowledges a saved alarm without clearing', async () => {
+  const { AlarmWorkspace } = require('../src/workspace/monitoring/AlarmWorkspace.tsx');
+  const { defaultAlarmPolicy } = require('../src/workspace/monitoring/alarmTypes.ts');
+  const result = incidentResult('reactor-alarm-run'), source = dataset(result.datasetId);
+  const axis = { id: 'dataset:' + source.id, label: source.name, origin: null, start: 200, end: 699 };
+  const first = { ...result.intervals[0], id: 'alarm-1', datasetId: source.id, datasetName: source.name,
+    analysisId: result.id, analysisName: 'Temperature monitor', detectorLabel: result.algorithmLabel,
+    axisId: axis.id, offset: 0, intervalIndex: 0, durationSeconds: 39,
+    nativeStart: 340, nativeEnd: 379, nativePeakTime: 350, nativeContributionTime: 350,
+    affectedSignals: [names[0]], threshold: 3, peakAboveThreshold: 27, peakMagnitude: 30,
+    measuredState: 'active', endReason: 'analysis-end', observedSpan: [200, 379], observedFraction: 1,
+    quality: { gapThreshold: 5, coverageFraction: 1, abstainedSamples: 0 },
+    provenance: { contributionMetric: result.contributionMetric },
+    priority: 'high', equipment: ['Reactor'], policyEligible: true,
+    operator: { acknowledgedAt: null, shelvedUntil: null, incidentIds: [], escalated: false } };
+  const second = { ...first, id: 'alarm-2', detectorLabel: 'EWMA', operator: { ...first.operator } };
+  const group = { id: 'alarm-group', axisId: axis.id, start: 340, end: 379,
+    eventIds: [first.id, second.id], priority: 'high', incidentIds: [], relationships: [] };
+  const stamp = new Date().toISOString();
+  const session = { id: 'reactor-review', name: 'Shift review', workspaceId: 'test', analysisIds: [result.id],
+    policy: defaultAlarmPolicy, createdAt: stamp, updatedAt: stamp, asOf: stamp,
+    events: [first, second], groups: [group], axes: [axis], audit: [],
+    flood: { rawEventCount: 2, groupCount: 1, axes: [] } };
+  const writes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/series?')) return response(seriesFor(url));
+    if (url === '/api/analyses/' + result.id) return response(result);
+    if (url === '/api/workspaces/test/alarm-sessions') return response({ sessions: [session] });
+    if (url === '/api/alarm-sessions/' + session.id) return response(session);
+    if (url.endsWith('/events/alarm-1/actions')) {
+      const body = JSON.parse(options.body);
+      writes.push(body);
+      first.operator.acknowledgedAt = stamp;
+      session.audit.push({ id: 'audit-1', eventId: first.id, kind: body.kind, actor: body.actor, recordedAt: stamp });
+      return response(session);
+    }
+    assert.fail('unexpected request ' + url);
+  };
+  await mount(React.createElement(AlarmWorkspace, { workspaceId: 'test', datasets: [source], jobs: [], sessionId: session.id }));
+  assert.match(container.textContent, /Shift review/);
+  assert.match(container.textContent, /2 matching alarms in 1 groups/);
+  await click(container.querySelector('.alarm-event-button'));
+  assert.ok(curve(names[0]), 'measurement evidence renders for a source alarm');
+  assert.ok(curve('Detector score'));
+  await setField(inputFor('Operator name (optional)'), 'Shift lead');
+  await click(button('Acknowledge'));
+  assert.deepEqual(writes, [{ kind: 'acknowledge', actor: 'Shift lead' }]);
+  assert.match(container.querySelector('.alarm-operator').textContent, /Active at analysis end · Acknowledged/);
+  await setField(inputFor('Operator state'), 'Acknowledged');
+  assert.match(container.textContent, /1 matching alarms in 1 groups/);
+  assert.equal(container.querySelectorAll('.alarm-event-button').length, 2, 'filters retain every group member');
+  assert.match(container.textContent, /Alarm timeline/);
+});
+
+test('predictive maintenance fits the generated measurements, localizes results, saves and links a snapshot', async () => {
+  const { PrognosticWorkspace } = require('../src/workspace/reliability/PrognosticWorkspace.tsx');
+  const pump = dataset('pump-data', 101);
+  pump.metadata.columns = [
+    { name: 'capacity_loss', unit: 'fraction', missing: 1, min: .05, max: .3 },
+    { name: 'pump', unit: '%', missing: 0, min: 45, max: 55 },
+  ];
+  const base = '/api/workspaces/test/prognostics';
+  const config = {
+    datasetId: pump.id, assetId: 'pump-1', assetName: 'Pump 1', loadSignal: 'pump',
+    indicator: { signal: 'capacity_loss', definition: 'Measured fractional loss of capacity', unit: 'fraction',
+      direction: 'increasing', failure_threshold: .4, operating_threshold: .3 },
+    start: 0, cutoff: 60, horizon: 20, method: 'stochastic', seed: 35, endStatus: 'censored',
+    events: [{ time: 20, action: 'restore' }], operatingPeriods: [[0, 100]],
+    maintenance: { preventive_cost: 50, corrective_cost: 250, downtime_cost: 1,
+      preventive_duration: 30, corrective_duration: 90, failure_consequence: 50,
+      replacement_cost: 130, replacement_duration: 40, planning_horizon: 20, scheduled_time: 10 },
+  };
+  const scheduled = { action: 'schedule', time: 10, failure_probability: .1, expected_cost: 117,
+    expected_failure_cost: 39, expected_intervention_cost: 78 };
+  const snapshot = {
+    config, source: { datasetId: pump.id, datasetName: pump.name, loadSignal: { name: 'pump', displayName: 'Pump', unit: '%' } },
+    forecast: { status: 'ok', method: 'stochastic', model_version: '1.0.0', cutoff: 60, horizon: 20,
+      history: [{ time: 0, value: .05, load: 55, fitted: null }, { time: 20, value: .10, load: 50, fitted: .11 },
+        { time: 60, value: .3, load: 45, fitted: .31 }],
+      trajectory: [{ time: 60, offset: 0, lower: .22, median: .31, upper: .39 },
+        { time: 80, offset: 20, lower: .35, median: .44, upper: .53 }],
+      distribution: [{ time: 0, probability: 0 }, { time: 10, probability: .1 }, { time: 20, probability: .75 }],
+      rul: { median: 16, lower: 8, upper: null, confidence: .9,
+        probability_not_reached_by_horizon: .25, probability_never_reached_under_model: .01,
+        probabilities: [{ horizon: 20, probability: .75 }] },
+      diagnostics: { operating_periods: [[20, 60]], latest_maintenance: { time: 20, action: 'restore' } },
+      assumptions: ['A fixed operating regime'], assumption_keys: ['elapsed_time'] },
+    maintenance: { status: 'ok', horizon: 20, recommended: scheduled, options: [scheduled], curve: [scheduled], assumptions: [] },
+  };
+  const session = { ...snapshot, id: 'pump-session', name: 'Pump forecast', created_at: '2026-10-24T00:00:00Z' };
+  const writes = [];
+  let delaySave = false, finishSave;
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.body) writes.push({ url, body: JSON.parse(options.body) });
+    if (url === base + '/benchmark') return response({ dataset: pump, defaults: config });
+    if (url === base + '/fit') return response(snapshot);
+    if (url === base + '/sessions' && options.method === 'POST') {
+      if (delaySave) return new Promise(resolve => { finishSave = () => resolve(response(session)); });
+      return response(session);
+    }
+    if (url === base + '/sessions') return response({ sessions: [{ ...session, assetName: 'Pump 1', status: 'ok' }] });
+    if (url === base + '/sessions/pump-session') return response(session);
+    if (url === '/api/workspaces/test/incidents' && options.method === 'POST') return response(emptyIncident());
+    if (url === '/api/workspaces/test/incidents') return response({ incidents: [] });
+    throw new Error(`Unexpected URL ${url}`);
+  };
+  let generated;
+  await mount(React.createElement(PrognosticWorkspace, { workspaceId: 'test', datasets: [],
+    benchmarkScenario: { id: 'tank-scenario', version: 2 }, onGenerated: data => { generated = data; },
+  }));
+  assert.match(container.textContent, /The selected coupled-tank scenario supplies the hydraulic settings/);
+  await click(button('Generate pump dataset'));
+  assert.equal(generated.id, pump.id);
+  assert.deepEqual(writes[0].body, { scenarioId: 'tank-scenario', scenarioVersion: 2 });
+  assert.equal(inputFor('Degradation signal').value, 'capacity_loss');
+  await click(button('Fit model and compare strategies'));
+  assert.equal(writes.find(item => item.url.endsWith('/fit')).body.cutoff, 60);
+  assert.match(container.querySelector('#pm-rul').parentElement.parentElement.textContent, /16 s/);
+  assert.match(container.textContent, /Restoration · 20 s/);
+  assert.match(container.textContent, /20 – 60/);
+  assert.ok(container.querySelector('.pm-workspace svg polygon'));
+  await setField(inputFor('Shared chart cursor'), 3);
+  assert.ok(container.querySelector('.pm-workspace svg [data-selected-time="70"]'));
+  assert.ok(container.querySelector('.pm-workspace svg [data-selected-time="10"]'));
+  assert.match(container.textContent, /No crossing by the forecast horizon/);
+  assert.match(container.textContent, /Recorded operating load/);
+  assert.match(container.textContent, /Expected total cost/);
+  await setField(inputFor('Session name'), 'Pump forecast');
+  await click(button('Save session'));
+  assert.equal(window.location.hash, '#/workspaces/test/maintenance/pump-session');
+  await act(async () => root.render(React.createElement(PrognosticWorkspace, {
+    key: session.id, workspaceId: 'test', datasets: [pump], sessionId: session.id, onGenerated() {},
+  })));
+  assert.equal(inputFor('Forecast cutoff (dataset s)').value, '60');
+  assert.equal(container.querySelector('a[href$="/forecast.csv"]').getAttribute('href'), base + '/sessions/pump-session/forecast.csv');
+  await click(button('Link saved forecast to an incident'));
+  await click(button("Create and open incident"));
+  assert.deepEqual(writes.at(-1).body.source, { kind: 'prognostic', sessionId: session.id });
+  delaySave = true;
+  await click(button('Save as new session'));
+  assert.ok(finishSave);
+  await act(async () => root.render(React.createElement('div')));
+  window.location.hash = '#/workspaces/test/datasets';
+  await act(async () => finishSave());
+  assert.equal(window.location.hash, '#/workspaces/test/datasets');
+  window.location.hash = '#/';
+});
+
+test('sensor placement saves configured constraints, restores bilingual evidence and opens published signals', async () => {
+  const { SensorPlacementWorkspace } = require('../src/workspace/modeling/SensorPlacementWorkspace.tsx');
+  const endpoint = '/api/workspaces/pilot/sensor-placement';
+  const model = { id: 'coupled-tanks', name: 'Coupled-Tank Process', version: '1.0.0' };
+  const keys = ['level1', 'level2', 'inlet', 'transfer', 'outlet'];
+  const sensors = keys.map((key, i) => ({ key, label: i === 0 ? 'Tank 1 measured level' : key, tag: 'sensor-' + i, unit: 'm' }));
+  const hypotheses = ['healthy', 'pump_degradation', 'valve_restriction'];
+  const config = { modelId: model.id, horizon: 12, step: .5, onset: 2, duration: null,
+    sensors: keys.map(key => ({ key, noise: .01, cost: 1, mode: 'available' })),
+    correlations: keys.map((_, i) => keys.map((__, j) => +(i === j))),
+    hypotheses: hypotheses.slice(1), intensities: { pump_degradation: .3, valve_restriction: .3 },
+    conditions: [{ id: 'nominal', parameters: {} }], budget: 4, maxSensors: 2, objective: 'separation', aggregation: 'worst' };
+  const trajectories = hypotheses.map((_, j) => [keys.map(() => 0), keys.map(() => j)]);
+  const scores = { separation: 0, detectability: 0, isolability: 2, information: 0 };
+  const spectrum = { singularValues: [3, 0], rank: 1, condition: null, tolerance: 1e-14 };
+  const evidence = { ...scores, spectrum, signatureSpectrum: spectrum, sensitivityNorms: [[1], [0]],
+    distances: [[0, 0, 2], [0, 0, 2], [2, 2, 0]] };
+  const subset = { sensors: ['level1'], cost: 1, pareto: true, nominal: scores, mean: scores, worst: scores,
+    conditions: [evidence] };
+  const metadata = { id: 'saved', name: 'Study A', created_at: '2026-11-14T01:23:45Z' };
+  const cohort = { id: 'holdout_timing', trialsPerHypothesis: 3, falseAlarmRate: 0, detectionRate: .5,
+    classificationAccuracy: 0, ambiguousRate: .5, unclassifiedRate: 1, trueMinimumSeparation: 0,
+    counts: [[3,0,0,0], [3,0,0,0], [0,0,0,3]], pairwise: [] };
+  const cancellation = { id: 'cancellation_nominal', templates: trajectories, pumpIntensity: .3,
+    valveIntensity: .3, noiseScale: 1, metrics: [{ sensors: ['level1'], detectability: 0, isolability: 2,
+      competitor: 'pump_degradation', detectionPower: .05, nearestPairError: .16 }] };
+  const analysis = { config, hypotheses, sensors, parameters: hypotheses.slice(1), runtimeMs: 10, weakDistance: 2,
+    conditions: [{ id: 'nominal', times: [0, 2], templates: trajectories, signatures: trajectories,
+      derivativeStability: hypotheses.slice(1).map(fault => ({ fault, relativeL2: keys.map(() => 0) })) }],
+    subsets: [subset], winners: { nominal: subset.sensors, mean: subset.sensors, worst: subset.sensors },
+    cancellation: { times: [0,2], templates: trajectories, hypotheses, tank1Rms: [.03,.03,0], cases: [cancellation] },
+    evaluation: { calibrationSeed: 1, holdoutSeed: 2, targetFalseAlarm: .05, chosenLayout: 'minimax_optimum',
+      cohorts: [{ id: cohort.id, model: { start: 2 }, representative: trajectories }],
+      layouts: [{ id: 'minimax_optimum', sensors: subset.sensors, cost: 1, minimumSeparation: 0, runtimeMs: 1, cohorts: [cohort] }] } };
+  const posts = [];
+  globalThis.fetch = async (url, options) => {
+    if (options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      posts.push([url, payload]);
+      if (url.endsWith('/dataset')) return response({ metadata: { columns: [{ id: 'catalog-signal' }] } });
+      return response({ ...metadata, analysis: { ...analysis, config: payload.config } });
+    }
+    if (url === endpoint) return response({ runs: [metadata], defaults: config, conditions: ['nominal'],
+      modelFields: [], models: [model], sensors });
+    if (url === endpoint + '/saved') return response({ ...metadata, analysis });
+    throw new Error('Unexpected request ' + url);
+  };
+  const changes = [];
+  const render = runId => React.createElement(SensorPlacementWorkspace, { workspaceId: 'pilot', runId, onChanged: () => changes.push(true) });
+  window.location.hash = '#/workspaces/pilot/sensor-placement';
+  await mount(render());
+  const select = container.querySelector('select[aria-label="Tank 1 measured level · Sensor status"]');
+  await act(async () => {
+    select.value = 'required';
+    select.dispatchEvent(new window.Event('change', { bubbles: true }));
+    const name = container.querySelector('input[maxlength="160"]');
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(name, 'Study A');
+    name.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await act(async () => container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+  assert.equal(posts[0][1].config.sensors[0].mode, 'required');
+  assert.equal(window.location.hash, '#/workspaces/pilot/sensor-placement/saved');
+  await act(async () => root.render(render('saved')));
+  assert.match(container.textContent, /Indistinguishable/);
+  assert.ok(container.querySelector('a[href$="/analysis.json"]'));
+  assert.ok(container.querySelector('svg[aria-label^="Tank 1 measured level"]'));
+  assert.match(container.textContent, /Fault detectability and sensor placement/);
+  assert.ok(container.querySelector('a[href*="report.html"]'));
+  await click([...container.querySelectorAll('button')].find(button => button.textContent === "Publish trajectory to Signal Explorer"));
+  assert.deepEqual(posts[1][1], { condition: 'nominal', hypothesis: 'pump_degradation', sensors: ['level1'] });
+  assert.equal(changes.length, 1);
+  assert.equal(window.location.hash, '#/workspaces/pilot/explorer/catalog-signal');
+});
+
+test('input design reopens a saved experiment, localizes controls and publishes the selected strategy', async () => {
+  const { ExperimentDesign } = require('../src/workspace/modeling/ExperimentDesign.tsx');
+  const config = {
+    modelId: 'coupled-tanks', duration: 2, controlInterval: 1, segments: 2, sampleInterval: 1,
+    integrationStep: .25, seed: 1, objective: 'E', initialLevels: [1.56, 1],
+    levelMin: [0, 0], levelMax: [2.4, 2.4], tankHeight: 2.5, minDelivery: 0, terminalLevelTolerance: null,
+    initialInput: [100, 1], terminalInput: null, inputMin: [45, .45], inputMax: [150, 1],
+    maxMovement: [280, 2], maxSlew: [10, .075], parameters: ['pumpRate'], noise: { level1: .004 },
+    nominal: { pumpRate: .03 }, scenarios: [{ pumpRate: .035 }],
+  };
+  const report = {
+    parameters: config.nominal, objective: 4, rank: 1, singularValues: [2], eigenvalues: [4],
+    logDet: Math.log(4), condition: 1, matrix: [[4]], physicalMatrix: [[4444]], correlation: [[1]],
+    weakDirections: [[1]], rankThreshold: 1e-7, differenceDisagreement: 1e-8, sensitivity: [[[0]], [[.02]], [[.03]]],
+    structurallyAbsent: [], times: [0, 1, 2], response: { level1: [1.56, 1.56, 1.58], level2: [1, 1, 1] },
+    observations: { level1: [1.56, 1.56, 1.58] }, sampledInputs: { pump: [100, 110, 110], valve: [1, 1, 1] },
+    margins: { levelUpper: [.8, 1.4] }, feasible: true, delivered: .06, spilled: 0, massResidual: 1e-16,
+    extrema: { minAt: [0, 0], maxAt: [2, 0], substeps: 16 },
+  };
+  const strategy = {
+    id: 'nominal-optimal', schedule: [{ start: 0, pump: 100, valve: 1 }, { start: 1, pump: 110, valve: 1 }],
+    duration: 2, movement: [10, 0], maxSlew: [10, 0], inputMargins: { slew: [0, .075] },
+    inputFeasible: true, feasible: true, reports: { nominal: report, 'scenario-1': { ...report, feasible: false } },
+    worstScenario: 'scenario-1', worstObjective: 3, violatedScenarios: ['scenario-1'],
+  };
+  const summary = { id: 'design-1', name: 'Fixture', created_at: '2026-01-01T00:00:00Z', status: 'completed' };
+  const record = { ...summary, snapshot: { config, designs: [strategy], solvers: {},
+    diagnostics: { dRidge: 1e-6, stateIntegrationStep: .125, feasibilityTolerance: 1e-6 } } };
+  const requests = [];
+  let publications = 0;
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith('/datasets')) return response(dataset('generated'));
+    if (url.endsWith('/design-1')) return response(record);
+    return response({ defaults: config, experiments: [summary], parameters: {
+      pumpRate: { label: 'Nominal pump flow', unit: 'm³/s', min: 0, max: .2 },
+    }, measurements: { level1: { label: 'Tank 1 measured level', unit: 'm' }, level2: { label: 'Tank 2 measured level', unit: 'm' } } });
+  };
+  await mount(React.createElement(ExperimentDesign, { workspaceId: 'test', experimentId: 'design-1', onPublished: () => publications++ }));
+  assert.match(container.textContent, /Optimal Experiment Design/);
+  assert.match(container.textContent, /Fisher information/);
+  const scenarios = [...container.querySelectorAll('select')].find(node => node.value === 'nominal');
+  await act(async () => {
+    scenarios.value = 'scenario-1';
+    scenarios.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
+  assert.match(container.textContent, /Violates simulated constraints/);
+  await click([...container.querySelectorAll('button')].find(node => node.textContent === "Publish as Dataset"));
+  assert.equal(publications, 1);
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body), { designId: 'nominal-optimal', scenarioId: 'scenario-1' });
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/generated"]'));
+});
+
+test('reachability computes a map, replays a selected state, reopens its snapshot and exports an ordinary Dataset', async () => {
+  const config = { modelId: 'coupled-tanks', plant: { area1: 1, area2: 1, connection: .04, outlet: .03, pumpRate: .03, outletValve: 1, tankHeight: 2.5 },
+    safe: [[.3, 2.35], [.25, 2.35]], target: [[1.4, 1.8], [.85, 1.15]], pump: [0, 150], valve: [.2, 1],
+    slew: [6, .05], actionCounts: [4, 3], grid: [3, 3], horizon: 16, controlSeconds: 10, integrationStep: .1, mode: 'nominal', disturbances: ['pump-loss'] };
+  const analysis = { config, modelVersion: '1.0.0', numerical: { axes: [[0, 1.2, 2.4], [0, 1.2, 2.4]], spacing: [1.2, 1.2],
+    actions: [[50, 1], [100, 1]], scenarios: { nominal: {} }, horizonSeconds: 160, viabilityIterations: 2,
+    nominalViabilityIterations: 2, convergence: true, seconds: .06, graphBytes: 64, safeAugmentedStates: 8, boundaryAugmentedStates: 6 },
+    safe: Array(9).fill(true), target: Array(9).fill(false), ranks: Array(9).fill([1, 2]),
+    policy: Array(9).fill([0, 0]), viable: Array(9).fill([true, true]), boundary: Array(9).fill([true, true]) };
+  analysis.nominalRanks = analysis.viableTargetRanks = analysis.ranks;
+  analysis.nominalViable = analysis.viable;
+  const rootPath = '/api/workspaces/test/reachability';
+  const data = dataset('recovered-data', 20);
+  const calls = [];
+  let saved;
+  window.location.hash = '#/workspaces/test/reachability';
+  globalThis.fetch = async (url, options) => {
+    const body = options?.body ? JSON.parse(options.body) : null;
+    calls.push([url, body]);
+    if (url === '/api/workspaces') return response({ workspaces: [{ id: 'test', name: 'Tanks' }] });
+    if (url === '/api/workspaces/test') return response({ id: 'test', name: 'Tanks' });
+    if (url.endsWith('/datasets')) return response({ datasets: [] });
+    if (url.endsWith('/analyses')) return response({ jobs: [] });
+    if (url === rootPath && !body) return response({
+      studies: saved ? [saved] : [], defaults: config, disturbances: { nominal: {}, 'pump-loss': { pump: .85 } }, scenarios: [], incidents: [],
+    });
+    if (url === rootPath + '/saved') return response(saved);
+    if (url === rootPath + '/saved/dataset') return response(data);
+    if (url === rootPath || url === rootPath + '/compute') {
+      const evaluation = body.initial ? { initial: body.initial, integrationStep: .05,
+        replays: Object.fromEntries(['policy', 'hold', 'drain', 'fill'].map(strategy => [strategy, {
+          strategy, status: 'recovered', recoverySeconds: 10, effort: [500, 10], movement: [50, 0],
+          minimumMargin: .1, violations: [], actions: [{ t: 0, pump: 50, valve: 1, disturbance: 'nominal' }],
+          trajectory: [{ t: 0, level1: body.initial.heads[0], level2: body.initial.heads[1], pump: 50, valve: 1, safetyMargin: .1 },
+            { t: 10, level1: 1.55, level2: 1.05, pump: 50, valve: 1, safetyMargin: .2 }],
+        }])) } : null;
+      const result = { analysis, evaluation, scenario: null, incident: null };
+      if (url === rootPath) saved = { ...result, id: 'saved', name: body.name };
+      return response(url === rootPath ? saved : result);
+    }
+    throw new Error('Unexpected reachability request ' + url);
+  };
+  await mount(React.createElement(App));
+  assert.equal(container.querySelector('a[href="#/workspaces/test/reachability"]').getAttribute('aria-current'), 'page');
+  await click(button('reach.compute'));
+  const map = container.querySelector('svg[aria-label="Tank state map"]');
+  assert.ok(map);
+  await act(async () => map.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })));
+  await click(button('reach.simulate'));
+  const simulation = calls.filter(([url]) => url.endsWith('/compute')).at(-1)[1].initial;
+  assert.deepEqual(simulation, { heads: [1.2, 1.2], previousAction: 1, disturbance: 'nominal' });
+  assert.ok(container.querySelector('.reach-map polyline'));
+  assert.match(container.textContent, /Nonlinear replay comparison/);
+  await click(button('reach.save'));
+  await act(async () => window.dispatchEvent(new window.HashChangeEvent('hashchange')));
+  assert.equal(window.location.hash, '#/workspaces/test/reachability/saved');
+  assert.ok(calls.some(([url]) => url === rootPath + '/saved'));
+  await click(button('reach.exportDataset'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/datasets/recovered-data"]'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/experiments/new/recovered-data"]'));
+  assert.match(container.textContent, /Safety Reachability & Recovery Planning/);
+  assert.match(container.textContent, /Nonlinear replay comparison/);
 });

@@ -15,7 +15,7 @@ RULES = {
     'samples': 'Only explicitly labelled, non-abstained samples enter TP/FP/TN/FN. Unlabelled time is unknown, never normal.',
     'scope': 'Precision and F1 apply only to reviewed intervals. Positive-only labels cannot measure false alarms outside those intervals; false alarm rate is undefined without evaluated normal samples.',
     'events': 'Truth events with any evaluated samples are eligible. A hit needs an alarm sample inside that event. Events without observations are excluded and counted separately.',
-    'falseAlarmEvents': 'Contiguous alarm samples inside explicit normal labels; split at label, abstention and acquisition gaps. This is not sample-level FP.',
+    'falseAlarmEvents': 'Counts continuous alarm episodes in labeled normal intervals, split at abstentions and acquisition gaps.',
     'delay': 'First alarm sample inside each truth event minus its original start, even if the evaluation window starts later. Missed or unobserved events have null delay.',
     'duration': 'Sum of last minus first sample times in contiguous alarm spans; point alarms have zero duration. Acquisition gaps are excluded.',
     'scores': 'Scores, thresholds and contribution magnitudes retain each algorithm’s own scale; they are not an accuracy ranking.',

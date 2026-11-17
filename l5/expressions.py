@@ -138,7 +138,7 @@ def evaluate(expression, quantities, times, output_unit=None):
             if name in ('log', 'exp', 'sin', 'cos') and (a.unit is None or canonical(a.unit) != '1'):
                 raise ValueError(f'{name} requires a dimensionless argument.')
             if name == 'abs' and a.unit is not None and dimension(a.unit) == 'temperature':
-                raise ValueError('abs requires a temperature difference rather than an absolute temperature.')
+                raise ValueError('Use a temperature difference with abs.')
             unit = a.unit if name == 'abs' else '1' if a.unit and canonical(a.unit) == '1' else None
             return Quantity(getattr(np, name)(a.values), unit, a.observed, rotational=a.rotational if name == 'abs' else False)
         raise ValueError('Unsupported expression operation.')

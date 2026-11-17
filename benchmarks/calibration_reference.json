@@ -1,0 +1,344 @@
+{
+  "protocol": "coupled-tanks-output-error-v1",
+  "seeds": [
+    19,
+    32,
+    71
+  ],
+  "validationSeed": 201,
+  "noiseStdMeters": 0.002,
+  "integrationStepSeconds": 0.05,
+  "generatorStepSeconds": 0.025,
+  "assumptions": "Known geometry; observed levels; exact zero-order-held pump and valve commands; Gaussian level noise.",
+  "scope": "Deterministic simulator benchmarks, not real-plant validation. The single operating equilibrium is deliberately uninformative.",
+  "noiseRecoveryRelativeStd": {
+    "pumpRate": 0.0036029968505000435,
+    "connection": 0.0048030384882452185,
+    "outlet": 0.005863488196887088
+  },
+  "cases": [
+    {
+      "case": "clean",
+      "converged": true,
+      "evaluations": 8,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [],
+      "estimates": {
+        "pumpRate": 0.03600001129835426,
+        "connection": 0.047000017918532616,
+        "outlet": 0.026000011494190203
+      },
+      "recoveryRelativeError": {
+        "pumpRate": 3.1384317411564666e-07,
+        "connection": 3.8124537482531196e-07,
+        "outlet": 4.420842385499668e-07
+      },
+      "validation": {
+        "level1": {
+          "rmse": 2.4664463225507835e-06,
+          "originalRmse": 0.3344750960071339,
+          "ratioToOriginal": 7.374080617643885e-06
+        },
+        "level2": {
+          "rmse": 2.170584944705492e-06,
+          "originalRmse": 0.37784638692568323,
+          "ratioToOriginal": 5.744622735091586e-06
+        }
+      },
+      "massBalanceError": 6.812328479099961e-13,
+      "numericalDifference": {
+        "level1": 4.896811567914097e-08,
+        "level2": 5.718054307763616e-08
+      }
+    },
+    {
+      "case": "noise-19",
+      "converged": true,
+      "evaluations": 7,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [
+        "residual-mismatch"
+      ],
+      "estimates": {
+        "pumpRate": 0.0358399352616235,
+        "connection": 0.046713447749015126,
+        "outlet": 0.025813086533962467
+      },
+      "recoveryRelativeError": {
+        "pumpRate": 0.004446242732680572,
+        "connection": 0.006096856403933537,
+        "outlet": 0.007188979462982026
+      },
+      "validation": {
+        "level1": {
+          "rmse": 0.003286046942581384,
+          "originalRmse": 0.33403620512245935,
+          "ratioToOriginal": 0.009837397540116056
+        },
+        "level2": {
+          "rmse": 0.0028333375129258073,
+          "originalRmse": 0.3773906867088981,
+          "ratioToOriginal": 0.0075077038536229546
+        }
+      },
+      "massBalanceError": 3.7925218521195347e-13,
+      "numericalDifference": {
+        "level1": 4.864694829753557e-08,
+        "level2": 5.655346062821237e-08
+      }
+    },
+    {
+      "case": "noise-32",
+      "converged": true,
+      "evaluations": 7,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [],
+      "estimates": {
+        "pumpRate": 0.03608657306825095,
+        "connection": 0.047143134269378585,
+        "outlet": 0.026103873270541467
+      },
+      "recoveryRelativeError": {
+        "pumpRate": 0.0024048074514153583,
+        "connection": 0.003045409986778491,
+        "outlet": 0.003995125790056564
+      },
+      "validation": {
+        "level1": {
+          "rmse": 0.0025557050356378786,
+          "originalRmse": 0.33403620512245935,
+          "ratioToOriginal": 0.00765098212842211
+        },
+        "level2": {
+          "rmse": 0.0020671488114578874,
+          "originalRmse": 0.3773906867088981,
+          "ratioToOriginal": 0.005477477013237456
+        }
+      },
+      "massBalanceError": 3.8458125573015423e-13,
+      "numericalDifference": {
+        "level1": 4.9252976707282646e-08,
+        "level2": 5.754164695524366e-08
+      }
+    },
+    {
+      "case": "noise-71",
+      "converged": true,
+      "evaluations": 7,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [],
+      "estimates": {
+        "pumpRate": 0.036032894324394424,
+        "connection": 0.04704831837290203,
+        "outlet": 0.02603788989450578
+      },
+      "recoveryRelativeError": {
+        "pumpRate": 0.0009137312331786163,
+        "connection": 0.0010280504872772767,
+        "outlet": 0.0014573036348377588
+      },
+      "validation": {
+        "level1": {
+          "rmse": 0.0024241393389098226,
+          "originalRmse": 0.33403620512245935,
+          "ratioToOriginal": 0.007257115551355042
+        },
+        "level2": {
+          "rmse": 0.002005533364863528,
+          "originalRmse": 0.3773906867088981,
+          "ratioToOriginal": 0.005314210009666998
+        }
+      },
+      "massBalanceError": 2.3803181647963356e-13,
+      "numericalDifference": {
+        "level1": 4.878344042270361e-08,
+        "level2": 5.716780466002393e-08
+      }
+    },
+    {
+      "case": "equilibrium",
+      "converged": true,
+      "evaluations": 1,
+      "rank": 2,
+      "parameters": 3,
+      "identifiability": "rank-deficient",
+      "warnings": [
+        "rank-deficient"
+      ],
+      "estimates": {
+        "pumpRate": 0.03,
+        "connection": 0.04,
+        "outlet": 0.03
+      },
+      "recoveryRelativeError": null,
+      "validation": {
+        "level1": {
+          "rmse": 0.3344750960071339,
+          "originalRmse": 0.3344750960071339,
+          "ratioToOriginal": 1.0
+        },
+        "level2": {
+          "rmse": 0.37784638692568323,
+          "originalRmse": 0.37784638692568323,
+          "ratioToOriginal": 1.0
+        }
+      },
+      "massBalanceError": 0.0,
+      "numericalDifference": {
+        "level1": 0.0,
+        "level2": 0.0
+      }
+    },
+    {
+      "case": "pump-product",
+      "converged": true,
+      "evaluations": 14,
+      "rank": 3,
+      "parameters": 4,
+      "identifiability": "rank-deficient",
+      "warnings": [
+        "rank-deficient",
+        "pump-product-confounding"
+      ],
+      "estimates": {
+        "pumpRate": 0.04180390534669096,
+        "connection": 0.047000017916403555,
+        "outlet": 0.02600001149287886,
+        "pumpEfficiency": 0.8611638314294694
+      },
+      "recoveryRelativeError": null,
+      "validation": {
+        "level1": {
+          "rmse": 2.466448027540632e-06,
+          "originalRmse": 0.3344750960071339,
+          "ratioToOriginal": 7.374085715152994e-06
+        },
+        "level2": {
+          "rmse": 2.1705850237978153e-06,
+          "originalRmse": 0.37784638692568323,
+          "ratioToOriginal": 5.744622944415602e-06
+        }
+      },
+      "massBalanceError": 2.4868995751603507e-13,
+      "numericalDifference": {
+        "level1": 4.896811575176604e-08,
+        "level2": 5.718054251673277e-08
+      }
+    },
+    {
+      "case": "leak-mismatch",
+      "converged": true,
+      "evaluations": 9,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [
+        "residual-mismatch"
+      ],
+      "estimates": {
+        "pumpRate": 0.03324202737205466,
+        "connection": 0.06683025446468167,
+        "outlet": 0.03783134859831836
+      },
+      "recoveryRelativeError": null,
+      "validation": {
+        "level1": {
+          "rmse": 0.01877179481721719,
+          "originalRmse": 0.3643371036631372,
+          "ratioToOriginal": 0.05152314883244344
+        },
+        "level2": {
+          "rmse": 0.02004270343190473,
+          "originalRmse": 0.07490612808685464,
+          "ratioToOriginal": 0.2675709443780748
+        }
+      },
+      "massBalanceError": 2.3447910280083306e-13,
+      "numericalDifference": {
+        "level1": 8.745836188095701e-08,
+        "level2": 1.0949664734784851e-07
+      }
+    },
+    {
+      "case": "budget-exhausted",
+      "converged": false,
+      "evaluations": 1,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [
+        "optimizer-incomplete",
+        "residual-mismatch"
+      ],
+      "estimates": {
+        "pumpRate": 0.03,
+        "connection": 0.04,
+        "outlet": 0.03
+      },
+      "recoveryRelativeError": null,
+      "validation": {
+        "level1": {
+          "rmse": 0.33403620512245935,
+          "originalRmse": 0.33403620512245935,
+          "ratioToOriginal": 1.0
+        },
+        "level2": {
+          "rmse": 0.3773906867088981,
+          "originalRmse": 0.3773906867088981,
+          "ratioToOriginal": 1.0
+        }
+      },
+      "massBalanceError": 5.275779813018744e-13,
+      "numericalDifference": {
+        "level1": 2.8786441869843497e-08,
+        "level2": 4.426534770728667e-08
+      }
+    },
+    {
+      "case": "different-start",
+      "converged": true,
+      "evaluations": 9,
+      "rank": 3,
+      "parameters": 3,
+      "identifiability": "locally-identifiable",
+      "warnings": [
+        "residual-mismatch"
+      ],
+      "estimates": {
+        "pumpRate": 0.03583993526306514,
+        "connection": 0.046713447751250366,
+        "outlet": 0.02581308653535238
+      },
+      "recoveryRelativeError": {
+        "pumpRate": 0.0044462426926348275,
+        "connection": 0.0060968563563752465,
+        "outlet": 0.007188979409523788
+      },
+      "validation": {
+        "level1": {
+          "rmse": 0.0032860469409506997,
+          "originalRmse": 0.33403620512245935,
+          "ratioToOriginal": 0.009837397535234297
+        },
+        "level2": {
+          "rmse": 0.002833337510954451,
+          "originalRmse": 0.3773906867088981,
+          "ratioToOriginal": 0.007507703848399307
+        }
+      },
+      "massBalanceError": 1.0746958878371515e-13,
+      "numericalDifference": {
+        "level1": 4.8646948394068886e-08,
+        "level2": 5.655346092062507e-08
+      }
+    }
+  ]
+}

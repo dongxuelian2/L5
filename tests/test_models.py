@@ -178,7 +178,7 @@ class ModelWorkspaceHTTPTests(IncidentHTTPFixture):
             report=render_report(self.service.workspace_store,incident['id'])
             self.assertIn(model,report);self.assertIn(scenario['id'],report);self.assertIn('<svg',report)
             if model=='coupled-tanks':
-                self.assertIn('Delivered water',report);self.assertNotIn('物理峰值压力 kPa',report)
+                self.assertIn('Delivered water',report);self.assertNotIn('Peak physical pressure kPa',report)
             experiment_report=render_experiment_report(self.service.workspace_store,experiment['id'])
             self.assertIn(model,experiment_report);self.assertIn(scenario['id'],experiment_report)
             records.append((sid,tool,intervention,dataset,experiment,research,incident))

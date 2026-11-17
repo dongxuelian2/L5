@@ -23,17 +23,27 @@ def clock_for_key(store, key):
             return {**store.signals.clock(session['datasetId']), 'key': key}
         return dict(key=key, axisId=key, offset=0, label=session['title'])
     if key.startswith('origin:'):
-        return dict(key=key, axisId='utc', offset=origin_seconds(key[7:]), label='UTC 绝对时间')
-    return dict(key=key, axisId=key, offset=0, label='事件独立时间轴')
+        return dict(key=key, axisId='utc', offset=origin_seconds(key[7:]), label='UTC absolute time')
+    return dict(key=key, axisId=key, offset=0, label='Independent incident time axis')
 
 
 def source_clock(store, source):
     detail = source['details']
+    if detail.get('safety'):
+        return detail['clock']
     key = 'dataset:' + detail['datasetId'] if detail.get('datasetId') else 'simulation:' + detail['simulationId']
     return clock_for_key(store, key)
 
 
 def incident_clock(store, incident):
+    snapshot = incident.get('time_axis_snapshot')
+    if snapshot:
+        key = 'alarm-snapshot:' + incident['id']
+        for expected in snapshot['clocks']:
+            current = clock_for_key(store, expected['key'])
+            if (current['axisId'], current['offset']) != (expected['axisId'], expected['offset']):
+                return dict(key=key, axisId=key, offset=0, label=snapshot['label'])
+        return dict(key=key, axisId=snapshot['axisId'], offset=0, label=snapshot['axisLabel'])
     key = 'origin:' + incident['time_origin'] if incident.get('time_origin') else incident.get('time_axis_key') or 'incident:' + incident['id']
     return clock_for_key(store, key)
 
@@ -134,27 +144,48 @@ def investigation(store, identity, selected=None):
     grouped = {}
     truth_datasets = set()
     for link in incident['links']:
-        clock = add_clock(source_clock(store, link))
         detail = link['details']
+        if detail.get('safety'):
+            evidence = detail['safety']
+            interval = evidence['interval']
+            predicted = evidence['kind'] == 'predicted'
+            event('safety:' + link['id'], link['kind'], evidence['constraintName'],
+                  None if predicted else source_clock(store, link),
+                  None if predicted else interval['start'], None if predicted else interval['end'],
+                  linkId=link['id'], recordedAt=link['created_at'], safety=evidence,
+                  assessmentId=detail['assessmentId'], target='source')
+            continue
+        clock = add_clock(source_clock(store, link))
         dataset_id = detail.get('datasetId')
+        if detail.get('diagnosticId'):
+            diagnostic = store.sensor_health.get(detail['diagnosticId'])
+            episodes = [(detail['episodeIndex'], detail['episode'])] if 'episodeIndex' in detail else list(enumerate(diagnostic['episodes']))
+            for index, episode in episodes:
+                event(f'sensor-health:{diagnostic["id"]}:{index}', 'investigation', 'Sensor health', clock,
+                    episode['start'], episode['end'], linkId=link['id'], recordedAt=diagnostic['createdAt'],
+                    signals=episode['signals'], diagnosticAssessment=episode['assessment'], diagnosticSeverity=episode['severity'], target='source')
         external = datasets.get(dataset_id, {}).get('metadata', {}).get('external')
         if external and dataset_id not in truth_datasets and external.get('faultOnsetSeconds') is not None:
             truth_datasets.add(dataset_id)
-            event('truth:' + dataset_id, 'truth', f'数据集已知故障 {external["faultNumber"]} · sample {external["faultOnsetSample"]}',
+            event('truth:' + dataset_id, 'truth', f'Published dataset fault {external["faultNumber"]} · sample {external["faultOnsetSample"]}',
                   clock, external['faultOnsetSeconds'], linkId=link['id'], content=external['timeConvention'], target='source')
         if detail.get('analysisId'):
             grouped.setdefault(detail['analysisId'], []).append(link)
+        if detail.get('sessionId'):
+            event('prognostic:' + link['id'], 'prognostic', detail['title'], clock, detail['cutoff'],
+                  linkId=link['id'], recordedAt=link['created_at'], observationWindow=[detail['trainingStart'], detail['cutoff']],
+                  target='source')
         if detail.get('simulationId'):
             run, window = detail.get('run'), detail.get('observationWindow')
             if run:
                 request, result = run['request'], run['result']
                 cutoff = result.get('observedThrough', result.get('asOf', request.get('asOf')))
                 event('run:' + run['id'], 'experiment' if run['kind'] == 'intervention' else 'investigation',
-                      '干预实验' if run['kind'] == 'intervention' else '工具调查', clock, cutoff,
+                      'Intervention experiment' if run['kind'] == 'intervention' else 'Tool investigation', clock, cutoff,
                       linkId=link['id'], recordedAt=run['createdAt'], observationWindow=[request.get('windowStart', 0), cutoff],
                       actionAt=result.get('at'), hypothesis=request.get('hypothesis'), target='source')
             elif window:
-                event('window:' + link['id'], 'investigation', '过程模型工作假设', clock, window['asOf'],
+                event('window:' + link['id'], 'investigation', 'Process-model working hypothesis', clock, window['asOf'],
                       linkId=link['id'], recordedAt=link['created_at'], observationWindow=[window['windowStart'], window['asOf']],
                       hypothesis=window.get('hypothesis'), target='source')
 
@@ -170,18 +201,21 @@ def investigation(store, identity, selected=None):
             normalized = {**interval, 'start': interval['start'] + clock['offset'], 'end': interval['end'] + clock['offset'],
                           'peakTime': interval['peakTime'] + clock['offset'], 'index': index, 'linkId': link['id']}
             intervals.append(normalized)
-            event(f'interval:{analysis_id}:{index}', 'alarm', result['algorithmLabel'] + ' · 异常区间', clock,
+            event(f'interval:{analysis_id}:{index}', 'alarm', result['algorithmLabel'] + ' · Anomaly interval', clock,
                   interval['start'], interval['end'], peakTime=normalized['peakTime'], peakScore=interval['peakScore'],
                   analysisId=analysis_id, intervalIndex=index, linkId=link['id'], recordedAt=result['createdAt'],
-                  signals=interval['signals'], target='source')
+                  signals=interval['signals'], target='source',
+                  **({'rawPeakScore': interval['rawPeakScore']} if 'rawPeakScore' in interval else {}))
+        gap = result['config'].get('gapThreshold', datasets[result['datasetId']]['metadata']['quality']['gapThreshold'])
         analyses.append(dict(id=analysis_id, result=result, axisId=clock['axisId'], offset=clock['offset'],
             datasetId=result['datasetId'], datasetName=datasets[result['datasetId']]['name'],
-            scope='完整分析' if full else '已关联区间', linkId=(full or links[0])['id'], intervals=intervals,
-            observedSpans=observed_spans(result, clock['offset'], datasets[result['datasetId']]['metadata']['quality']['gapThreshold'])))
+            scope='Full analysis' if full else 'Linked intervals', linkId=(full or links[0])['id'], intervals=intervals,
+            observedSpans=observed_spans(result, clock['offset'], gap)))
 
     for entry in incident['entries']:
         link = link_by_id.get(entry['source_link_id'])
-        clock = clock_for_key(store, entry['observed_axis_key']) if entry.get('observed_axis_key') else source_clock(store, link) if link else primary
+        key = entry.get('observed_axis_key')
+        clock = primary if key == primary['key'] else clock_for_key(store, key) if key else source_clock(store, link) if link else primary
         event('entry:' + entry['id'], entry['kind'], entry['title'], clock if entry['observed_at'] is not None else None,
               entry['observed_at'], entryId=entry['id'], linkId=entry['source_link_id'],
               recordedAt=entry['created_at'], updatedAt=entry['updated_at'], stance=entry['stance'],
@@ -189,13 +223,13 @@ def investigation(store, identity, selected=None):
     history = store.incidents.history(identity)
     for change in history:
         keys = change['changes']
-        title = '结论更新' if 'conclusion' in keys else '状态变更' if 'status' in keys else '事件信息更新'
+        title = 'Conclusion update' if 'conclusion' in keys else 'Status change' if 'status' in keys else 'Incident information updated'
         event('history:' + change['id'], 'conclusion' if 'conclusion' in keys else 'status', title,
               recordedAt=change['recorded_at'], changes=keys, target='conclusion' if 'conclusion' in keys else 'information')
 
     ids = {a['id'] for a in analyses}
     if selected is not None and any(i not in ids for i in selected):
-        raise ValueError('只能比较此事件实际关联的分析。')
+        raise ValueError('Choose analyses linked to this incident.')
     selected = ids if selected is None else set(selected)
     comparisons = []
     for axis in axes.values():

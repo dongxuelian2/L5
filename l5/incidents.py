@@ -11,6 +11,7 @@ import math
 from uuid import uuid4
 
 from .workspace import now
+from .safety import EVIDENCE_KINDS
 
 
 STATUSES = ('open', 'investigating', 'resolved', 'archived')
@@ -19,7 +20,7 @@ KINDS = ('note', 'evidence', 'hypothesis')
 
 def text(value, label, limit=50000):
     if not isinstance(value, str) or len(value) > limit:
-        raise ValueError(f'{label}必须是文本，最多 {limit} 个字符。')
+        raise ValueError(f'{label} must be text with at most {limit} characters.')
     return value.strip()
 
 
@@ -27,7 +28,7 @@ def seconds(value):
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-        raise ValueError('时间必须是有限的秒数。')
+        raise ValueError('Time must be a finite number of seconds.')
     return value
 
 
@@ -68,8 +69,11 @@ class IncidentService:
             ''')
             if 'model_hypothesis' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
                 db.execute('ALTER TABLE incident_entries ADD COLUMN model_hypothesis TEXT')
-            if 'time_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incidents)')}:
+            incident_columns = {r['name'] for r in db.execute('PRAGMA table_info(incidents)')}
+            if 'time_axis_key' not in incident_columns:
                 db.execute('ALTER TABLE incidents ADD COLUMN time_axis_key TEXT')
+            if 'time_axis_snapshot' not in incident_columns:
+                db.execute('ALTER TABLE incidents ADD COLUMN time_axis_snapshot TEXT')
             if 'observed_axis_key' not in {r['name'] for r in db.execute('PRAGMA table_info(incident_entries)')}:
                 db.execute('ALTER TABLE incident_entries ADD COLUMN observed_axis_key TEXT')
 
@@ -77,27 +81,34 @@ class IncidentService:
         with self.store.connect() as db:
             row = db.execute('SELECT * FROM incidents WHERE id=?', (identity,)).fetchone()
         if row is None:
-            raise KeyError('事件不存在。')
-        return dict(row)
+            raise KeyError('Incident not found.')
+        return self.decode_row(row)
+
+    @staticmethod
+    def decode_row(row):
+        result = dict(row)
+        if snapshot := result.pop('time_axis_snapshot'):
+            result['time_axis_snapshot'] = json.loads(snapshot)
+        return result
 
     def list(self, workspace_id, *, status=None, start=None, end=None, q=''):
         self.store.workspace(workspace_id)
         where, args = ['i.workspace_id=?'], [workspace_id]
         if status:
             if status not in STATUSES:
-                raise ValueError('未知的调查状态。')
+                raise ValueError('Unknown investigation status.')
             where.append('i.status=?'); args.append(status)
         if start is not None:
             where.append('i.end_time>=?'); args.append(seconds(start))
         if end is not None:
             where.append('i.start_time<=?'); args.append(seconds(end))
         if start is not None and end is not None and start > end:
-            raise ValueError('查找的结束时间不能早于开始时间。')
+            raise ValueError('Set the search end at or after the start.')
         if q:
             where.append("(instr(lower(i.title),lower(?))>0 OR instr(lower(i.description),lower(?))>0)")
             args.extend([q, q])
         with self.store.connect() as db:
-            return [dict(r) for r in db.execute(f'''SELECT i.*,
+            return [self.decode_row(r) for r in db.execute(f'''SELECT i.*,
                 (SELECT COUNT(DISTINCT reference_id) FROM incident_links
                  WHERE incident_id=i.id AND kind IN ('analysis','interval')) AS analysis_count,
                 (SELECT COUNT(*) FROM incident_links WHERE incident_id=i.id AND kind='interval') AS interval_count
@@ -112,18 +123,18 @@ class IncidentService:
         for key in ('start_time', 'end_time'):
             result[key] = seconds(result[key])
         if result['start_time'] is not None and result['end_time'] is not None and result['start_time'] > result['end_time']:
-            raise ValueError('事件结束时间不能早于开始时间。')
+            raise ValueError('Set the incident end at or after the start.')
         origin = result['time_origin']
         if origin:
-            parsed = datetime.fromisoformat(text(origin, '时间轴起点', 100).replace('Z', '+00:00'))
+            parsed = datetime.fromisoformat(text(origin, 'Time origin', 100).replace('Z', '+00:00'))
             if parsed.tzinfo is None:
-                raise ValueError('时间轴起点必须带有时区，例如 2026-10-24T08:00:00Z。')
+                raise ValueError('The time origin must include a timezone, for example 2026-10-24T08:00:00Z.')
             result['time_origin'] = parsed.isoformat()
         else:
             result['time_origin'] = None
         result['status'] = result['status'] or 'open'
         if result['status'] not in STATUSES:
-            raise ValueError('未知的调查状态。')
+            raise ValueError('Unknown investigation status.')
         return result
 
     @staticmethod
@@ -142,17 +153,21 @@ class IncidentService:
         if prepared and not values['time_axis_key']:
             values['time_axis_key'] = self.prepared_axis(prepared[0])
         self.validate_axis(workspace_id, values['time_axis_key'])
-        identity, stamp = identity or uuid4().hex, now()
         with self.store.connect() as db:
-            db.execute('''INSERT INTO incidents
-                (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (identity, workspace_id, *values.values(), stamp, stamp))
+            identity = self.insert_incident(db, workspace_id, values, identity=identity)
             for link in prepared:
                 self.insert_link(db, identity, link)
-            self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
             self.touch(db, identity, workspace_id)
         return self.get(identity)
+
+    def insert_incident(self, db, workspace_id, values, *, time_axis_snapshot=None, identity=None):
+        identity, stamp = identity or uuid4().hex, now()
+        db.execute('''INSERT INTO incidents
+            (id,workspace_id,title,description,start_time,end_time,time_origin,status,conclusion,time_axis_key,time_axis_snapshot,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', (identity, workspace_id, *values.values(),
+                json.dumps(time_axis_snapshot, ensure_ascii=False) if time_axis_snapshot else None, stamp, stamp))
+        self.record_change(db, identity, {'status': {'before': None, 'after': values['status']}})
+        return identity
 
     def update(self, identity, body):
         incident = self.row(identity)
@@ -161,6 +176,8 @@ class IncidentService:
         with self.store.connect() as db:
             db.execute(f"UPDATE incidents SET {','.join(k+'=?' for k in values)} WHERE id=?", (*values.values(), identity))
             changes = {k: {'before': incident.get(k), 'after': v} for k, v in values.items() if incident.get(k) != v}
+            if incident.get('time_axis_snapshot') and changes.keys() & {'time_origin', 'time_axis_key'}:
+                db.execute('UPDATE incidents SET time_axis_snapshot=NULL WHERE id=?', (identity,))
             if changes:
                 self.record_change(db, identity, changes)
             self.touch(db, identity, incident['workspace_id'])
@@ -179,8 +196,14 @@ class IncidentService:
 
     def prepared_axis(self, source):
         kind, reference = source['kind'], source['reference_id']
+        if kind == 'sensor-health':
+            reference = self.store.sensor_health.get(reference)['datasetId']
+        if kind in EVIDENCE_KINDS:
+            return source['clockKey'] if kind == 'safety-observed' else None
         if kind in ('simulation', 'run'):
             return 'simulation:' + reference
+        if kind == 'prognostic':
+            return 'dataset:' + source['datasetId']
         did = self.store.result(reference)['datasetId'] if kind in ('analysis', 'interval') else reference
         dataset = self.store.dataset(did)
         simulation = dataset['metadata'].get('model', {}).get('simulationId')
@@ -190,43 +213,54 @@ class IncidentService:
         if not key:
             return
         if not isinstance(key, str):
-            raise ValueError('请选择事件时间轴的来源。')
+            raise ValueError('Choose a source for the incident time axis.')
         if key.startswith('dataset:'):
             if self.store.dataset(key.split(':', 1)[1])['workspace_id'] != workspace_id:
-                raise ValueError('时间轴数据集不属于此 Workspace。')
+                raise ValueError('Choose a timeline dataset from this workspace.')
         elif key.startswith('simulation:'):
             self.simulation(workspace_id, key.split(':', 1)[1])
         else:
-            raise ValueError('请选择数据集或模拟会话的时间轴。')
+            raise ValueError('Choose a dataset or simulation time axis.')
 
     def simulation(self, workspace_id, identity):
         session = self.store.runtime.get(identity)
         if session.get('workspaceId') != workspace_id and not any(
             d['metadata'].get('model', {}).get('simulationId') == identity for d in self.store.datasets(workspace_id)
         ):
-            raise ValueError('模拟会话不属于此 Workspace，请先保存数据和过程模型到此项目。')
+            raise ValueError('Save the dataset and process model to this workspace before linking the simulation.')
         return session
 
     def prepare_link(self, workspace_id, body):
         if not isinstance(body, dict):
-            raise ValueError('请选择要关联的已有记录。')
+            raise ValueError('Choose an existing record to link.')
         kind, selector = body.get('kind'), ''
-        if kind == 'dataset':
+        prognostic_dataset = None
+        if kind == 'sensor-health':
+            identity = body.get('diagnosticId', '')
+            result = self.store.sensor_health.get(identity)
+            if result['workspaceId'] != workspace_id:
+                raise ValueError('Sensor diagnostic belongs to a different workspace.')
+            index = body.get('episodeIndex')
+            if index is not None:
+                if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < len(result['episodes']):
+                    raise ValueError('Choose an existing diagnostic fault interval.')
+                selector = str(index)
+        elif kind == 'dataset':
             identity = body.get('datasetId', '')
             dataset = self.store.dataset(identity)
             if dataset['workspace_id'] != workspace_id:
-                raise ValueError('数据集不属于此 Workspace。')
+                raise ValueError('Choose a dataset from this workspace.')
         elif kind in ('analysis', 'interval'):
             identity = body.get('analysisId', '')
             result = self.store.result(identity)
             if result['workspaceId'] != workspace_id:
-                raise ValueError('分析不属于此 Workspace。')
+                raise ValueError('Choose an analysis from this workspace.')
             if body.get('datasetId', result['datasetId']) != result['datasetId']:
-                raise ValueError('数据集与分析不匹配。')
+                raise ValueError('Choose the dataset used for the analysis.')
             if kind == 'interval':
                 index = body.get('intervalIndex')
                 if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < len(result['intervals']):
-                    raise ValueError('请选择该分析实际存在的异常区间。')
+                    raise ValueError('Choose an anomaly interval present in this analysis.')
                 selector = str(index)
         elif kind in ('simulation', 'run'):
             identity = body.get('simulationId', '')
@@ -234,19 +268,30 @@ class IncidentService:
             if kind == 'run':
                 selector = body.get('runId', '')
                 self.store.runtime.run(identity, selector)
+        elif kind == 'prognostic':
+            identity = body.get('sessionId', '')
+            prognostic_dataset = self.store.prognostics.get(workspace_id, identity)['config']['datasetId']
+        elif kind in EVIDENCE_KINDS:
+            identity = body.get('assessmentId', '')
+            assessment = self.store.safety.get_assessment(workspace_id, identity)
+            constraint_id, index = body.get('constraintId'), body.get('intervalIndex')
+            raw = body.get('raw', False)
+            detail = self.store.safety.evidence(assessment, kind, constraint_id, index, raw)
+            selector = json.dumps(dict(intervalIndex=index, **detail), ensure_ascii=False, sort_keys=True, allow_nan=False)
+            return dict(kind=kind, reference_id=identity, selector=selector, clockKey=detail['clock']['key'])
         else:
-            raise ValueError('未知的事件关联类型。')
+            raise ValueError('Unknown incident link type.')
         hypothesis = body.get('hypothesis')
         if hypothesis:
             faults = self.store.runtime.get(identity)['modelDescriptor']['faults'] if kind in ('simulation', 'run') else {}
             if hypothesis not in faults or hypothesis == 'healthy':
-                raise ValueError('请选择此过程模型支持的候选解释。')
+                raise ValueError('Choose a hypothesis supported by this process model.')
             if kind == 'run' and self.store.runtime.run(identity, selector)['request'].get('hypothesis') != hypothesis:
-                raise ValueError('候选解释与实验记录不匹配。')
+                raise ValueError('Choose the hypothesis saved with this experiment.')
         if kind == 'simulation' and ('asOf' in body or 'windowStart' in body):
             _, rows = self.store.runtime.window(identity, body)
             selector = json.dumps(dict(windowStart=rows[0]['t'], asOf=rows[-1]['t'], hypothesis=hypothesis), sort_keys=True)
-        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis,
+        return dict(kind=kind, reference_id=identity, selector=selector, hypothesis=hypothesis, datasetId=prognostic_dataset,
                     hypothesisTitle=faults[hypothesis] if hypothesis else None)
 
     @staticmethod
@@ -264,13 +309,14 @@ class IncidentService:
                 db.execute('''INSERT INTO incident_entries
                     (id,incident_id,kind,title,content,source_link_id,model_hypothesis,created_at,updated_at)
                     VALUES (?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, 'hypothesis', title,
-                    f"来自过程模型的工作假设：{prepared['hypothesis']}。可继续记录支持与反对证据。", link_id, prepared['hypothesis'], stamp, stamp))
+                    f"Working hypothesis from the process model: {prepared['hypothesis']}. Record evidence that supports or challenges this hypothesis.", link_id, prepared['hypothesis'], stamp, stamp))
         return link_id
 
     def add_link(self, identity, body):
         incident = self.row(identity)
         prepared = self.prepare_link(incident['workspace_id'], body)
         with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             self.insert_link(db, identity, prepared)
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
@@ -285,7 +331,7 @@ class IncidentService:
                     WHERE incident_id=? AND source_link_id=? AND observed_at IS NOT NULL AND observed_axis_key IS NULL''',
                     (source_clock(self.store, source)['key'], identity, link_id))
             if not db.execute('DELETE FROM incident_links WHERE id=? AND incident_id=?', (link_id, identity)).rowcount:
-                raise KeyError('事件关联不存在。')
+                raise KeyError('Incident link not found.')
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
 
@@ -298,28 +344,28 @@ class IncidentService:
         incident = self.row(identity)
         entries = {e['id']: e for e in self.entries(identity)}
         if entry_id and entry_id not in entries:
-            raise KeyError('调查记录不存在。')
+            raise KeyError('Investigation record not found.')
         previous = entries.get(entry_id, {})
         fields = ('kind', 'title', 'content', 'hypothesis_id', 'stance', 'source_link_id', 'observed_at')
         values = {k: body.get(k, previous.get(k)) for k in fields}
         values['kind'] = values['kind'] or 'note'
         if values['kind'] not in KINDS or (entry_id and values['kind'] != previous['kind']):
-            raise ValueError('请选择笔记、证据或候选解释；已有记录的类型不可更改。')
+            raise ValueError('Choose a note, evidence item, or hypothesis. Saved entries retain their original type.')
         values['title'] = self.store.name(values['title'])
-        values['content'] = text(values['content'] or '', '调查内容')
+        values['content'] = text(values['content'] or '', 'Investigation content')
         values['observed_at'] = seconds(values['observed_at'])
         values['stance'] = values['stance'] or 'neutral'
         if values['stance'] not in ('neutral', 'support', 'oppose'):
-            raise ValueError('未知的证据关系。')
+            raise ValueError('Unknown evidence stance.')
         hypothesis = entries.get(values['hypothesis_id'])
         if values['hypothesis_id'] and (not hypothesis or hypothesis['kind'] != 'hypothesis' or values['kind'] != 'evidence'):
-            raise ValueError('证据只能关联本事件中的候选解释。')
+            raise ValueError('Evidence can only link hypotheses in this incident.')
         if values['stance'] != 'neutral' and not values['hypothesis_id']:
-            raise ValueError('请先选择证据所支持或反对的候选解释。')
+            raise ValueError('First choose the hypothesis this evidence supports or opposes.')
         with self.store.connect() as db:
             if values['source_link_id'] and not db.execute('SELECT id FROM incident_links WHERE incident_id=? AND id=?',
                                                          (identity, values['source_link_id'])).fetchone():
-                raise ValueError('证据来源必须属于本事件。')
+                raise ValueError('Evidence sources must belong to this incident.')
             # Retain the clock even if its source link is subsequently removed.
             source = next((l for l in self.links(identity) if l['id'] == values['source_link_id']), None)
             from .incident_timeline import source_clock, incident_clock
@@ -327,16 +373,22 @@ class IncidentService:
             values['observed_axis_key'] = (previous.get('observed_axis_key') if entry_id
                 and previous.get('source_link_id') == values['source_link_id']
                 and previous.get('observed_at') == values['observed_at'] else None) or clock['key']
-            stamp = now()
             if entry_id:
                 db.execute(f"UPDATE incident_entries SET {','.join(k+'=?' for k in values)},updated_at=? WHERE id=? AND incident_id=?",
-                           (*values.values(), stamp, entry_id, identity))
+                           (*values.values(), now(), entry_id, identity))
             else:
-                db.execute('''INSERT INTO incident_entries
-                    (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,observed_axis_key,created_at,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, *values.values(), stamp, stamp))
+                self.insert_entry(db, identity, **values)
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
+
+    @staticmethod
+    def insert_entry(db, identity, *, kind, title, content, hypothesis_id=None, stance='neutral',
+                     source_link_id=None, observed_at=None, observed_axis_key=None):
+        stamp = now()
+        db.execute('''INSERT INTO incident_entries
+            (id,incident_id,kind,title,content,hypothesis_id,stance,source_link_id,observed_at,observed_axis_key,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', (uuid4().hex, identity, kind, title, content, hypothesis_id, stance,
+                                                 source_link_id, observed_at, observed_axis_key, stamp, stamp))
 
     def remove_entry(self, identity, entry_id):
         incident = self.row(identity)
@@ -345,7 +397,7 @@ class IncidentService:
             db.execute("UPDATE incident_entries SET hypothesis_id=NULL,stance='neutral',updated_at=? WHERE incident_id=? AND hypothesis_id=?",
                        (now(), identity, entry_id))
             if not db.execute('DELETE FROM incident_entries WHERE id=? AND incident_id=?', (entry_id, identity)).rowcount:
-                raise KeyError('调查记录不存在。')
+                raise KeyError('Investigation record not found.')
             self.touch(db, identity, incident['workspace_id'])
         return self.get(identity)
 
@@ -357,9 +409,17 @@ class IncidentService:
         datasets = None
         for link in rows:
             kind, reference = link['kind'], link['reference_id']
-            if kind == 'dataset':
+            if kind == 'sensor-health':
+                result = self.store.sensor_health.get(reference)
+                link['details'] = dict(diagnosticId=reference, datasetId=result['datasetId'], title=result['name'],
+                    signals=result['config']['signals'], analysisRange=result['config']['analysisRange'])
+                if link['selector']:
+                    link['details'].update(episodeIndex=int(link['selector']), episode=result['episodes'][int(link['selector'])])
+            elif kind == 'dataset':
                 dataset = self.store.dataset(reference)
                 link['details'] = dict(datasetId=reference, title=dataset['name'])
+                if dataset['metadata'].get('resilience'):
+                    link['details']['resilience'] = dataset['metadata']['resilience']
             elif kind in ('analysis', 'interval'):
                 if reference not in results:
                     results[reference] = self.store.result(reference)
@@ -372,6 +432,15 @@ class IncidentService:
                 if kind == 'interval':
                     index = int(link['selector'])
                     link['details'].update(intervalIndex=index, interval=result['intervals'][index])
+            elif kind == 'prognostic':
+                session = self.store.prognostics.get(incident['workspace_id'], reference)
+                forecast, config = session['forecast'], session['config']
+                link['details'] = dict(sessionId=reference, datasetId=config['datasetId'], title=session['name'],
+                                       assetName=config['assetName'], cutoff=forecast['cutoff'], status=forecast['status'],
+                                       rulMedian=forecast['rul']['median'], method=forecast['method'], horizon=forecast['horizon'],
+                                       trainingStart=config['start'])
+            elif kind in EVIDENCE_KINDS:
+                link['details'] = json.loads(link['selector'])
             else:
                 if reference not in sessions:
                     sessions[reference] = self.store.runtime.get(reference)

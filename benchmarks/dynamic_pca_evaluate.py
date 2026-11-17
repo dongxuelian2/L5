@@ -95,7 +95,7 @@ def render_markdown(report: dict) -> str:
     lines = [
         "# Tennessee Eastman: causal dynamic PCA vs static baseline", "",
         "Prespecified two-lag DPCA-Q / DPCA-T² against conventional PCA and Max-Z.",
-        "Fit/calibration uses healthy training only. No fault-based tuning or selection.", "",
+        "Both fitting and calibration use the healthy training sequence.", "",
         "| Detector | Kind | Early (60min) | Eventual | Healthy false episodes | Healthy alarm-active samples | Mean detected delay |",
         "|:--|:--|--:|--:|--:|--:|--:|",
     ]
@@ -111,11 +111,11 @@ def render_markdown(report: dict) -> str:
         )
     lines += [
         "", "## Evaluation boundaries", "",
-        "The 60-minute hit count should be assessed together with nuisance false",
-        "alarm episodes and active samples, not only with eventual detections.",
+        "Compare the 60-minute hit count, eventual detections, healthy alarm episodes,",
+        "and alarm-active samples together.",
         "Healthy training uses a chronological fit/calibration split and each",
         "independent test file starts with normal-fit mean history padding.",
-        "History-aware statistical feature contributions are not root causes.",
+        "History-aware contributions describe statistical signal deviations.",
         "", "## Original source SHA-256 checksums", "",
     ]
     for f in report["source_files"]:

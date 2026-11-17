@@ -1,5 +1,5 @@
 import rawScenario from "../data/scenario.json";
-import { t } from "../i18n";
+import { t } from "./text";
 import type {
   Alarm,
   IncidentBrief,
@@ -89,6 +89,6 @@ export function briefMarkdown(brief: IncidentBrief): string {
     brief.steps
       .map((step) => `### ${brief.provider === "local" ? t(step.action) : step.action}\n\n${brief.provider === "local" ? t(step.result) : step.result}\n`)
       .join("\n") +
-    `\n## ${t("Evidence boundary")}\n\n${brief.provider === "local" ? t(brief.limitation) : brief.limitation}\n\n${t("Source")}: ${t(scenario.provenance.model)}. ${t("Analyst")}: ${t(brief.provider)}.\n`
+    `\n## ${"Evidence boundary"}\n\n${brief.provider === "local" ? t(brief.limitation) : brief.limitation}\n\n${"Source"}: ${t(scenario.provenance.model)}. ${"Analyst"}: ${t(brief.provider)}.\n`
   );
 }

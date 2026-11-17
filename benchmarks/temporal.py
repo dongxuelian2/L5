@@ -43,7 +43,16 @@ class TemporalMaxMonitor:
         self.scale = np.maximum(mad, np.maximum(std * 0.05, 1e-10))
         self.features = x.shape[1]
 
+    def new_state(self) -> np.ndarray:
+        """Fresh state for an independent observation sequence."""
+        if not hasattr(self, "center"):
+            raise ValueError("Fit the temporal monitor before scoring.")
+        return np.zeros((2 if self.mode == "cusum" else 1, self.features))
+
     def _features_at_each_time(self, samples: np.ndarray) -> np.ndarray:
+        return self.score_chunk(samples, self.new_state())
+
+    def score_chunk(self, samples: np.ndarray, state: np.ndarray) -> np.ndarray:
         """Return nonnegative channel contributions using no future samples."""
         from .monitoring import as_matrix
 
@@ -51,21 +60,18 @@ class TemporalMaxMonitor:
             raise ValueError("Fit the temporal monitor before scoring.")
         x = as_matrix(samples, features=self.features)
         z = (x - self.center) / self.scale
-        state = np.zeros(self.features, dtype=np.float64)
-        pos = np.zeros(self.features, dtype=np.float64)
-        neg = np.zeros(self.features, dtype=np.float64)
         contributions = np.empty_like(z)
         for i, observation in enumerate(z):
             if self.mode == "cusum":
                 # Standard two-sided Page CUSUM; history accumulates until
                 # evidence dissipates. It does not reset at an alarm.
-                pos = np.maximum(0.0, pos + observation - self.reference)
-                neg = np.maximum(0.0, neg - observation - self.reference)
-                contributions[i] = np.maximum(pos, neg)
+                state[0] = np.maximum(0.0, state[0] + observation - self.reference)
+                state[1] = np.maximum(0.0, state[1] - observation - self.reference)
+                contributions[i] = np.maximum(state[0], state[1])
             else:
                 # A fresh record starts at the healthy reference state 0.
-                state = (1.0 - self.smoothing) * state + self.smoothing * observation
-                contributions[i] = np.abs(state)
+                state[0] = (1.0 - self.smoothing) * state[0] + self.smoothing * observation
+                contributions[i] = np.abs(state[0])
         if not np.isfinite(contributions).all():
             raise ValueError("Temporal statistic overflowed; evidence is not reportable.")
         return contributions

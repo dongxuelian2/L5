@@ -1,7 +1,6 @@
-"""Free public demonstration of L5's analysis engine and verified TEP studies."""
+"""Web demonstration of L5's analysis engine and TEP benchmark results."""
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -26,7 +25,7 @@ from l5.analysis import ALGORITHMS  # noqa: E402
 st.set_page_config(page_title="L5 | Industrial Process Demo", page_icon="📈", layout="wide")
 st.title("L5 — Industrial Process Analysis")
 st.caption("An interactive view of the L5 anomaly detection engine and published Tennessee Eastman experiments.")
-st.markdown("[GitHub repository](https://github.com/dongxuelian2/L5)  ·  [TEP methodology](https://github.com/dongxuelian2/L5/blob/main/docs/tep-benchmark-expanded.md)")
+st.markdown("[L5 repository](https://github.com/dongxuelian2/L5)  ·  [Benchmark methods](https://github.com/dongxuelian2/L5/blob/main/docs/benchmarks.md)")
 
 tab_live, tab_tep, tab_about = st.tabs(["Explore & detect", "Tennessee Eastman", "About L5"])
 
@@ -38,12 +37,12 @@ with tab_live:
     identity = source
     if source == "Built-in synthetic scenario":
         frame = example_data()
-        st.caption("Synthetic four-channel process, with a gradual fault beginning at sample 585. This is not TEP data.")
+        st.caption("The four-channel simulation introduces a gradual fault at sample 585.")
     else:
         uploaded = st.file_uploader("Numeric CSV with a header row (up to 2 MB)", type=["csv"])
         if uploaded is not None:
             raw = uploaded.getvalue()
-            identity = hashlib.sha256(raw).hexdigest()
+            identity = raw
             try:
                 frame = load_uploaded_csv(raw)
             except ValueError as exc:
@@ -70,7 +69,7 @@ with tab_live:
                    "The horizontal axis is sample index.")
         if signals:
             st.line_chart(frame[signals], height=270)
-        selection_key = hashlib.sha256(repr((identity, signals, selected_algorithms, normal_fraction)).encode()).hexdigest()
+        selection_key = (identity, tuple(signals), tuple(selected_algorithms), normal_fraction)
         if st.button("Run anomaly detection", type="primary", disabled=not signals or not selected_algorithms):
             with st.spinner("Running L5 algorithms"):
                 try:
@@ -120,19 +119,17 @@ with tab_live:
                 )
 
 with tab_tep:
-    st.subheader("Tennessee Eastman Process · verified experimental results")
-    st.write("Official public TEP runs evaluated with nine L5 detection methods and 20 fault types.")
-    a, b, c = st.columns(3)
-    a.metric("Expanded benchmark", "585 runs")
-    b.metric("Training robustness", "1,755 runs")
-    c.metric("Total executions", "2,340")
-    st.caption("The 585-run study and the 1,755-run A/B/C study share configuration A; totals count executions, not unique combinations. "
-               "All values below come from committed verified benchmark results; no new TEP simulation is run on the cloud.")
+    st.subheader("Tennessee Eastman benchmark")
+    st.write("Compare nine detectors on simulated Tennessee Eastman data across 20 fault types.")
+    a, b = st.columns(2)
+    a.metric("Expanded benchmark", "585 evaluations")
+    b.metric("Training robustness", "1,755 evaluations")
+    st.caption("The expanded benchmark and the training study both evaluated configuration A. The tables show recorded results.")
     configuration = st.selectbox("Normal training configuration", ["A", "B", "C"])
     try:
         summary = tep_table(configuration)
     except (OSError, ValueError, KeyError) as exc:
-        st.error(f"Unable to load verified study: {exc}")
+        st.error(f"Unable to load the benchmark results: {exc}")
     else:
         st.dataframe(summary, hide_index=True, use_container_width=True)
         st.bar_chart(summary.set_index("Detector")[["Detected within 30 min", "Eventually detected"]])
@@ -142,8 +139,7 @@ with tab_tep:
         if not fault_table.empty:
             st.dataframe(fault_table, hide_index=True, use_container_width=True)
             st.bar_chart(fault_table.set_index("Fault")[["Detected in 30 min", "Eventually detected"]])
-        st.caption("Event detection and normal-run alarm burden are different measurements. "
-                   "Values are counts over the corresponding recorded test runs.")
+        st.caption("Each configuration scores 60 fault runs and 4,800 samples from separate normal runs.")
 
 with tab_about:
     st.subheader("Explore the full L5 project")
@@ -155,11 +151,6 @@ L5 is an industrial time-series analysis and incident investigation workspace.
 - Simulate TripLens and coupled-tank process faults.
 - Generate HTML/PDF-ready reports and reproduce Tennessee Eastman studies.
 
-This online demonstration runs the actual L5 numerical analysis functions in memory.
-The full React application, persistent workspaces, incidents, model scenarios,
-and investigation reports remain available in the source repository.
-
 **[Repository and installation instructions](https://github.com/dongxuelian2/L5)**
     """)
-    st.info("This public demo does not retain uploads or results across sessions. "
-            "Use the full local application for persistent research and larger datasets.")
+    st.info("The demo keeps uploads and results in the current browser session. The local application saves workspaces to disk.")

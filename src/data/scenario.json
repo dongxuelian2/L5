@@ -18356,7 +18356,7 @@
       }
     ],
     "summary": "The pressure rise is a downstream symptom. Cooling flow drops after CV-101 changes position, then reactor temperature rises before pressure. This sequence supports a cooling-loop fault as the initiating event.",
-    "limitation": "Mechanical sticking is the scenario label; the observed signals alone do not rule out an actuator fault. Scores use explicit topology and coverage rules, not calibrated probabilities."
+    "limitation": "The scenario injects mechanical sticking. The measurements also support testing an actuator fault. Ranking scores summarize topology and observation coverage."
   },
   "diagnostics": {
     "matrix": [

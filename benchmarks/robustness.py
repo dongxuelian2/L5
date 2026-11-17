@@ -166,7 +166,7 @@ def run_robustness(
             "Perturbations affect both healthy and fault tests, never training/calibration.",
             "No test-time retuning, labels in features, or sensor adaptation.",
             "Median imputation can mask real faults and distort multivariate relationships.",
-            "Wholly unobserved samples fail rather than masquerading as healthy observations.",
+            "Samples with all signals missing are invalid for detector scoring.",
             "Anomaly detection is not fault-type diagnosis or safe actuation.",
         ],
     }

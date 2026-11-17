@@ -1,0 +1,6088 @@
+{
+  "version": 1,
+  "protocol": {
+    "settings": {
+      "alpha": 0.01,
+      "recognitionAlpha": 0.01,
+      "variance": 0.9,
+      "shrinkage": 0.15,
+      "minMargin": 2.0,
+      "dwell": 4,
+      "persistence": 3
+    },
+    "methods": [
+      "robust-maxz",
+      "pca-q",
+      "pca-t2"
+    ],
+    "nearTransitionSamplesAfterSettling": 12,
+    "earlyFaultWindowSamples": 12,
+    "transitionConfirmationWindowSamplesAfterSettling": 30,
+    "singleReference": "First configured mode in fixed source order. Withheld modes are absent from every fit and calibration.",
+    "synthetic": {
+      "fitSeed": 1201,
+      "calibrationSeed": 1202,
+      "evaluationSeeds": [
+        1221,
+        1222,
+        1223,
+        1224,
+        1225,
+        1226
+      ],
+      "fitSamplesPerMode": 600,
+      "calibrationSamplesPerMode": 300,
+      "signals": [
+        "load",
+        "setpoint",
+        "flow",
+        "temperature",
+        "pressure"
+      ],
+      "recognitionSignals": [
+        "load",
+        "setpoint"
+      ]
+    }
+  },
+  "synthetic": {
+    "trials": 24,
+    "recognition": {
+      "knownHealthySamples": 4992,
+      "correct": 4238,
+      "wrong": 8,
+      "unconfirmed": 746,
+      "accuracy": 0.848958,
+      "confusion": {
+        "A": {
+          "A": 2019,
+          "unconfirmed": 87
+        },
+        "B": {
+          "B": 1762,
+          "C": 7,
+          "unconfirmed": 517
+        },
+        "C": {
+          "B": 1,
+          "C": 457,
+          "unconfirmed": 142
+        }
+      },
+      "openSet": {
+        "unknown": {
+          "samples": 450,
+          "confirmed": 0,
+          "rejectionFraction": 1.0,
+          "evidence": {
+            "unknown": 450
+          }
+        },
+        "ambiguous": {
+          "samples": 480,
+          "confirmed": 200,
+          "rejectionFraction": 0.583333,
+          "evidence": {
+            "ambiguous": 123,
+            "supported": 352,
+            "unknown": 5
+          }
+        }
+      }
+    },
+    "transitions": {
+      "expected": 24,
+      "matched": 24,
+      "missed": 0,
+      "medianDelay": 12.0,
+      "outcomes": {
+        "confirmed": 52,
+        "transient": 221
+      },
+      "cases": [
+        {
+          "trial": "healthy-transitions-1221",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 105.0,
+          "confirmed": 108.0,
+          "delay": 8.0,
+          "delayAfterSettling": 0.0
+        },
+        {
+          "trial": "healthy-transitions-1221",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 192.0,
+          "confirmed": 195.0,
+          "delay": 7.0,
+          "delayAfterSettling": -1.0
+        },
+        {
+          "trial": "steady-faults-1221",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 107.0,
+          "confirmed": 110.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        },
+        {
+          "trial": "fault-across-transition-1221",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 112.0,
+          "confirmed": 115.0,
+          "delay": 15.0,
+          "delayAfterSettling": 7.0
+        },
+        {
+          "trial": "healthy-transitions-1222",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 105.0,
+          "confirmed": 108.0,
+          "delay": 8.0,
+          "delayAfterSettling": 0.0
+        },
+        {
+          "trial": "healthy-transitions-1222",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 199.0,
+          "confirmed": 202.0,
+          "delay": 14.0,
+          "delayAfterSettling": 6.0
+        },
+        {
+          "trial": "steady-faults-1222",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 109.0,
+          "confirmed": 112.0,
+          "delay": 12.0,
+          "delayAfterSettling": 4.0
+        },
+        {
+          "trial": "fault-across-transition-1222",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 112.0,
+          "confirmed": 115.0,
+          "delay": 15.0,
+          "delayAfterSettling": 7.0
+        },
+        {
+          "trial": "healthy-transitions-1223",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 110.0,
+          "confirmed": 113.0,
+          "delay": 13.0,
+          "delayAfterSettling": 5.0
+        },
+        {
+          "trial": "healthy-transitions-1223",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 192.0,
+          "confirmed": 195.0,
+          "delay": 7.0,
+          "delayAfterSettling": -1.0
+        },
+        {
+          "trial": "steady-faults-1223",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 109.0,
+          "confirmed": 112.0,
+          "delay": 12.0,
+          "delayAfterSettling": 4.0
+        },
+        {
+          "trial": "fault-across-transition-1223",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 124.0,
+          "confirmed": 127.0,
+          "delay": 27.0,
+          "delayAfterSettling": 19.0
+        },
+        {
+          "trial": "healthy-transitions-1224",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 107.0,
+          "confirmed": 110.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        },
+        {
+          "trial": "healthy-transitions-1224",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 195.0,
+          "confirmed": 198.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        },
+        {
+          "trial": "steady-faults-1224",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 110.0,
+          "confirmed": 113.0,
+          "delay": 13.0,
+          "delayAfterSettling": 5.0
+        },
+        {
+          "trial": "fault-across-transition-1224",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 109.0,
+          "confirmed": 112.0,
+          "delay": 12.0,
+          "delayAfterSettling": 4.0
+        },
+        {
+          "trial": "healthy-transitions-1225",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 106.0,
+          "confirmed": 109.0,
+          "delay": 9.0,
+          "delayAfterSettling": 1.0
+        },
+        {
+          "trial": "healthy-transitions-1225",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 195.0,
+          "confirmed": 198.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        },
+        {
+          "trial": "steady-faults-1225",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 109.0,
+          "confirmed": 112.0,
+          "delay": 12.0,
+          "delayAfterSettling": 4.0
+        },
+        {
+          "trial": "fault-across-transition-1225",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 109.0,
+          "confirmed": 112.0,
+          "delay": 12.0,
+          "delayAfterSettling": 4.0
+        },
+        {
+          "trial": "healthy-transitions-1226",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 110.0,
+          "confirmed": 113.0,
+          "delay": 13.0,
+          "delayAfterSettling": 5.0
+        },
+        {
+          "trial": "healthy-transitions-1226",
+          "source": "B",
+          "destination": "C",
+          "onset": 188,
+          "settled": 196,
+          "deadline": 226,
+          "candidate": 200.0,
+          "confirmed": 203.0,
+          "delay": 15.0,
+          "delayAfterSettling": 7.0
+        },
+        {
+          "trial": "steady-faults-1226",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 107.0,
+          "confirmed": 110.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        },
+        {
+          "trial": "fault-across-transition-1226",
+          "source": "A",
+          "destination": "B",
+          "onset": 100,
+          "settled": 108,
+          "deadline": 138,
+          "candidate": 107.0,
+          "confirmed": 110.0,
+          "delay": 10.0,
+          "delayAfterSettling": 2.0
+        }
+      ],
+      "unmatchedConfirmed": [
+        {
+          "trial": "healthy-transitions-1221",
+          "source": "B",
+          "destination": "C",
+          "candidate": 143.0,
+          "confirmed": 146.0
+        },
+        {
+          "trial": "healthy-transitions-1221",
+          "source": "C",
+          "destination": "B",
+          "candidate": 148.0,
+          "confirmed": 151.0
+        },
+        {
+          "trial": "uncertain-regimes-1221",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "B",
+          "destination": "C",
+          "candidate": 83.0,
+          "confirmed": 86.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "C",
+          "destination": "B",
+          "candidate": 111.0,
+          "confirmed": 114.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "B",
+          "destination": "C",
+          "candidate": 118.0,
+          "confirmed": 121.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "C",
+          "destination": "B",
+          "candidate": 140.0,
+          "confirmed": 143.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "B",
+          "destination": "C",
+          "candidate": 185.0,
+          "confirmed": 188.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "C",
+          "destination": "B",
+          "candidate": 190.0,
+          "confirmed": 193.0
+        },
+        {
+          "trial": "uncertain-regimes-1222",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        },
+        {
+          "trial": "uncertain-regimes-1223",
+          "source": "B",
+          "destination": "C",
+          "candidate": 84.0,
+          "confirmed": 87.0
+        },
+        {
+          "trial": "uncertain-regimes-1223",
+          "source": "C",
+          "destination": "B",
+          "candidate": 134.0,
+          "confirmed": 137.0
+        },
+        {
+          "trial": "uncertain-regimes-1223",
+          "source": "B",
+          "destination": "C",
+          "candidate": 182.0,
+          "confirmed": 185.0
+        },
+        {
+          "trial": "uncertain-regimes-1223",
+          "source": "C",
+          "destination": "B",
+          "candidate": 188.0,
+          "confirmed": 191.0
+        },
+        {
+          "trial": "uncertain-regimes-1223",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        },
+        {
+          "trial": "uncertain-regimes-1224",
+          "source": "B",
+          "destination": "C",
+          "candidate": 91.0,
+          "confirmed": 94.0
+        },
+        {
+          "trial": "uncertain-regimes-1224",
+          "source": "C",
+          "destination": "B",
+          "candidate": 108.0,
+          "confirmed": 111.0
+        },
+        {
+          "trial": "uncertain-regimes-1224",
+          "source": "B",
+          "destination": "C",
+          "candidate": 128.0,
+          "confirmed": 131.0
+        },
+        {
+          "trial": "uncertain-regimes-1224",
+          "source": "C",
+          "destination": "B",
+          "candidate": 159.0,
+          "confirmed": 162.0
+        },
+        {
+          "trial": "uncertain-regimes-1224",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        },
+        {
+          "trial": "uncertain-regimes-1225",
+          "source": "B",
+          "destination": "C",
+          "candidate": 141.0,
+          "confirmed": 144.0
+        },
+        {
+          "trial": "uncertain-regimes-1225",
+          "source": "C",
+          "destination": "B",
+          "candidate": 158.0,
+          "confirmed": 161.0
+        },
+        {
+          "trial": "uncertain-regimes-1225",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        },
+        {
+          "trial": "healthy-transitions-1226",
+          "source": "B",
+          "destination": "C",
+          "candidate": 169.0,
+          "confirmed": 172.0
+        },
+        {
+          "trial": "healthy-transitions-1226",
+          "source": "C",
+          "destination": "B",
+          "candidate": 186.0,
+          "confirmed": 189.0
+        },
+        {
+          "trial": "uncertain-regimes-1226",
+          "source": "B",
+          "destination": "C",
+          "candidate": 81.0,
+          "confirmed": 84.0
+        },
+        {
+          "trial": "uncertain-regimes-1226",
+          "source": "C",
+          "destination": "B",
+          "candidate": 116.0,
+          "confirmed": 119.0
+        },
+        {
+          "trial": "uncertain-regimes-1226",
+          "source": "B",
+          "destination": "A",
+          "candidate": 305.0,
+          "confirmed": 308.0
+        }
+      ]
+    },
+    "monitoringByMethod": {
+      "robust-maxz": {
+        "global": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 439,
+            "alarmStarts": 7,
+            "alarmFraction": 0.072371,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 1,
+            "alarmStarts": 1,
+            "alarmFraction": 0.0002,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.973333,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 12,
+            "missed": 12,
+            "detectionFraction": 0.5,
+            "detectedWithin12Samples": 12,
+            "medianDetectedDelay": 2.0,
+            "withinMode": {
+              "events": 18,
+              "detected": 6,
+              "missed": 12,
+              "detectionFraction": 0.333333,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "single": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 3904,
+            "alarmStarts": 18,
+            "alarmFraction": 0.643587,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 2874,
+            "alarmStarts": 6,
+            "alarmFraction": 0.575721,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 316,
+            "alarmStarts": 12,
+            "alarmFraction": 0.877778,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 450,
+            "alarmStarts": 0,
+            "alarmFraction": 1.0,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 480,
+            "alarmStarts": 0,
+            "alarmFraction": 1.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 12,
+            "missed": 12,
+            "detectionFraction": 0.5,
+            "detectedWithin12Samples": 12,
+            "medianDetectedDelay": 2.0,
+            "withinMode": {
+              "events": 18,
+              "detected": 6,
+              "missed": 12,
+              "detectionFraction": 0.333333,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "regimeAware": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6057,
+            "alarmSamples": 470,
+            "alarmStarts": 19,
+            "alarmFraction": 0.077481,
+            "coverage": 0.998516
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4983,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 0.998197
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 31,
+            "alarmStarts": 12,
+            "alarmFraction": 0.086111,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.973333,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 1,
+            "alarmStarts": 1,
+            "alarmFraction": 0.002083,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 20,
+            "missed": 4,
+            "detectionFraction": 0.833333,
+            "detectedWithin12Samples": 18,
+            "medianDetectedDelay": 2.0,
+            "withinMode": {
+              "events": 18,
+              "detected": 14,
+              "missed": 4,
+              "detectionFraction": 0.777778,
+              "detectedWithin12Samples": 12,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 18,
+                "firstAlarm": 163,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 4,
+                "firstAlarm": 193,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 20,
+                "firstAlarm": 165,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        }
+      },
+      "pca-q": {
+        "global": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.072206,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.973333,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 20,
+            "missed": 4,
+            "detectionFraction": 0.833333,
+            "detectedWithin12Samples": 18,
+            "medianDetectedDelay": 2.0,
+            "withinMode": {
+              "events": 18,
+              "detected": 14,
+              "missed": 4,
+              "detectionFraction": 0.777778,
+              "detectedWithin12Samples": 12,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 18,
+                "firstAlarm": 163,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 4,
+                "firstAlarm": 193,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 20,
+                "firstAlarm": 165,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 0,
+                "firstAlarm": 189,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "single": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 1274,
+            "alarmStarts": 277,
+            "alarmFraction": 0.210023,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 726,
+            "alarmStarts": 232,
+            "alarmFraction": 0.145433,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 61,
+            "alarmStarts": 25,
+            "alarmFraction": 0.169444,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 442,
+            "alarmStarts": 4,
+            "alarmFraction": 0.982222,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 98,
+            "alarmStarts": 36,
+            "alarmFraction": 0.204167,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 17,
+            "missed": 7,
+            "detectionFraction": 0.708333,
+            "detectedWithin12Samples": 15,
+            "medianDetectedDelay": 3,
+            "withinMode": {
+              "events": 18,
+              "detected": 11,
+              "missed": 7,
+              "detectionFraction": 0.611111,
+              "detectedWithin12Samples": 9,
+              "medianDetectedDelay": 2
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 5.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 1,
+                "firstAlarm": 190,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 3,
+                "firstAlarm": 100,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 19,
+                "firstAlarm": 59,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 4,
+                "firstAlarm": 101,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 3,
+                "firstAlarm": 43,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 1,
+                "firstAlarm": 190,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 8,
+                "firstAlarm": 105,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 6,
+                "firstAlarm": 46,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 1,
+                "firstAlarm": 190,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 6,
+                "firstAlarm": 103,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 6,
+                "firstAlarm": 46,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 13,
+                "firstAlarm": 158,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 8,
+                "firstAlarm": 105,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "regimeAware": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6057,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.072206,
+            "coverage": 0.998516
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4983,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 0.998197
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.973333,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 17,
+            "missed": 7,
+            "detectionFraction": 0.708333,
+            "detectedWithin12Samples": 16,
+            "medianDetectedDelay": 2,
+            "withinMode": {
+              "events": 18,
+              "detected": 12,
+              "missed": 6,
+              "detectionFraction": 0.666667,
+              "detectedWithin12Samples": 11,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 5,
+              "missed": 1,
+              "detectionFraction": 0.833333,
+              "detectedWithin12Samples": 5,
+              "medianDetectedDelay": 4
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 3,
+                "firstAlarm": 100,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 19,
+                "firstAlarm": 59,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 4,
+                "firstAlarm": 101,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 3,
+                "firstAlarm": 43,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 2,
+                "firstAlarm": 147,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 6,
+                "firstAlarm": 46,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 6,
+                "firstAlarm": 103,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 6,
+                "firstAlarm": 46,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 2,
+                "firstAlarm": 191,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 8,
+                "firstAlarm": 105,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        }
+      },
+      "pca-t2": {
+        "global": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 11,
+            "missed": 13,
+            "detectionFraction": 0.458333,
+            "detectedWithin12Samples": 11,
+            "medianDetectedDelay": 2,
+            "withinMode": {
+              "events": 18,
+              "detected": 6,
+              "missed": 12,
+              "detectionFraction": 0.333333,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 5,
+              "missed": 1,
+              "detectionFraction": 0.833333,
+              "detectedWithin12Samples": 5,
+              "medianDetectedDelay": 2
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "single": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6066,
+            "alarmSamples": 3910,
+            "alarmStarts": 18,
+            "alarmFraction": 0.644576,
+            "coverage": 1.0
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4992,
+            "alarmSamples": 2874,
+            "alarmStarts": 6,
+            "alarmFraction": 0.575721,
+            "coverage": 1.0
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 322,
+            "alarmStarts": 12,
+            "alarmFraction": 0.894444,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 450,
+            "alarmStarts": 0,
+            "alarmFraction": 1.0,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 480,
+            "alarmStarts": 0,
+            "alarmFraction": 1.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 12,
+            "missed": 12,
+            "detectionFraction": 0.5,
+            "detectedWithin12Samples": 12,
+            "medianDetectedDelay": 2.0,
+            "withinMode": {
+              "events": 18,
+              "detected": 6,
+              "missed": 12,
+              "detectionFraction": 0.333333,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": true
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        },
+        "regimeAware": {
+          "allHealthy": {
+            "samples": 6066,
+            "scoredSamples": 6057,
+            "alarmSamples": 475,
+            "alarmStarts": 18,
+            "alarmFraction": 0.078305,
+            "coverage": 0.998516
+          },
+          "knownHealthy": {
+            "samples": 4992,
+            "scoredSamples": 4983,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 0.998197
+          },
+          "nearTransition": {
+            "samples": 360,
+            "scoredSamples": 360,
+            "alarmSamples": 37,
+            "alarmStarts": 12,
+            "alarmFraction": 0.102778,
+            "coverage": 1.0
+          },
+          "unknownHealthy": {
+            "samples": 450,
+            "scoredSamples": 450,
+            "alarmSamples": 438,
+            "alarmStarts": 6,
+            "alarmFraction": 0.973333,
+            "coverage": 1.0
+          },
+          "ambiguousHealthy": {
+            "samples": 480,
+            "scoredSamples": 480,
+            "alarmSamples": 0,
+            "alarmStarts": 0,
+            "alarmFraction": 0.0,
+            "coverage": 1.0
+          },
+          "faults": {
+            "events": 24,
+            "detected": 15,
+            "missed": 9,
+            "detectionFraction": 0.625,
+            "detectedWithin12Samples": 14,
+            "medianDetectedDelay": 2,
+            "withinMode": {
+              "events": 18,
+              "detected": 9,
+              "missed": 9,
+              "detectionFraction": 0.5,
+              "detectedWithin12Samples": 8,
+              "medianDetectedDelay": 2
+            },
+            "crossesTransition": {
+              "events": 6,
+              "detected": 6,
+              "missed": 0,
+              "detectionFraction": 1.0,
+              "detectedWithin12Samples": 6,
+              "medianDetectedDelay": 2.0
+            },
+            "cases": [
+              {
+                "trial": "steady-faults-1221",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1221",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1221",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1222",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1222",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": 20,
+                "firstAlarm": 165,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1223",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1223",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1224",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 11,
+                "firstAlarm": 200,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1224",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1225",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": 0,
+                "firstAlarm": 189,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1225",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "pressure-bias",
+                "onset": 40,
+                "end": 61,
+                "crossesTransition": false,
+                "scoredSamples": 21,
+                "delay": 2,
+                "firstAlarm": 42,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "weak-temperature-bias",
+                "onset": 145,
+                "end": 169,
+                "crossesTransition": false,
+                "scoredSamples": 24,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "steady-faults-1226",
+                "fault": "flow-bias",
+                "onset": 189,
+                "end": 212,
+                "crossesTransition": false,
+                "scoredSamples": 23,
+                "delay": null,
+                "firstAlarm": null,
+                "activeBeforeOnset": false
+              },
+              {
+                "trial": "fault-across-transition-1226",
+                "fault": "pressure-bias-near-transition",
+                "onset": 97,
+                "end": 130,
+                "crossesTransition": true,
+                "scoredSamples": 33,
+                "delay": 2,
+                "firstAlarm": 99,
+                "activeBeforeOnset": false
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "thufdd": {
+    "signalSchema": {
+      "id": "thufdd-tep-native-53-v1",
+      "source": "Lichen0102/THUFDD MMFDD-TEP 09c194f78281bb495da6669cae7a726515f4a4cb",
+      "signals": [
+        {
+          "key": "source_col_00",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_01",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_02",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_03",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_04",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_05",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_06",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_07",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_08",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_09",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_10",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_11",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_12",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_13",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_14",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_15",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_16",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_17",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_18",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_19",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_20",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_21",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_22",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_23",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_24",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_25",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_26",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_27",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_28",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_29",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_30",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_31",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_32",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_33",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_34",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_35",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_36",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_37",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_38",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_39",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_40",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_41",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_42",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_43",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_44",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_45",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_46",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_47",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_48",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_49",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_50",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_51",
+          "unit": null,
+          "meaning": null
+        },
+        {
+          "key": "source_col_52",
+          "unit": null,
+          "meaning": null
+        }
+      ],
+      "sample_interval_seconds": null,
+      "time_unit": "sample_index"
+    },
+    "rawColumns": 81,
+    "sourceColumnIndices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52
+    ],
+    "fitRows": [
+      0,
+      720
+    ],
+    "calibrationRows": [
+      720,
+      1080
+    ],
+    "evaluationStartsAtRow": 1080,
+    "rowCounts": {
+      "1": 7201,
+      "2": 7201,
+      "3": 7201,
+      "4": 7201,
+      "5": 7201,
+      "6": 7201
+    },
+    "partitionBasis": "Chronological within a single normal trajectory per mode. Stitched joins are constructed.",
+    "originalSources": {
+      "1": {
+        "mode": 1,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M1/m1d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1627365,
+        "git_blob_sha1": "2da4f7051e7c3ee91781e18c46da100a00a628ce",
+        "sha256": "32844a5fe4555454a3e5ee28fb5b84717b3a20379bdb9b65aac0220353f0f527"
+      },
+      "2": {
+        "mode": 2,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M2/m2d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1643141,
+        "git_blob_sha1": "442921f8389d2fa38d9030d1aa33fb73ad5769cf",
+        "sha256": "49482f999a28ee6303e61fc53812d46d8705303286b9460c703c0881e3876a55"
+      },
+      "3": {
+        "mode": 3,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M3/m3d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1660169,
+        "git_blob_sha1": "2b3cf641c2bde12cbb23969422f9e6da0b1f0c92",
+        "sha256": "399796a9bf9f3dca111d5daaf31fabacf06d61ab5a0f04968460eace8e112f4a"
+      },
+      "4": {
+        "mode": 4,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M4/m4d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1570570,
+        "git_blob_sha1": "e2b98451f0c20647064ea719d85aafa85d2c144e",
+        "sha256": "4db11c49b7c49012a904c795692114d69688ec1a4564cbc02c3f7b69ff622359"
+      },
+      "5": {
+        "mode": 5,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M5/m5d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1584032,
+        "git_blob_sha1": "518d664049d89b67fce3fe42d39c435bda4cf734",
+        "sha256": "3407670e02360d4957cb6caa8e9adc1b7153deb9aef3ad318b75be3a725d0138"
+      },
+      "6": {
+        "mode": 6,
+        "source_url": "https://raw.githubusercontent.com/Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process/09c194f78281bb495da6669cae7a726515f4a4cb/M6/m6d00.mat",
+        "source_repo": "Lichen0102/Multi-mode-Fault-Diagnosis-Datasets-with-TE-process",
+        "source_commit": "09c194f78281bb495da6669cae7a726515f4a4cb",
+        "file_bytes": 1653541,
+        "git_blob_sha1": "4c98917eb064a3efb558240b8b0acc895f01b331",
+        "sha256": "64bc9ee906f7aa5d602ce96549263be68f9016e7a59de236748d57646fb295ec"
+      }
+    },
+    "isolatedKnownTails": {
+      "trials": 6,
+      "recognition": {
+        "knownHealthySamples": 36726,
+        "correct": 29639,
+        "wrong": 0,
+        "unconfirmed": 7087,
+        "accuracy": 0.80703,
+        "confusion": {
+          "1": {
+            "1": 5581,
+            "unconfirmed": 540
+          },
+          "2": {
+            "2": 5265,
+            "unconfirmed": 856
+          },
+          "3": {
+            "3": 5718,
+            "unconfirmed": 403
+          },
+          "4": {
+            "4": 3486,
+            "unconfirmed": 2635
+          },
+          "5": {
+            "5": 4601,
+            "unconfirmed": 1520
+          },
+          "6": {
+            "6": 4988,
+            "unconfirmed": 1133
+          }
+        },
+        "openSet": {
+          "unknown": {
+            "samples": 0,
+            "confirmed": 0,
+            "rejectionFraction": null,
+            "evidence": {}
+          },
+          "ambiguous": {
+            "samples": 0,
+            "confirmed": 0,
+            "rejectionFraction": null,
+            "evidence": {}
+          }
+        }
+      },
+      "transitions": {
+        "expected": 0,
+        "matched": 0,
+        "missed": 0,
+        "medianDelay": null,
+        "outcomes": {},
+        "cases": [],
+        "unmatchedConfirmed": []
+      },
+      "monitoringByMethod": {
+        "robust-maxz": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 31152,
+              "alarmStarts": 39,
+              "alarmFraction": 0.848227,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 31152,
+              "alarmStarts": 39,
+              "alarmFraction": 0.848227,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 7405,
+              "alarmStarts": 211,
+              "alarmFraction": 0.201628,
+              "coverage": 0.999973
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 7405,
+              "alarmStarts": 211,
+              "alarmFraction": 0.201628,
+              "coverage": 0.999973
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-q": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 129,
+              "alarmStarts": 36,
+              "alarmFraction": 0.003512,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 129,
+              "alarmStarts": 36,
+              "alarmFraction": 0.003512,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30648,
+              "alarmStarts": 22,
+              "alarmFraction": 0.834504,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30648,
+              "alarmStarts": 22,
+              "alarmFraction": 0.834504,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 5486,
+              "alarmStarts": 323,
+              "alarmFraction": 0.149376,
+              "coverage": 0.999973
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 5486,
+              "alarmStarts": 323,
+              "alarmFraction": 0.149376,
+              "coverage": 0.999973
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-t2": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 1,
+              "alarmStarts": 1,
+              "alarmFraction": 2.7e-05,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 1,
+              "alarmStarts": 1,
+              "alarmFraction": 2.7e-05,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30617,
+              "alarmStarts": 14,
+              "alarmFraction": 0.83366,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30617,
+              "alarmStarts": 14,
+              "alarmFraction": 0.83366,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 5100,
+              "alarmStarts": 270,
+              "alarmFraction": 0.138866,
+              "coverage": 0.999973
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36725,
+              "alarmSamples": 5100,
+              "alarmStarts": 270,
+              "alarmFraction": 0.138866,
+              "coverage": 0.999973
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        }
+      }
+    },
+    "stitchedKnownTails": {
+      "trials": 1,
+      "recognition": {
+        "knownHealthySamples": 36726,
+        "correct": 29639,
+        "wrong": 0,
+        "unconfirmed": 7087,
+        "accuracy": 0.80703,
+        "confusion": {
+          "1": {
+            "1": 5581,
+            "unconfirmed": 540
+          },
+          "2": {
+            "2": 5265,
+            "unconfirmed": 856
+          },
+          "3": {
+            "3": 5718,
+            "unconfirmed": 403
+          },
+          "4": {
+            "4": 3486,
+            "unconfirmed": 2635
+          },
+          "5": {
+            "5": 4601,
+            "unconfirmed": 1520
+          },
+          "6": {
+            "6": 4988,
+            "unconfirmed": 1133
+          }
+        },
+        "openSet": {
+          "unknown": {
+            "samples": 0,
+            "confirmed": 0,
+            "rejectionFraction": null,
+            "evidence": {}
+          },
+          "ambiguous": {
+            "samples": 0,
+            "confirmed": 0,
+            "rejectionFraction": null,
+            "evidence": {}
+          }
+        }
+      },
+      "transitions": {
+        "expected": 5,
+        "matched": 5,
+        "missed": 0,
+        "medianDelay": 3.0,
+        "outcomes": {
+          "confirmed": 5,
+          "transient": 1
+        },
+        "cases": [
+          {
+            "trial": "stitched-healthy-tails-1-to-6",
+            "source": "1",
+            "destination": "2",
+            "onset": 6121,
+            "settled": 6121,
+            "deadline": 6151,
+            "candidate": 6121.0,
+            "confirmed": 6124.0,
+            "delay": 3.0,
+            "delayAfterSettling": 3.0
+          },
+          {
+            "trial": "stitched-healthy-tails-1-to-6",
+            "source": "2",
+            "destination": "3",
+            "onset": 12242,
+            "settled": 12242,
+            "deadline": 12272,
+            "candidate": 12242.0,
+            "confirmed": 12245.0,
+            "delay": 3.0,
+            "delayAfterSettling": 3.0
+          },
+          {
+            "trial": "stitched-healthy-tails-1-to-6",
+            "source": "3",
+            "destination": "4",
+            "onset": 18363,
+            "settled": 18363,
+            "deadline": 18393,
+            "candidate": 18363.0,
+            "confirmed": 18366.0,
+            "delay": 3.0,
+            "delayAfterSettling": 3.0
+          },
+          {
+            "trial": "stitched-healthy-tails-1-to-6",
+            "source": "4",
+            "destination": "5",
+            "onset": 24484,
+            "settled": 24484,
+            "deadline": 24514,
+            "candidate": 24486.0,
+            "confirmed": 24489.0,
+            "delay": 5.0,
+            "delayAfterSettling": 5.0
+          },
+          {
+            "trial": "stitched-healthy-tails-1-to-6",
+            "source": "5",
+            "destination": "6",
+            "onset": 30605,
+            "settled": 30605,
+            "deadline": 30635,
+            "candidate": 30605.0,
+            "confirmed": 30608.0,
+            "delay": 3.0,
+            "delayAfterSettling": 3.0
+          }
+        ],
+        "unmatchedConfirmed": []
+      },
+      "monitoringByMethod": {
+        "robust-maxz": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 31160,
+              "alarmStarts": 35,
+              "alarmFraction": 0.848445,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 31160,
+              "alarmStarts": 35,
+              "alarmFraction": 0.848445,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 58,
+              "alarmStarts": 1,
+              "alarmFraction": 0.966667,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 7405,
+              "alarmStarts": 211,
+              "alarmFraction": 0.201628,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 7405,
+              "alarmStarts": 211,
+              "alarmFraction": 0.201628,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-q": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 129,
+              "alarmStarts": 36,
+              "alarmFraction": 0.003512,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 129,
+              "alarmStarts": 36,
+              "alarmFraction": 0.003512,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30656,
+              "alarmStarts": 18,
+              "alarmFraction": 0.834722,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30656,
+              "alarmStarts": 18,
+              "alarmFraction": 0.834722,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 58,
+              "alarmStarts": 1,
+              "alarmFraction": 0.966667,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 5486,
+              "alarmStarts": 323,
+              "alarmFraction": 0.149376,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 5486,
+              "alarmStarts": 323,
+              "alarmFraction": 0.149376,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-t2": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 1,
+              "alarmStarts": 1,
+              "alarmFraction": 2.7e-05,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 1,
+              "alarmStarts": 1,
+              "alarmFraction": 2.7e-05,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30625,
+              "alarmStarts": 10,
+              "alarmFraction": 0.833878,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 30625,
+              "alarmStarts": 10,
+              "alarmFraction": 0.833878,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 58,
+              "alarmStarts": 1,
+              "alarmFraction": 0.966667,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 5100,
+              "alarmStarts": 270,
+              "alarmFraction": 0.138866,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 5100,
+              "alarmStarts": 270,
+              "alarmFraction": 0.138866,
+              "coverage": 1.0
+            },
+            "nearTransition": {
+              "samples": 60,
+              "scoredSamples": 60,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 1.0
+            },
+            "unknownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        }
+      }
+    },
+    "withheldModeTails": {
+      "trials": 6,
+      "recognition": {
+        "knownHealthySamples": 0,
+        "correct": 0,
+        "wrong": 0,
+        "unconfirmed": 0,
+        "accuracy": null,
+        "confusion": {},
+        "openSet": {
+          "unknown": {
+            "samples": 36726,
+            "confirmed": 0,
+            "rejectionFraction": 1.0,
+            "evidence": {
+              "unknown": 36726
+            }
+          },
+          "ambiguous": {
+            "samples": 0,
+            "confirmed": 0,
+            "rejectionFraction": null,
+            "evidence": {}
+          }
+        }
+      },
+      "transitions": {
+        "expected": 0,
+        "matched": 0,
+        "missed": 0,
+        "medianDelay": null,
+        "outcomes": {},
+        "cases": [],
+        "unmatchedConfirmed": []
+      },
+      "monitoringByMethod": {
+        "robust-maxz": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 12238,
+              "alarmStarts": 2,
+              "alarmFraction": 0.333224,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 12238,
+              "alarmStarts": 2,
+              "alarmFraction": 0.333224,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-q": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 18668,
+              "alarmStarts": 78,
+              "alarmFraction": 0.508305,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 18668,
+              "alarmStarts": 78,
+              "alarmFraction": 0.508305,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        },
+        "pca-t2": {
+          "global": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 6121,
+              "alarmStarts": 2,
+              "alarmFraction": 0.166667,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 6121,
+              "alarmStarts": 2,
+              "alarmFraction": 0.166667,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "single": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 36726,
+              "alarmSamples": 36714,
+              "alarmStarts": 6,
+              "alarmFraction": 0.999673,
+              "coverage": 1.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          },
+          "regimeAware": {
+            "allHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "knownHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "nearTransition": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "unknownHealthy": {
+              "samples": 36726,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": 0.0,
+              "coverage": 0.0
+            },
+            "ambiguousHealthy": {
+              "samples": 0,
+              "scoredSamples": 0,
+              "alarmSamples": 0,
+              "alarmStarts": 0,
+              "alarmFraction": null,
+              "coverage": null
+            },
+            "faults": {
+              "events": 0,
+              "detected": 0,
+              "missed": 0,
+              "detectionFraction": null,
+              "detectedWithin12Samples": 0,
+              "medianDetectedDelay": null,
+              "withinMode": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "crossesTransition": {
+                "events": 0,
+                "detected": 0,
+                "missed": 0,
+                "detectionFraction": null,
+                "detectedWithin12Samples": 0,
+                "medianDetectedDelay": null
+              },
+              "cases": []
+            }
+          }
+        }
+      }
+    },
+    "rejectionByWithheldMode": {
+      "1": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      },
+      "2": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      },
+      "3": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      },
+      "4": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      },
+      "5": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      },
+      "6": {
+        "samples": 6121,
+        "confirmed": 0,
+        "evidence": {
+          "unknown": 6121
+        }
+      }
+    }
+  }
+}

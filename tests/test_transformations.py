@@ -230,7 +230,7 @@ class TransformationHTTPTests(IncidentHTTPFixture):
         url = f'http://127.0.0.1:{self.service.server_port}/api/incidents/{incident["id"]}/report.html'
         with build_opener(ProxyHandler({})).open(url) as response:
             report = response.read().decode()
-        for value in ['派生数据来源与处理步骤', 'Motor pipeline', 'Temperature', 'Pressure', ps['id'], 'MPa', 'pressure_rate', 'observationPolicy']:
+        for value in ['Derived data provenance and processing', 'Motor pipeline', 'Temperature', 'Pressure', ps['id'], 'MPa', 'pressure_rate', 'observationPolicy']:
             self.assertIn(value, report)
         edited = deepcopy(definition['config'])
         edited['grid']['intervalSeconds'] = 2

@@ -1,5 +1,4 @@
-import { errorMessage } from "../i18n/errors";
-import { t as tr, useLocale } from "../i18n";
+import { errorMessage, t as tr } from "../lib/text";
 import { AnimatePresence, motion } from "motion/react";
 import { scenario } from "../lib/engine";
 import type { IncidentBrief } from "../types";
@@ -16,14 +15,13 @@ export function RootCauses({
   onSelect: (id: string) => void;
   onInspect: () => void;
 }) {
-  useLocale();
   const candidate = scenario.candidates.find((c) => c.id === selected)!;
   return (
     <Panel
       code="02"
-      title={tr("Root-cause ranking")}
+      title={"Root-cause ranking"}
       className="root-panel"
-      action={<span className="panel-meta">{tr("evidence score / 100")}</span>}
+      action={<span className="panel-meta">evidence score / 100</span>}
     >
       <div className="ranking-list">
         {scenario.candidates.map((c, index) => (
@@ -36,7 +34,7 @@ export function RootCauses({
             <div className="candidate-body">
               <span className="candidate-name">{tr(c.name)}</span>
               <span className="candidate-meta">
-                {c.tag} <span>·</span> {ready ? tr(c.status) : tr("Awaiting evidence")}
+                {c.tag} <span>·</span> {ready ? tr(c.status) : "Awaiting evidence"}
               </span>
               <BlockBar
                 value={ready ? c.score / 100 : 0}
@@ -64,15 +62,15 @@ export function RootCauses({
         >
           <div className="eyebrow">
             <span className="text-mint">└─</span>{" "}
-            {ready ? tr("WHY THIS RANKS HERE") : tr("LISTENING TO THE PROCESS")}
+            {ready ? "WHY THIS RANKS HERE" : "LISTENING TO THE PROCESS"}
           </div>
           <p>
             {ready
               ? tr(candidate.support)
-              : tr("Baseline signals are stable. Ranking begins after the propagation path becomes observable.")}
+              : "Baseline signals are stable. Ranking begins after the propagation path becomes observable."}
           </p>
           <button className="text-button" onClick={onInspect} disabled={!ready}>
-            {" "}{tr("Inspect evidence")}{" "}<Glyph>↗</Glyph>
+            {" "}Inspect evidence{" "}<Glyph>↗</Glyph>
           </button>
         </motion.div>
       </AnimatePresence>
@@ -99,17 +97,16 @@ export function AnalystPanel({
   onCompare: () => void;
   ready: boolean;
 }) {
-  useLocale();
   const complete = !!brief && !running;
   return (
     <Panel
       code="04"
-      title={tr("Incident analyst")}
+      title={"Incident analyst"}
       className="analyst-panel"
       action={
         <span className="panel-meta">
           <StatusDot tone={running ? "amber" : "mint"} pulse={running} />{" "}
-          {running ? tr("investigating") : complete ? tr("brief ready") : tr("ready")}
+          {running ? "investigating" : complete ? "brief ready" : "ready"}
         </span>
       }
     >
@@ -130,15 +127,15 @@ export function AnalystPanel({
             </div>
             <div>
               <p>
-                {" "}{tr("Follow the evidence.")}{" "}<br />
+                {" "}Follow the evidence.{" "}<br />
                 <span className="muted">
-                  {" "}{tr("Connect the signals to the source.")}{" "}</span>
+                  {" "}Connect the signals to the source.{" "}</span>
               </p>
               <button className="text-button" onClick={onRun} disabled={!ready}>
-                {" "}{tr("Investigate incident")}{" "}<Glyph>↗</Glyph>
+                {" "}Investigate incident{" "}<Glyph>↗</Glyph>
               </button>
               {!ready && (
-                <span className="hint">{tr("Waiting for downstream signals")}</span>
+                <span className="hint">Waiting for downstream signals</span>
               )}
             </div>
           </div>
@@ -159,7 +156,7 @@ export function AnalystPanel({
                   )}
                 </span>
                 <span className="step-tool">
-                  {i < step ? tr("done") : i === step ? tr("running") : tr("queued")}
+                  {i < step ? "done" : i === step ? "running" : "queued"}
                 </span>
               </div>
             ))}
@@ -171,13 +168,13 @@ export function AnalystPanel({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="eyebrow text-mint">{tr("✓ EVIDENCE CONNECTED")}</div>
+            <div className="eyebrow text-mint">✓ EVIDENCE CONNECTED</div>
             <p>{brief.provider === "local" ? tr(brief.summary) : brief.summary}</p>
             <details className="analyst-evidence-trail">
               <summary>
-                <span>{tr("Read the evidence trail")}</span>
+                <span>Read the evidence trail</span>
                 <span>
-                  {brief.steps.length}{" "}{tr("checks")}{" "}<span aria-hidden="true">+</span>
+                  {brief.steps.length}{" "}checks{" "}<span aria-hidden="true">+</span>
                 </span>
               </summary>
               <div>
@@ -198,9 +195,9 @@ export function AnalystPanel({
             </details>
             <div className="analyst-actions">
               <button className="text-button" onClick={onCompare}>
-                {" "}{tr("Test an intervention ↗")}{" "}</button>
+                {" "}Test an intervention ↗{" "}</button>
               <button className="subtle-button" onClick={onExport}>
-                {" "}{tr("Export brief ↓")}{" "}</button>
+                {" "}Export brief ↓{" "}</button>
             </div>
           </motion.div>
         )}
@@ -208,7 +205,7 @@ export function AnalystPanel({
           <div className="error-message" role="alert">
             {errorMessage(error)}
             <button onClick={onRun} className="text-button">
-              {" "}{tr("Retry ↻")}{" "}</button>
+              {" "}Retry ↻{" "}</button>
           </div>
         )}
       </div>
@@ -217,7 +214,7 @@ export function AnalystPanel({
           <span className="text-violet">◇</span>{" "}
           {complete
             ? tr("{0} evidence steps · structured brief", {0: brief.steps.length})
-            : tr("Signals → topology → evidence → conclusion")}
+            : "Signals → topology → evidence → conclusion"}
         </span>
         <span className="cursor-block" aria-hidden="true">
           ▊

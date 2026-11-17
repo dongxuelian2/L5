@@ -27,9 +27,10 @@ UNITS = {
     'A': Unit('current'), 'mA': Unit('current', .001),
     's': Unit('time'), 'ms': Unit('time', .001), 'min': Unit('time', 60), 'h': Unit('time', 3600),
     'rpm': Unit('rotation', 1 / 60), 'Hz': Unit('rotation'), '1': Unit('dimensionless'),
+    '%': Unit('dimensionless', .01),
 }
 ALIASES = {'C': '°C', 'degC': '°C', 'degF': '°F', 'F': '°F', 'm3/s': 'm³/s', 'm3/h': 'm³/h',
-           'delta_degC': 'Δ°C', 'delta_K': 'ΔK', 'delta_degF': 'Δ°F', '': '1'}
+           'delta_degC': 'Δ°C', 'delta_K': 'ΔK', 'delta_degF': 'Δ°F', 'fraction': '1', '': '1'}
 
 
 def resolve(unit):

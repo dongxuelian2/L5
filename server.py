@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -20,18 +21,31 @@ from l5.workspace import WorkspaceStore
 ROOT = Path(__file__).resolve().parent
 
 
+def interrupt(_signal, _frame):
+    raise KeyboardInterrupt
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / 'dist'), **kwargs)
 
     def send_json(self, status: int, data: dict):
-        payload = json.dumps(data, ensure_ascii=False, allow_nan=False).encode()
+        self.send_content(status, 'application/json', json.dumps(data, ensure_ascii=False, allow_nan=False))
+
+    def send_content(self, status: int, media_type: str, content: str, *, filename: str | None = None):
+        payload = content.encode('utf-8')
         self.send_response(status)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Type', f'{media_type}; charset=utf-8')
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Cache-Control', 'no-store')
-        self.end_headers()
-        self.wfile.write(payload)
+        if filename is not None:
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+        try:
+            self.end_headers()
+            self.wfile.write(payload)
+        except ConnectionError:
+            # The browser can cancel a poll when pausing or navigating away.
+            self.close_connection = True
 
     def do_GET(self):
         if dispatch(self, 'GET'):
@@ -112,8 +126,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.workspace_store = WorkspaceStore(args.data_dir)
+    signal.signal(signal.SIGTERM, interrupt)
     print(f'L5 available at http://{args.host}:{args.port} · data: {server.workspace_store.root}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        pass
+    finally:
         server.server_close()
+        server.workspace_store.close()
