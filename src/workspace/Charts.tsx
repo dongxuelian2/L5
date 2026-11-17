@@ -75,7 +75,10 @@ export const Plot = memo(function Plot({ times, values, title, axis, threshold, 
   </figure>;
 });
 
-export function SignalPlots({ dataset, signals, range, intervals, selectedTime, onSelectTime }: { dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[]; selectedTime?: number; onSelectTime?: (time: number) => void }) {
+export function SignalPlots({ dataset, signals, range, intervals, selectedTime, onSelectTime, markers, label = name => namedSignal(dataset, name) }: {
+  dataset: Dataset; signals: string[]; range?: [number, number]; intervals?: Interval[]; selectedTime?: number;
+  onSelectTime?: (time: number) => void; markers?: { time: number; label: string }[]; label?: (signal: string) => string;
+}) {
   useLocale();
   const start = range?.[0], end = range?.[1];
   const cache = useMemo(() => cachedSeries(dataset.id, start === undefined || end === undefined ? undefined : [start, end]), [dataset.id, start, end]);
@@ -91,7 +94,7 @@ export function SignalPlots({ dataset, signals, range, intervals, selectedTime, 
   const preview = signals.map(name => cache.signals.get(name)).find(data => data && data.displayRows < data.sourceRows);
   return <div className="ws-signal-plots">{signals.map(name => {
     const data = cache.signals.get(name), error = cache.errors.get(name);
-    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={namedSignal(dataset, name)} axis={dataset.metadata.time} markers={dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: tr("Published fault onset") }]} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
+    return data ? <Plot key={name} times={data.times} values={data.values} segmentIds={data.segmentIds} gaps={dataset.metadata.quality?.gaps} title={label(name)} axis={dataset.metadata.time} markers={markers ?? (dataset.metadata.external?.faultOnsetSeconds == null ? [] : [{ time: dataset.metadata.external.faultOnsetSeconds, label: tr("Published fault onset") }])} intervals={intervals} selectedTime={selectedTime} onSelectTime={onSelectTime} /> :
       <figure className="ws-plot ws-plot-pending" key={name}><figcaption>{name}</figcaption><div className="ws-plot-placeholder">
         {error ? <div role="alert"><p>{errorMessage(error)}</p><button type="button" className="ws-outlined" onClick={() => void cache.load([name], true)}>{tr("Retry signal")}</button></div> : <span role="status">{tr("Loading")}{" "}{name}…</span>}
       </div></figure>;

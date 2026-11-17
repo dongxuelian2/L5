@@ -91,6 +91,8 @@
 .ws-examples-card { display:flex; align-items:center; justify-content:space-between; gap:20px; border:1px dashed #44513d; padding:24px; margin-top:38px; border-radius:4px; }
 .ws-examples-card h2 { margin:8px 0; }
 .ws-examples-card>span { color:#b5ed9a; white-space:nowrap; font-size:11px; }
+.ws-examples-card.ws-guided-entry { margin:0 0 24px; border:1px solid #58724b; background:linear-gradient(110deg,#202d1d,#151a15 75%); }
+.ws-examples-card.ws-guided-entry:hover { border-color:#b5ed9a; }
 .ws-empty { text-align:center; padding:52px 24px; border:1px dashed #394333; border-radius:4px; margin:20px 0; }
 .ws-empty-icon { font-size:34px; color:#b5ed9a; }
 .ws-empty h2 { margin:16px 0 10px; }

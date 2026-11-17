@@ -35,6 +35,7 @@ const { createRoot } = await import('react-dom/client');
 const { Plot, SignalPlots } = require('../src/workspace/Charts.tsx');
 const { ResultView } = require('../src/workspace/Results.tsx');
 const { ImportDataset, AnalysisPage } = require('../src/workspace/WorkspaceApp.tsx');
+const GuidedDemo = require('../src/workspace/GuidedDemo.tsx').default;
 const App = require('../src/App.tsx').default;
 const { analysisPath } = require('../src/workspace/api.ts');
 const { RuntimeWorkbench } = require('../src/workspace/RuntimeWorkbench.tsx');
@@ -86,6 +87,65 @@ function Controls({ data }) {
     React.createElement(SignalPlots, { dataset: data, signals: selected }),
   );
 }
+
+test('guided demo connects the live API steps to saved results, incident and localized report', async () => {
+  const data = dataset('guided-ui-data', 241);
+  const plan = { baselineRange: [0, 79.8], analysisRange: [80, 240], onset: 120, step: .2,
+    signals: names.slice(0, 2), contextSignals: names.slice(2, 4), persistence: 3 };
+  let session = null;
+  const source = { workspaceId: 'test', datasetId: data.id, experimentId: 'guided-ui-experiment', runId: null, incidentId: null };
+  const incident = { id: 'guided-ui-incident', workspace_id: 'test', title: 'Inlet flow loss' };
+  const tasks = ['Robust Max-Z', 'EWMA'].map((algorithmLabel, i) => {
+    const start = 121 + i;
+    const result = { id: `guided-ui-analysis-${i}`, workspaceId: 'test', algorithmLabel,
+      times: [80, 120, start, 240], scores: [1, 2, 8, 15], threshold: 4, peakTime: 240,
+      summary: { firstDetection: start }, relatedSignals: plan.signals,
+      intervals: [{ start, end: 240, peakTime: 240, signals: plan.signals, contributions: [{ signal: plan.signals[0], value: 15 }] }] };
+    return { result, task: { status: 'succeeded', result_id: result.id,
+      metrics: { labelled: { event: { firstDetectionDelay: i + 1, falseAlarmEvents: 0 } } } } };
+  });
+  const actions = [];
+  globalThis.fetch = async (url, options) => {
+    if (options?.method === 'POST') actions.push(url);
+    if (url === '/api/guided-demo') {
+      if (options.method === 'POST') session = source;
+      return response({ plan, session });
+    }
+    if (url === '/api/guided-demo/run') {
+      session = { ...session, runId: 'guided-ui-run' };
+      return response({ plan, session });
+    }
+    if (url === '/api/guided-demo/incident') {
+      session = { ...session, incidentId: incident.id };
+      return response({ plan, session });
+    }
+    if (url === '/api/experiment-runs/guided-ui-run') return response({ id: 'guided-ui-run', status: 'succeeded', tasks: tasks.map(a => a.task) });
+    if (url.startsWith('/api/analyses/')) return response(tasks.find(a => url.endsWith(a.result.id)).result);
+    if (url.startsWith(`/api/datasets/${data.id}/series`)) return response(seriesFor(url));
+    if (url === `/api/datasets/${data.id}`) return response(data);
+    if (url === `/api/incidents/${incident.id}`) return response(incident);
+    if (url === `/api/incidents/${incident.id}/report.html?lang=zh-CN`) return new Response('<h1>事件报告</h1>', { headers: { 'Content-Type': 'text/html' } });
+    throw Error(`Unexpected request ${url}`);
+  };
+  const button = label => [...container.querySelectorAll('button')].find(node => node.textContent === label);
+  await mount(React.createElement(GuidedDemo, { onPrepared() {} }));
+  assert.ok(!button('Run both detectors'));
+  await click(button('Load the scenario'));
+  assert.ok(curve(plan.signals[0]).querySelector('[data-truth-onset="120"]'));
+  await click(button('Inlet flow and pump command'));
+  assert.ok(curve(plan.contextSignals[0]));
+  await click(button('Run both detectors'));
+  assert.equal(container.querySelectorAll('.guided-result').length, 2);
+  await click(container.querySelector('button[aria-label="Inspect EWMA"]'));
+  assert.ok(curve('EWMA'));
+  assert.match(container.querySelector('.guided-evidence').textContent, /122 s.*240 s/);
+  await click(button('Create linked incident'));
+  assert.ok(container.querySelector('a[href="#/workspaces/test/incidents/guided-ui-incident"]'));
+  await act(async () => setLocale('zh-CN'));
+  await click(button('生成报告'));
+  assert.match(container.querySelector('iframe').srcdoc, /事件报告/);
+  assert.deepEqual(actions, ['/api/guided-demo', '/api/guided-demo/run', '/api/guided-demo/incident']);
+});
 
 test('900×8 checkbox changes retain existing SVG nodes and reuse one full-data request', async () => {
   const requests = [];

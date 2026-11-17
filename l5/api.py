@@ -12,7 +12,7 @@ from .datasets import prepare_csv, series_preview
 def dispatch(handler, method: str) -> bool:
     url = urlparse(handler.path)
     parts = url.path.strip('/').split('/')
-    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external'):
+    if len(parts) < 2 or parts[0] != 'api' or parts[1] not in ('workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios', 'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs', 'external', 'guided-demo'):
         return False
     store = handler.server.workspace_store
     try:
@@ -27,7 +27,16 @@ def dispatch(handler, method: str) -> bool:
             if not isinstance(body, dict):
                 raise ValueError('Request must be a JSON object.')
         result, status = None, 200
-        if parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
+        if parts[1] == 'guided-demo':
+            if len(parts) == 2 and method == 'GET':
+                result = store.guided_demo.state()
+            elif len(parts) == 2 and method == 'POST':
+                result = store.guided_demo.prepare(body.get('locale'))
+            elif parts[2:] == ['run'] and method == 'POST':
+                result = store.guided_demo.start()
+            elif parts[2:] == ['incident'] and method == 'POST':
+                result = store.guided_demo.incident(body.get('locale'))
+        elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
             from .tep_import import PROTOCOL
