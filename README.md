@@ -6,137 +6,88 @@ L5 turns process measurements into a connected workflow: import or record signal
 
 ![L5 guided investigation of a coupled-tank pump fault](docs/l5-workspace.jpg)
 
-## What L5 does
+## Quick start
 
-L5 brings five areas of industrial analysis into one interface. Each area uses shared datasets and saved results, so an observation can lead directly to a detector comparison, a fault investigation, a model study, or a report.
-
-### 1. Data acquisition and preparation
-
-- **Persistent workspaces and datasets.** Create projects, import CSV/TSV measurements, choose time columns or sampling intervals, preview channels, and reopen saved analyses. Workspaces maintain their records in a local SQLite-backed store.
-- **Signal catalog and explorer.** Assign signal identities, engineering units, descriptions, and equipment tags. View multiple sources with synchronized time windows, cursors, and detailed measurements.
-- **Time-series quality and transformation.** Inspect missing samples, repeated timestamps, irregular sampling, and acquisition gaps. Align absolute and relative clocks, resample channels, convert units, and calculate derived signals. Preview changes and save the transformed measurements as reusable datasets.
-- **OPC UA live acquisition.** Browse industrial variables, subscribe to read-only updates, inspect timestamps and quality flags, record a session, and convert a selected interval into a dataset for downstream analysis.
-
-### 2. Monitoring and anomaly detection
-
-- **Nine detection methods.** Run Robust Max-Z, PCA-Q, PCA-T², Dynamic PCA-Q, Dynamic PCA-T², EWMA, Page CUSUM, finite-window CUSUM, and experimental Adaptive Max-Z. Fit models on a selected normal period, calibrate thresholds, and score observations with the configured algorithm.
-- **Interpretable detector results.** Explore score traces, thresholds, alarm intervals, first detection times, observation coverage, and channel contributions alongside the underlying sensor measurements.
-- **Experiment comparisons.** Save multiple algorithms, parameter configurations, and training/evaluation windows as experiments. Compare detection behavior, labelled-event metrics, normal-data alarm burden, and individual runs.
-- **Process replay.** Replay a recorded dataset on its original time axis, pause or seek through measurements, inspect emerging alarm episodes, and preserve a selected observation prefix as an incident or JSON export.
-- **Operating-regime recognition.** Learn named normal operating regimes, inspect mode assignments and transitions, and compare pooled, single-mode, and regime-aware detection on shared timelines.
-
-### 3. Fault diagnosis and incident investigation
-
-- **Sensor health diagnostics.** Examine drift, offset, frozen readings, spikes, dropout, and noise. Compare redundant measurements, baseline relationships, and coupled-tank physical residuals to assess sensor and process explanations.
-- **Alarm management.** Configure event rules and correlation criteria, group related alarms, inspect floods and recurring episodes, and review the original evidence behind each group.
-- **Saved incidents.** Link datasets, analysis results, alarm intervals, simulations, and investigation notes. Build a synchronized timeline of hypotheses, observations, supporting evidence, and conclusions.
-- **Reports and exports.** Generate standalone HTML incident reports with measurements, detector findings, and investigation records. Reopen a report in a browser, print it to PDF, or export structured JSON.
-
-### 4. Simulation, modeling, and control
-
-- **Process simulation.** Run TripLens industrial scenarios and a coupled-tank hydraulic model with configurable faults, interventions, actuator commands, and seeded measurement noise. Save simulated observations for analysis and investigation.
-- **Closed-loop control.** Compare held-input operation, PI control, and receding-horizon model predictive control on matched coupled-tank scenarios. Inspect setpoint tracking, control effort, actuator limits, and physical constraint excursions.
-- **Digital twin calibration.** Estimate bounded physical parameters from measured levels, flows, and input histories. Explore sensitivity, parameter identifiability, optimizer diagnostics, residuals, and validation predictions. Save calibrated revisions for reuse in simulation.
-- **State estimation and sensor fusion.** Reconstruct coupled-tank states from noisy or incomplete observations, inspect innovations and uncertainty estimates, and export estimated trajectories to the data workspace.
-- **Fault detectability and sensor placement.** Compare candidate sensor layouts under declared measurement noise and installation budgets. Study fault signatures, distinguishability, and the contribution of each selected measurement.
-- **Optimal experiment design.** Compare constrained pump and valve excitation schedules, including stepped inputs and pseudorandom sequences. Evaluate information criteria, operating margins, and candidate experiments before running a simulation.
-
-### 5. Reliability, maintenance, and process safety
-
-- **Predictive maintenance.** Fit condition trends, estimate threshold-crossing horizons and remaining useful life, compare uncertainty ranges, and evaluate maintenance timing choices.
-- **Process safety.** Define operational limits, warning bands, and dwell rules. Inspect measured violations and simulated time-to-constraint forecasts under candidate future inputs.
-- **Resilience testing.** Compose process, sensor, and acquisition faults; run seeded fault-injection campaigns; compare detector and recovery outcomes; and inspect the worst-performing scenarios.
-- **Recovery and reachability.** Compute grid-based viable regions and recovery policies for coupled-tank operating limits, then replay selected policies on the nonlinear model to examine recovery and constraint satisfaction.
-
-## Connected workflows
-
-The specialist tools share data and evidence. Three representative paths show how they work together:
-
-| Starting point | Workflow | Result |
-| --- | --- | --- |
-| **Recorded process data** | Import measurements → inspect signal quality → calibrate anomaly detection → replay alarms → create an incident | A saved investigation with synchronized curves, evidence, and an exportable report |
-| **A process model** | Configure a coupled-tank scenario → compare PI and MPC → examine tracking and constraints → save trajectories | A quantitative comparison of controller behavior under the same simulated conditions |
-| **Measurements and engineering questions** | Calibrate physical coefficients → evaluate held-out predictions → estimate states → design sensors or excitation | Reusable model revisions, estimated trajectories, and saved design studies |
-
-The **Guided investigation** example provides the shortest complete route through dataset creation, anomaly detection, incident investigation, and reporting.
-
-## Reproducible results
-
-L5 includes numerical experiments for Tennessee Eastman anomaly detection and coupled-tank analysis. The [benchmark guide](docs/benchmarks.md) records data sources, protocols, commands, and additional results.
-
-### Tennessee Eastman process benchmark
-
-The main study evaluates **nine detectors** on **20 simulated process faults**, using three independent test runs per fault and five normal test runs. Each training configuration comprises 585 detector executions. The expanded evaluation and three A/B/C training configurations together comprise **2,340 executions**.
-
-Selected results for normal training configuration A:
-
-| Detector | Fault runs detected within 30 minutes | Fault runs detected during the run | Alarm samples on five normal runs |
-| --- | ---: | ---: | ---: |
-| PCA-Q | 19 / 60 | 51 / 60 | 2 / 4,800 |
-| Dynamic PCA-Q | 20 / 60 | 54 / 60 | 2 / 4,800 |
-
-The benchmark uses separate normal fit and calibration trajectories, three consecutive threshold exceedances for an alarm, and independently recorded fault trajectories. The A/B/C comparison measures how changing normal training data affects detection and alarm burden.
-
-### Coupled-tank studies
-
-| Study | Representative result |
-| --- | --- |
-| **Digital twin calibration** | Three 2 mm-noise studies yielded held-out tank-2 RMSE values of **2.83, 2.07, and 2.01 mm**, versus approximately **377 mm** for the nominal model in that protocol. |
-| **Closed-loop control** | For a 1 → 1.25 m setpoint step, measured integrated absolute error was **12.3028 m·s** for PI and **9.8953 m·s** for MPC with the same reference information. |
-| **Recovery and reachability** | On a 17 × 17 grid, nominal and robust policies each recovered **8 of 15** held-out cases. The robust policy completed those 15 replays within the configured constraints. |
-
-These figures describe the specified simulation and benchmark configurations. The benchmark guide provides the models, evaluation settings, and reproduction commands.
-
-## Installation
-
-Requirements: **Node.js 22.12+**, **npm**, and **Python 3.12+**.
-
-From the repository root, install dependencies and build the frontend:
+Requirements: **Node.js 22.12+**, **npm**, and **Python 3.12+**. From the repository root:
 
 ```sh
 npm ci
 python3 -m venv .venv
 node scripts/python.mjs -m pip install -r requirements.txt
 npm run build
+npm run serve
 ```
 
 On Windows, create the environment with `py -3.12 -m venv .venv`. The remaining commands use the same Node.js entry points.
 
-### Run the workstation
+Open **[http://127.0.0.1:8787](http://127.0.0.1:8787)** and choose **Open guided demo**.
 
-```sh
-npm run serve
-```
+1. **Load the scenario** to generate a coupled-tank case with inlet-pump degradation. Inspect measured levels, inlet flow, and pump commands.
+2. **Run both detectors** to compare Robust Max-Z and EWMA scores, thresholds, alarm delays, and signal contributions.
+3. **Create linked incident** to preserve the dataset and detector results, then record observations and a conclusion.
+4. **Export the investigation** as standalone HTML for review or printing to PDF.
 
-Open **[http://127.0.0.1:8787](http://127.0.0.1:8787)**.
+To work with your own measurements, create a workspace and import a CSV or TSV under **Datasets**. The [motor cooling example](examples/data-foundation/README.md) provides three sources with different clocks, acquisition gaps, and transformations. Workspace records are stored locally in `data/`.
 
-Choose **Open guided demo** for an immediate walkthrough, or create a workspace and import measurements under **Datasets**. The [motor cooling example](examples/data-foundation/README.md) demonstrates three data sources with different clocks, acquisition gaps, and transformations.
+## What you can do
 
-Workspace records and associated measurements are stored in `data/`. To choose a different directory and port:
+L5 connects five areas of industrial analysis through shared datasets, models, and saved evidence.
 
-```sh
-npm run serve -- --data-dir ./my-l5-data --port 8790
-```
+### Data acquisition and preparation
 
-## Guided investigation: from a fault to a report
+- **Import and explore measurements.** Create persistent workspaces, preview numeric channels, select time axes, and organize signals by engineering units and equipment tags. Inspect synchronized curves, missing samples, duplicate timestamps, and acquisition gaps.
+- **Transform and record signals.** Align time bases, resample channels, convert units, and calculate derived measurements. Browse OPC UA variables, record read-only subscriptions with timestamps and quality information, and save selected intervals as datasets for analysis.
 
-1. **Load the scenario.** The seeded coupled-tank example injects inlet-pump degradation. Inspect levels, inlet flow, and pump commands around the fault.
-2. **Run both detectors.** Fit Robust Max-Z and EWMA on the measured level signals. Compare their scores, thresholds, alarms, detection delays, and channel contributions.
-3. **Create a linked incident.** Save the dataset and detector results as evidence. Inspect the timeline and record a hypothesis, observations, and a conclusion.
-4. **Export the investigation.** Generate standalone HTML containing the saved findings and open it in a browser or print it to PDF.
+### Monitoring and anomaly detection
 
-The separate [Streamlit demonstration](demo/README.md) runs detectors on a built-in example or a small uploaded CSV, shows scores and alarm evidence, and includes a browser for recorded Tennessee Eastman results.
+- **Detect and replay anomalies.** Fit on normal observations, calibrate thresholds, and examine scores, alarm intervals, and channel contributions. L5 includes Robust Max-Z, PCA-Q, PCA-T², Dynamic PCA-Q, Dynamic PCA-T², EWMA, Page CUSUM, finite-window CUSUM, and experimental Adaptive Max-Z. Replay measurements in timestamp order and inspect alarm episodes as they emerge.
+- **Compare experiments and operating regimes.** Evaluate algorithms and parameter choices on saved datasets, inspect labelled-event metrics and healthy alarm burden, and compare pooled, single-mode, and regime-aware detection. Save results for later inspection or incident investigation.
 
-## Architecture and storage
+### Fault diagnosis and investigation
 
-L5 combines a **React/TypeScript** interface with a local **Python HTTP API**. NumPy, pandas, and SciPy power the numerical workflows. **SQLite** stores workspace metadata and relationships; CSV and NumPy files hold measurements and numerical results. The simulation, detection, control, and investigation workspaces exchange saved datasets and analysis records.
+- **Assess sensor health and alarm evidence.** Examine drift, offset, frozen readings, spikes, dropout, and noise. Compare signal relationships and coupled-tank physical residuals to assess sensor and process explanations. Group related alarms and inspect the source evidence for each episode.
+- **Build and export incidents.** Link measurements, detector results, alarm intervals, simulations, hypotheses, and investigation notes on a synchronized timeline. Generate standalone HTML reports and structured JSON exports.
 
-OPC UA acquisition uses a read-only data connection. Process-control experiments, fault injection, and recovery strategies execute on local models. Generated HTML and JSON files can be opened independently of the workstation.
+### Simulation, modeling, and control
 
-## Documentation
+- **Simulate and control processes.** Run TripLens scenarios and a coupled-tank hydraulic model with configurable faults, interventions, and measurement noise. Compare held-input operation, PI, and receding-horizon model predictive control under matched conditions; inspect tracking errors, control effort, and constraint excursions.
+- **Calibrate and estimate.** Fit bounded physical parameters from measurements, inspect identifiability and residuals, validate predictions, and save digital twin revisions. Reconstruct process states from noisy or incomplete observations and export estimated trajectories.
+- **Design measurements and experiments.** Compare sensor placements under installation budgets, examine simulated fault distinguishability, and evaluate constrained pump and valve excitation schedules using information criteria and operating margins.
 
-- **[User guide](docs/user-guide.md)** — Data import, monitoring, the specialist workspaces, incident investigation, reports, and local configuration.
+### Reliability, maintenance, and process safety
+
+- **Forecast and assess risk.** Estimate remaining useful life from condition trends, inspect operating-limit violations, and compare simulated time-to-constraint forecasts and maintenance choices.
+- **Test resilience and recovery.** Run seeded process, sensor, and acquisition fault campaigns; compare recovery and detection outcomes; compute viable regions and recovery policies; and replay selected policies on the nonlinear coupled-tank model.
+
+For workspace controls, input requirements, and example procedures, see the **[User guide](docs/user-guide.md)**.
+
+## Connected workflows
+
+| Starting point | Use L5 to | Output |
+| --- | --- | --- |
+| **Recorded process data** | Inspect signal quality → calibrate a detector → replay alarms → investigate an episode | A saved incident with synchronized measurements and an exportable report |
+| **A process model** | Configure a coupled-tank scenario → compare PI and MPC → examine tracking and constraints | A saved controller comparison and reusable simulated trajectories |
+| **Measurements and design questions** | Calibrate a digital twin → validate predictions → estimate states → evaluate sensors or excitation | Saved model revisions, estimated trajectories, and design studies |
+
+The [Streamlit demo](demo/README.md) offers a lightweight entry point for running detectors on an example or uploaded CSV and browsing recorded Tennessee Eastman results.
+
+## Reproducible results
+
+L5 includes numerical studies for Tennessee Eastman anomaly detection and coupled-tank modeling. The Tennessee Eastman study evaluates **nine detectors** across **20 simulated faults** and five normal test runs per training configuration, with **2,340 recorded detector executions** across the expanded study and three A/B/C training configurations.
+
+Selected measured results:
+
+- **Tennessee Eastman:** Dynamic PCA-Q detected **54 of 60** fault runs during the run under normal training configuration A, with **2 alarm samples across 4,800** normal observations.
+- **Closed-loop control:** For a 1 → 1.25 m coupled-tank setpoint step, measured integrated absolute error was **12.3028 m·s** for PI and **9.8953 m·s** for MPC with the same reference information.
+
+The **[Benchmark guide](docs/benchmarks.md)** contains datasets, protocols, reproduction commands, and further results for detector robustness, parameter calibration, state estimation, fault studies, and recovery.
+
+## Architecture and documentation
+
+L5 combines a **React/TypeScript** interface with a local **Python HTTP API**. NumPy, pandas, and SciPy support numerical analysis. **SQLite** stores workspace records, with CSV and NumPy files holding measurements and results. OPC UA supports read-only acquisition; control, fault injection, and recovery policies execute on local simulations.
+
+- **[User guide](docs/user-guide.md)** — Workspace operations, specialist tools, incident investigation, and local configuration.
 - **[Architecture](docs/architecture.md)** — Application structure, API workflow, storage, and adapters.
-- **[Benchmarks](docs/benchmarks.md)** — Tennessee Eastman datasets, calibration studies, simulation protocols, reproduction commands, and measured results.
-- **[Streamlit demo](demo/README.md)** — Lightweight detector demonstration and deployment instructions.
+- **[Benchmarks](docs/benchmarks.md)** — Data sources, experiment protocols, numerical results, and reproduction commands.
+- **[Streamlit demo](demo/README.md)** — Lightweight detector demonstration and deployment.
 - **[MIT license](LICENSE)**.
