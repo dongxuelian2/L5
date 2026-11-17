@@ -77,7 +77,7 @@ def investigate(store, experiment_id, run_id):
     for signal in result['relatedSignals'][:3]:
         column = names.index(signal)
         evidence.append(f'{signal}: pre-onset mean {values[before, column].mean():.6g}; first post-onset hour mean {values[after, column].mean():.6g}. '
-                        'Original source numerical units; contribution magnitude is statistical, not a causal attribution.')
+                        'Signals use their original units. Contributions describe each variable’s role in the detector score.')
     store.incidents.save_entry(incident['id'], dict(kind='evidence', title='Original measurements around published injection', source_link_id=source,
         observed_at=28800, content='\n'.join(evidence)))
     store.incidents.save_entry(incident['id'], dict(kind='hypothesis', title='Candidate explanation: changed process operating condition',
@@ -147,7 +147,7 @@ def main():
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--cache-dir', type=Path)
     parser.add_argument('--output-dir', type=Path, required=True)
-    parser.add_argument('--existing-experiment', help='Export an already completed fixed experiment instead of running another.')
+    parser.add_argument('--existing-experiment', help='Export an existing completed experiment.')
     parser.add_argument('--incident-id', help='Include an existing saved investigation when exporting.')
     parser.add_argument('--investigate', action='store_true', help='Save the predeclared fault 1/run 1 evidence review and report.')
     args = parser.parse_args()

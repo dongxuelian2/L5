@@ -125,7 +125,7 @@ class PCAMonitor:
         if self.mode == "q":
             weights = residual[0] ** 2
         else:
-            # Descriptive leverage, not a causally valid root-cause attribution.
+            # Report descriptive leverage from the fitted covariance model.
             weights = np.abs(self.components.T @ (projected[0] / np.sqrt(self.eigenvalues)))
         return _top_names(weights, feature_names, count)
 
