@@ -109,8 +109,9 @@ class PCAMonitor:
 
     def _decompose(self, samples: np.ndarray):
         z = (as_matrix(samples, features=self.features) - self.center) / self.scale
-        projected = z @ self.components.T
-        residual = z - projected @ self.components
+        # Use the same per-row reductions for one observation and a batch.
+        projected = np.einsum("ij,kj->ik", z, self.components)
+        residual = z - np.einsum("ik,kj->ij", projected, self.components)
         return z, projected, residual
 
     def score(self, samples: np.ndarray) -> np.ndarray:
@@ -124,7 +125,7 @@ class PCAMonitor:
         if self.mode == "q":
             weights = residual[0] ** 2
         else:
-            # Descriptive leverage, not a causally valid root-cause attribution.
+            # Report descriptive leverage from the fitted covariance model.
             weights = np.abs(self.components.T @ (projected[0] / np.sqrt(self.eigenvalues)))
         return _top_names(weights, feature_names, count)
 
@@ -140,10 +141,10 @@ class PCAMonitor:
 
 
 def calibrate(monitor: Monitor, calibration: np.ndarray, alpha: float) -> float:
-    """Fixed empirical threshold; calibration data must be healthy train only.
+    """Estimate the empirical threshold from healthy calibration scores.
 
-    Higher order statistic, strict > comparison. Not a statistical guarantee of
-    false-alarm probability (serial correlation and distribution shift matter).
+    Select the higher order statistic and flag scores strictly above it.
+    Evaluate alarm frequency separately on representative data.
     """
     if not 0 < alpha < 0.5:
         raise ValueError("alpha must be in (0, 0.5).")

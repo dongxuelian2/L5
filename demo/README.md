@@ -1,41 +1,23 @@
-# L5 Online Demo
+# L5 Streamlit demo
 
-An interactive, zero-cost Streamlit Community Cloud demonstration backed by the L5 detection engine and the verified Tennessee Eastman benchmark outputs.
+Run L5's anomaly detectors on a built-in four-channel simulation or an uploaded CSV. The Tennessee Eastman tab shows recorded results for nine detectors, 20 faults, and three normal training configurations.
 
-## Online deployment
+## Run locally
 
-1. Open https://share.streamlit.io and connect your GitHub account.
-2. Create an app from repository `dongxuelian2/L5`.
-3. Choose branch `main` (after this PR is merged), file path `demo/streamlit_app.py`, and Python 3.12.
-4. Deploy. Community Cloud installs `demo/requirements.txt` and assigns a public `streamlit.app` address. GitHub updates to the selected branch update the deployed demo.
+Use Python 3.12 and run these commands from the repository root.
 
-No Node.js build, cloud database, paid API, persistent volume, or custom domain is needed for this entrypoint.
-
-## Local start
-
-From the repository root, using Python 3.12+:
-
-```bash
-python -m pip install -r demo/requirements.txt
-python -m streamlit run demo/streamlit_app.py
-python -m unittest tests.test_streamlit_demo -v
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r demo/requirements.txt
+.venv/bin/python -m streamlit run demo/streamlit_app.py
 ```
 
-## User flow
+On Windows, create the environment with `py -3.12 -m venv .venv` and use `.venv\Scripts\python.exe` in the next two commands.
 
-- **Explore & detect**: start with a reproducible 4-channel synthetic scenario, or upload a UTF-8 CSV. Use 300–3,000 samples and up to 12 numeric columns, with a 2 MB upload limit. The display uses row index as a common sample clock. Choose signals, a disjoint normal baseline, and one or more of L5's nine detectors. Inspect time-series scores, fixed empirical thresholds, alarm intervals, and ranked signal contributions. Download a JSON record.
-- **Tennessee Eastman**: browse committed official TEP results, compare nine algorithms over three normal-training configurations, and inspect detection counts for each of 20 faults. The 585-run expanded benchmark and 1,755-run robustness study are the same verified results described in the main README.
-- **About L5**: jump to the full application's source and documentation.
+Open [the demo](http://localhost:8501) and select **Run anomaly detection**. Choose signals and detectors, set the normal baseline, and inspect score traces, thresholds, alarm intervals, and signal contributions. Choose **Download analysis results (JSON)** to keep the result. CSV uploads accept 300–3,000 rows, up to 12 numeric signals, and files up to 2 MB. The demo uses row index as its time axis and stores results in the current session.
 
-Computation uses `l5.analysis.run_analysis` directly. Original uploaded CSV data and analysis output remain in the Streamlit session rather than a shared L5 workspace or database. The demo deliberately restricts dataset size, does not launch offline TEP replays, and provides no persistent projects, incident editing, or production monitoring. Individual visitors can independently explore the demonstration.
+## Deploy to Streamlit Community Cloud
 
-The full React/TypeScript workbench continues to run with `npm run serve`; it is unchanged.
+Create an app in [Streamlit Community Cloud](https://share.streamlit.io). Select `dongxuelian2/L5`, branch `main`, entry point `demo/streamlit_app.py`, and Python 3.12. Community Cloud installs `demo/requirements.txt` and assigns the deployed app a URL.
 
-## Verification
-
-```bash
-python -m unittest tests.test_streamlit_demo -v
-npm run check
-```
-
-A deployed instance should additionally be checked in a browser: open synthetic example; run Robust Max-Z and PCA-Q; inspect nonempty scores/intervals; download JSON; switch to the TEP tab; inspect configuration A/B/C and fault tables; upload a bounded numeric CSV; ensure rejected files produce a useful message.
+See the [workstation README](../README.md) for persistent workspaces, models, incident investigation, and standalone reports. See the [benchmark guide](../docs/benchmarks.md) for the Tennessee Eastman protocols.

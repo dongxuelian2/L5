@@ -28,15 +28,14 @@ class GuidedDemo:
                 LEFT JOIN incidents i ON i.id=d.runId AND i.workspace_id=d.workspaceId''').fetchone()
         return dict(plan=PLAN, session={k: row[k] for k in row.keys() if k != 'id'} if row else None)
 
-    def prepare(self, locale):
+    def prepare(self):
         with self.lock:
             state = self.state()
             if state['session']:
                 return state
             store = self.store
-            zh = locale == 'zh-CN'
-            title = '双水箱 · 入口泵性能下降' if zh else 'Coupled tanks · inlet pump degradation'
-            workspace = store.create_workspace('引导调查演示' if zh else 'Guided Investigation Demo')
+            title = 'Coupled tanks · inlet pump degradation'
+            workspace = store.create_workspace('Guided Investigation Demo')
             workspace_id = workspace['id']
             try:
                 scenario = store.scenarios.save(workspace_id, dict(
@@ -76,7 +75,7 @@ class GuidedDemo:
             raise KeyError('Load the guided scenario first.')
         return session
 
-    def incident(self, locale):
+    def incident(self):
         with self.lock:
             session = self.require_session()
             if session['incidentId']:
@@ -93,19 +92,14 @@ class GuidedDemo:
             onset, step = model['config']['start'], model['config']['step']
             before, after = (store.sample(dataset_id, at, PLAN['contextSignals'])['values']
                              for at in (onset - step, onset))
-            zh = locale == 'zh-CN'
             description = (
-                f'在 {onset:g} 秒注入模拟故障。FT-101 入口流量从 {before["inlet"]:.4f} 降至 '
-                f'{after["inlet"]:.4f} m³/s，PC-101 泵指令维持在 {after["pump"]:g}%。'
-                '将两路液位的报警时序与流量变化对照，记录支持或反对入口泵性能下降的证据。'
-                if zh else
                 f'The model injects a fault at {onset:g} s. FT-101 inlet flow falls from {before["inlet"]:.4f} '
                 f'to {after["inlet"]:.4f} m³/s while the PC-101 pump command stays at {after["pump"]:g}%. '
                 'Compare the two level signals and the alarm timing with the flow change. '
                 'Record evidence for or against inlet pump degradation.'
             )
             store.incidents.create(session['workspaceId'], dict(
-                title='入口泵供水下降调查' if zh else 'Investigate the inlet flow loss',
+                title='Investigate the inlet flow loss',
                 description=description, status='investigating',
                 start_time=PLAN['analysisRange'][0], end_time=PLAN['analysisRange'][1]),
                 identity=run['id'], sources=[

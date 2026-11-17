@@ -7,6 +7,7 @@ transfer flux enters the other tank, so the limiter preserves mass exactly.
 """
 from __future__ import annotations
 
+from bisect import bisect_right
 import math
 import random
 import secrets
@@ -59,12 +60,64 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
-def flows(c, heads, time, action, at, parameters):
+def hydraulic_flows(c, heads, pump, opening, efficiency=1., leak_coefficient=0.,
+                    inflow_bias=0., *, tank2_leak=None, inlet_factor=1., outlet_factor=1., ops=math):
+    """Evaluate scalar or batched hydraulic fluxes before volume limiting."""
+    maximum = max if ops is math else ops.maximum
     h1, h2 = heads
-    active = time >= c['start'] and (c['fault_duration'] is None or time < c['start'] + c['fault_duration'])
-    s = c['severity'] if active else 0.
-    pump, opening = c['pumpControl'], c['valve']
-    efficiency = 1 - .7*s if c['fault'] == 'pump_degradation' else 1.
+    delta = h1 - h2
+    inlet = maximum(0., c['pumpRate'] * pump / 100 * efficiency * inlet_factor + inflow_bias)
+    transfer = c['connection'] * opening * ops.copysign(ops.sqrt(abs(delta)), delta)
+    outlet = c['outlet'] * c['outletValve'] * ops.sqrt(maximum(0., h2)) * outlet_factor
+    leak1 = leak_coefficient * ops.sqrt(maximum(0., h1))
+    spill1, spill2 = (.1 * maximum(0., h - c['tankHeight'])**1.5 for h in heads)
+    fluxes = [inlet, transfer, outlet, leak1, spill1, spill2]
+    if tank2_leak is not None:
+        fluxes.append(tank2_leak * ops.sqrt(maximum(0., h2)))
+    return fluxes
+
+
+def donor_stage(c, heads, fluxes, dt, *, ops=math):
+    """Advance one conservative Euler stage using the available donor volumes."""
+    maximum, minimum = (max, min) if ops is math else (ops.maximum, ops.minimum)
+    inlet, transfer, outlet, leak1, spill1, spill2, *additional = fluxes
+    leak2 = additional[0] if additional else 0.
+    area1, area2 = c['area1'], c['area2']
+    demand1 = maximum(0., transfer) + leak1 + spill1
+    demand2 = maximum(0., -transfer) + outlet + spill2 + leak2
+    scale1 = minimum(1., heads[0] * area1 / (dt * demand1 + (demand1 == 0)))
+    scale2 = minimum(1., heads[1] * area2 / (dt * demand2 + (demand2 == 0)))
+    transfer = maximum(0., transfer) * scale1 + minimum(0., transfer) * scale2
+    leak1, spill1 = leak1 * scale1, spill1 * scale1
+    outlet, spill2, leak2 = outlet * scale2, spill2 * scale2, leak2 * scale2
+    limits = [inlet, transfer, outlet, leak1, spill1, spill2]
+    if additional:
+        limits.append(leak2)
+    return [maximum(0., heads[0] + dt * (inlet - transfer - leak1 - spill1) / area1),
+            maximum(0., heads[1] + dt * (transfer - outlet - spill2 - leak2) / area2)], limits
+
+
+def euler_stage(c, state, dt, fluxes):
+    """Apply a forward Euler stage to precomputed fluxes for model fitting."""
+    return donor_stage(c, state, fluxes, dt)
+
+
+def active_intensities(c, when, faults):
+    active = when >= c['start'] and (c['fault_duration'] is None or when < c['start'] + c['fault_duration'])
+    if active:
+        return {c['fault']: c['severity']} if faults is None else faults
+    return {}
+
+
+def flows(c, heads, time, action=None, at=0., parameters=None, pump_profile=None, *,
+          commands=None, disturbance=None, faults=None, inputs=None):
+    pump, opening = inputs if inputs is not None else (c['pumpControl'], c['valve'])
+    if commands is not None:
+        pump, opening = commands['pump'], commands['valve']
+    intensities = active_intensities(c, time, faults)
+    efficiency = 1 - .7 * intensities.get('pump_degradation', 0.)
+    if pump_profile is not None:
+        efficiency, pump = pump_profile(time)
     if action and time >= at:
         if action == 'adjust_pump':
             pump = parameters['pumpControl']
@@ -73,65 +126,136 @@ def flows(c, heads, time, action, at, parameters):
         elif action == 'backup_pump':
             efficiency, pump = 1., parameters['backupControl']
         elif action == 'stop_supply':
-            pump *= max(0., 1-(time-at)/parameters['rampSeconds'])
-    if c['fault'] == 'valve_restriction':
-        opening *= 1-.85*s
-    delta = h1-h2
-    transfer = c['connection']*opening*math.copysign(math.sqrt(abs(delta)), delta)
-    inlet = c['pumpRate']*pump/100*efficiency
-    outlet = c['outlet']*c['outletValve']*math.sqrt(max(0,h2))
-    leak = c['leakCoefficient']*s*math.sqrt(max(0,h1)) if c['fault'] == 'tank_leak' else 0.
-    spill1, spill2 = (.1*max(0,h-c['tankHeight'])**1.5 for h in heads)
-    return [inlet, transfer, outlet, leak, spill1, spill2], pump, opening, s
+            pump *= max(0., 1 - (time - at) / parameters['rampSeconds'])
+    opening *= 1 - .85 * intensities.get('valve_restriction', 0.)
+    leak = c['leakCoefficient'] * intensities.get('tank_leak', 0.)
+    inlet_factor = disturbance['inletFactor'] if disturbance is not None else 1.
+    outlet_factor = disturbance['outletFactor'] if disturbance is not None else 1.
+    fluxes = hydraulic_flows(c, heads, pump, opening, efficiency, leak,
+                            inlet_factor=inlet_factor, outlet_factor=outlet_factor)
+    return fluxes, pump, opening, intensities.get(c['fault'], 0.)
 
 
-def integrate(config, action=None, at=0., parameters=None, *, include_at=False):
+def _rk_step(c, heads, start, end, evaluate):
+    dt = end - start
+    left, flux1 = donor_stage(c, heads, evaluate(heads, start), dt)
+    # Sample the left limit at switches. The next step samples the new inputs.
+    right, flux2 = donor_stage(c, left, evaluate(left, math.nextafter(end, start)), dt)
+    return [(a + b) / 2 for a, b in zip(heads, right)], [(a + b) / 2 for a, b in zip(flux1, flux2)]
+
+
+def hydraulic_step(c, state, when, dt, action=None, at=0., parameters=None):
+    """Advance the hydraulic state used by the state estimator."""
+    def evaluate(heads, time):
+        return flows(c, heads, time, action, at, parameters or {})[0]
+
+    return _rk_step(c, state, when, when + dt, evaluate)
+
+
+def integrate_hydraulics(c, targets, boundaries, evaluate, *, inspect_step=None):
+    """Integrate the tank state across sample times and discontinuities."""
+    heads, t = [c['initial1'], c['initial2']], 0.
+    initial_volume = c['area1'] * heads[0] + c['area2'] * heads[1]
+    totals = [0.] * 7
+    if inspect_step is not None:
+        inspect_step(t, heads)
+
+    def fluxes(state, when):
+        return evaluate(state, when)[0]
+
+    for target in targets:
+        while t < target:
+            index = bisect_right(boundaries, t)
+            boundary = boundaries[index] if index < len(boundaries) else target
+            end = min(round(t + c['integrationStep'], 12), target, boundary)
+            heads, accepted = _rk_step(c, heads, t, end, fluxes)
+            totals = [volume + (end - t) * flow for volume, flow in zip(totals, accepted)]
+            t = end
+            if inspect_step is not None:
+                inspect_step(t, heads)
+        f, pump, opening = evaluate(heads, target)
+        volume = c['area1'] * heads[0] + c['area2'] * heads[1]
+        leaked = totals[3] + totals[6]
+        spilled = totals[4] + totals[5]
+        yield dict(t=target, level1=heads[0], level2=heads[1], inlet=f[0], transfer=f[1], outlet=f[2],
+                   pump=pump, valve=opening, leak=f[3] + f[6], leak1=f[3], leak2=f[6], spill=f[4] + f[5],
+                   volume=volume, delivered=totals[2], spilled=spilled, injected=totals[0], leaked=leaked,
+                   massResidual=volume - initial_volume - totals[0] + totals[2] + leaked + spilled)
+
+
+def integrate(config, action=None, at=0., parameters=None, *, include_at=False,
+              feedback=None, control_interval=None, disturbances=(), observation_times=(),
+              pump_profile=None, pump_boundaries=(), sample_times=None, faults=None,
+              schedule=None, inspect_step=None):
+    """Run a tank scenario with measured feedback, pump profiles, or scheduled commands."""
     c = config
-    p = {k:v['default'] for k,v in PARAMETERS.items()} | (parameters or {})
+    p = {key: value['default'] for key, value in PARAMETERS.items()} | (parameters or {})
     rng = random.Random(c['seed'])
-    heads, t = [c['initial1'],c['initial2']], 0.
-    initial_volume = c['area1']*heads[0]+c['area2']*heads[1]
-    totals = [0.]*6
-    physical, rows = [], []
-    boundaries = sorted(set([c['duration'], c['start'], *([c['start']+c['fault_duration']] if c['fault_duration'] is not None else []), *([at] if action else [])]))
+    commands = {'pump': c['pumpControl'], 'valve': c['valve']} if feedback is not None else None
+    control_times = set()
+    if feedback is not None:
+        if not finite(control_interval) or control_interval <= 0:
+            raise ValueError('Control interval must be positive.')
+        control_times = {round(i * control_interval, 9) for i in range(math.ceil(c['duration'] / control_interval))}
 
-    def stage(state, when, dt):
-        f, _, _, _ = flows(c,state,when,action,at,p)
-        # Joint donor limiting keeps transfer, leak and overflow conservative.
-        demand1 = max(0,f[1])+f[3]+f[4]
-        scale1 = min(1., state[0]*c['area1']/(dt*demand1)) if demand1 else 1.
-        demand2 = max(0,-f[1])+f[2]+f[5]
-        scale2 = min(1., state[1]*c['area2']/(dt*demand2)) if demand2 else 1.
-        f[1] *= scale1 if f[1] >= 0 else scale2
-        f[3] *= scale1; f[4] *= scale1
-        f[2] *= scale2; f[5] *= scale2
-        return [max(0.,state[0]+dt*(f[0]-f[1]-f[3]-f[4])/c['area1']),
-                max(0.,state[1]+dt*(f[1]-f[2]-f[5])/c['area2'])], f
+    starts = []
+    if schedule is not None:
+        schedule = list(schedule)
+        starts = [item[0] for item in schedule]
+        if (not starts or starts[0] != 0 or starts[-1] >= c['duration']
+                or not all(finite(t) for t in starts) or any(b <= a for a, b in zip(starts, starts[1:]))):
+            raise ValueError('Tank input schedule must start at zero and increase inside the horizon.')
+        if any(not finite(pump) or not 0 <= pump <= 150 + 1e-12
+               or not finite(valve) or not .01 - 1e-12 <= valve <= 1 + 1e-12 for _, pump, valve in schedule):
+            raise ValueError('Tank input schedule exceeds the physical actuator bounds.')
 
-    count = math.ceil(c['duration']/c['step'])
-    targets = {round(min(index*c['step'],c['duration']),9) for index in range(count+1)}
+    disturbance_times = {time for event in disturbances for time in (event['start'], event['end'])}
+    boundaries = {c['duration'], c['start'], *starts, *pump_boundaries, *disturbance_times}
+    if c['fault_duration'] is not None:
+        boundaries.add(c['start'] + c['fault_duration'])
+    if action:
+        boundaries.add(at)
+
+    if sample_times is None:
+        count = math.ceil(c['duration'] / c['step'])
+        targets = {min(round(i * c['step'], 9), c['duration']) for i in range(count)}
+        targets.add(c['duration'])
+    else:
+        targets = set(sample_times)
+    targets.update(control_times | disturbance_times)
+    targets.update(observation_times)
     if include_at:
         targets.add(at)
-    for target in sorted(targets):
-        while t < target-1e-10:
-            next_boundary = next((b for b in boundaries if b > t+1e-10),target)
-            dt = min(c['integrationStep'],target-t,next_boundary-t)
-            # Both SSP stages use the same side of a discontinuity. The next
-            # substep begins at the event with the new fault/action inputs.
-            left, flux1 = stage(heads,t,dt)
-            right, flux2 = stage(left,t+dt*.999999999,dt)
-            heads = [(a+b)/2 for a,b in zip(heads,right)]
-            totals = [v+dt*(a+b)/2 for v,a,b in zip(totals,flux1,flux2)]
-            t = round(t+dt,12)
-        f,pump,opening,s = flows(c,heads,target,action,at,p)
-        bias = c['sensorBias']*s if c['fault'] == 'sensor_bias' else 0.
-        rows.append(dict(t=target,level1=heads[0]+rng.gauss(0,c['noise']),
-                         level2=heads[1]+bias+rng.gauss(0,c['noise']),
-                         inlet=f[0],transfer=f[1],outlet=f[2],pump=pump,valve=opening))
-        volume = c['area1']*heads[0]+c['area2']*heads[1]
-        physical.append(dict(t=target,level1=heads[0],level2=heads[1],inlet=f[0],transfer=f[1],outlet=f[2],
-            leak=f[3],spill=f[4]+f[5],volume=volume,delivered=totals[2],spilled=totals[4]+totals[5],
-            massResidual=volume-initial_volume-totals[0]+totals[2]+totals[3]+totals[4]+totals[5]))
+
+    def evaluate(heads, when):
+        disturbance = next((event for event in disturbances if event['start'] <= when < event['end']), None)
+        inputs = schedule[bisect_right(starts, when) - 1][1:] if schedule is not None else None
+        fluxes, pump, opening, _ = flows(c, heads, when, action, at, p, pump_profile, commands=commands,
+                                          disturbance=disturbance, faults=faults, inputs=inputs)
+        return [*fluxes, 0.], pump, opening
+
+    rows, physical = [], []
+    for state in integrate_hydraulics(c, sorted(targets), sorted(boundaries), evaluate, inspect_step=inspect_step):
+        target = state['t']
+        observed = {key: state[key] for key in ('t', 'level1', 'level2', 'inlet', 'transfer', 'outlet', 'pump', 'valve')}
+        bias = c['sensorBias'] * active_intensities(c, target, faults).get('sensor_bias', 0.)
+        observed['level1'] += rng.gauss(0, c['noise'])
+        observed['level2'] = state['level2'] + bias + rng.gauss(0, c['noise'])
+        if commands is not None:
+            observed['valve'] = commands['valve']
+        if target in control_times:
+            # The controller receives observed signals before actuation.
+            commands = feedback(dict(observed))
+            if (not isinstance(commands, dict) or set(commands) != {'pump', 'valve'}
+                    or not finite(commands['pump']) or not 0 <= commands['pump'] <= 150
+                    or not finite(commands['valve']) or not .01 <= commands['valve'] <= 1):
+                raise ValueError('Feedback returned an invalid tank actuator command.')
+            observed.update(commands)
+            f, _, _ = evaluate([state['level1'], state['level2']], target)
+            state.update(inlet=f[0], transfer=f[1], outlet=f[2], leak=f[3], spill=f[4] + f[5])
+        rows.append(observed)
+        physical.append({key: value for key, value in state.items()
+                         if key not in {'pump', 'valve', 'leak1', 'leak2', 'injected', 'leaked'}})
     return rows, physical
 
 
@@ -156,8 +280,8 @@ class CoupledTankModel:
             description='Two interacting liquid tanks with gravity flow, pump faults, leakage and sensor bias.',category='Hydraulic process',
             source=dict(name='L5 interacting tank implementation; mass balance and square-root discharge law',
                 url='https://engineering.ju.edu.jo/ar/arabic/Laboratories/Two%20Level%20System.pdf'),
-            limitations=['Illustrative parameters, not calibrated to a physical plant.',
-                'Open-loop pump/valve control; known-model forecasts only.',
+            limitations=['Default parameters describe an illustrative plant.',
+                'Closed-loop control uses measured levels and a nominal local model.',
                 'Ground truth describes fault injection, including residual transients after a finite fault ends.'],
             defaults=DEFAULTS,configFields=FIELDS,signals=SIGNALS,faults=FAULTS,actions=ACTIONS,actionParameters=PARAMETERS,
             tools=['level_trend','flow_balance','sensor_check'],
@@ -203,20 +327,20 @@ class CoupledTankModel:
             elif tool == 'flow_balance':
                 result = dict(unit='m³',measuredStorageChange=storage,integratedNetInflow=net,
                               unexplainedVolume=net-storage,
-                              interpretation='A residual may reflect leakage, overflow, sensor errors or sampling error; it is not a fault classification.')
+                              interpretation='Leakage, overflow, sensor errors and sampling error can all contribute to the residual.')
             else:
                 expected = rows[0]['level2'] + sum(((a['transfer']-a['outlet'])+(b['transfer']-b['outlet']))/2*(b['t']-a['t'])/c['area2'] for a,b in zip(rows,rows[1:]))
                 result = dict(unit='m',measuredLevel=rows[-1]['level2'],flowIntegratedLevel=expected,
                     discrepancy=rows[-1]['level2']-expected,
-                    interpretation='Flow integration is anchored at the first measured level. A constant bias already present at the window start is not identifiable; overflow and sampling also affect this residual.')
+                    interpretation='Flow integration starts from the first measured level and tracks changes from that baseline. Overflow and sampling also affect this residual.')
             trace.append(dict(tool=tool,args={},result=result))
         return dict(asOf=rows[-1]['t'],trace=trace)
 
     def intervene(self, session, rows, body):
         if body.get('mode','known') != 'known':
-            raise ValueError('Coupled tanks support known-model forecasts; observed-data parameter fitting is not available.')
+            raise ValueError('Choose the known-model forecast mode for coupled tanks.')
         if body.get('search'):
-            raise ValueError('Intervention start-time search is not supported by this model.')
+            raise ValueError('Specify a start time for each tank intervention.')
         if body.get('hypothesis',session['config']['fault']) != session['config']['fault']:
             raise ValueError('Tank forecasts use the saved scenario fault; create another scenario to change it.')
         horizon=body.get('horizon',session['config']['duration']); at=body.get('at',rows[-1]['t'])
@@ -244,4 +368,4 @@ class CoupledTankModel:
                 ('levelDeviation','Tank 2 absolute level deviation','m·s'),('peakLevel','Peak physical level','m'),
                 ('delivered','Delivered water','m³'),('overflow','Overflow volume','m³'),('controlEffort','Pump command change','%·s')]],
             signalDefinitions=[{**s,'label':{'level1':'Tank 1 physical level','level2':'Tank 2 physical level','outlet':'Outlet delivery flow'}[s['key']]} for s in SIGNALS if s['key'] in ('level1','level2','outlet')],
-            scope='simulation-only',uncertainty='Known illustrative model; no parameter fitting or predictive uncertainty bounds. Metrics start at the action time.')
+            scope='simulation-only',uncertainty='Forecasts use fixed scenario parameters. Metrics start at the action time.')

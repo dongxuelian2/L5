@@ -1,4 +1,4 @@
-import { t as tr, useLocale } from "../i18n";
+import { t as tr } from "../lib/text";
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { detectedAt, formatValue, pointAt, scenario } from "../lib/engine";
@@ -44,7 +44,6 @@ export function ProcessMap({
   onSelect: (key: SignalKey) => void;
   selected: SignalKey | null;
 }) {
-  useLocale();
   const [trace, setTrace] = useState<SignalKey | null>(null);
   const point = pointAt(time);
   const active = time >= scenario.detections.valve.time;
@@ -72,25 +71,25 @@ export function ProcessMap({
   return (
     <Panel
       code="01"
-      title={tr("Process topology")}
+      title={"Process topology"}
       className="process-panel"
       action={
         <span className="panel-meta">
-          <StatusDot pulse />{" "}{tr("6 signals connected")}{" "}</span>
+          <StatusDot pulse />{" "}6 signals connected{" "}</span>
       }
     >
       <div className="map-caption">
         <span>
-          <span className="text-mint">──</span>{" "}{tr("Material flow")}{" "}</span>
+          <span className="text-mint">──</span>{" "}Material flow{" "}</span>
         <span>
-          <span className="text-amber">┄┄</span>{" "}{tr("Causal propagation")}{" "}</span>
-        <span className="map-caption-right">{tr("Δ DETECTION LAG")}</span>
+          <span className="text-amber">┄┄</span>{" "}Causal propagation{" "}</span>
+        <span className="map-caption-right">Δ DETECTION LAG</span>
       </div>
       <div className={`process-map ${trace ? "is-tracing" : ""}`}>
         <svg
           viewBox="0 0 680 294"
           role="group"
-          aria-label={tr("Process topology: cooling valve to flow, reactor temperature and pressure, separator, then product purity")}
+          aria-label={"Process topology: cooling valve to flow, reactor temperature and pressure, separator, then product purity"}
         >
           <defs>
             <pattern
@@ -120,14 +119,14 @@ export function ProcessMap({
             markerEnd="url(#flow-arrow)"
           />
           <text x="23" y="67" className="map-small">
-            {" "}{tr("COOLING LOOP")}{" "}</text>
+            {" "}COOLING LOOP{" "}</text>
           <text x="358" y="40" className="map-small">
-            {" "}{tr("REACTION")}{" "}</text>
+            {" "}REACTION{" "}</text>
           <text x="528" y="40" className="map-small">
-            {" "}{tr("SEPARATION")}{" "}</text>
+            {" "}SEPARATION{" "}</text>
           <path d="M351 52 H473 V266 H351" className="unit-boundary" />
           <text x="412" y="284" textAnchor="middle" className="map-small">
-            {" "}{tr("R-101 / REACTOR")}{" "}</text>
+            {" "}R-101 / REACTOR{" "}</text>
           {signalPaths.map((path, i) => {
             const key = orderedSignals[i + 1];
             const detected = detectedAt(key, time);
@@ -216,16 +215,16 @@ export function ProcessMap({
                 </text>
                 <text x={x + 10} y={y + 56} className="node-name">
                   {tag.key === "temperature"
-                    ? tr("temperature")
+                    ? "temperature"
                     : tag.key === "separator"
-                      ? tr("separator")
+                      ? "separator"
                       : tag.key === "purity"
-                        ? tr("product")
+                        ? "product"
                         : tag.key === "valve"
-                          ? tr("cooling valve")
+                          ? "cooling valve"
                           : tag.key === "flow"
-                            ? tr("water flow")
-                            : tr("pressure")}
+                            ? "water flow"
+                            : "pressure"}
                 </text>
                 <path
                   d={`M${x + 9} ${y + 75}H${x + 95}`}
@@ -236,7 +235,7 @@ export function ProcessMap({
             );
           })}
           <text x="54" y="253" className="map-small">
-            {active ? tr("╰─ FIRST DEVIATION") : tr("╰─ BASELINE STABLE")}
+            {active ? "╰─ FIRST DEVIATION" : "╰─ BASELINE STABLE"}
           </text>
           {active && (
             <motion.text
@@ -250,9 +249,9 @@ export function ProcessMap({
             </motion.text>
           )}
           <text x="23" y="226" className="map-small">
-            {" "}{tr("FEED")}{" "}</text>
+            {" "}FEED{" "}</text>
           <text x="635" y="103" className="map-small">
-            {" "}{tr("OUT")}{" "}</text>
+            {" "}OUT{" "}</text>
         </svg>
       </div>
       <div className="map-bottom">
@@ -264,10 +263,10 @@ export function ProcessMap({
                 .map((key) => scenario.tags.find((tag) => tag.key === key)!.tag)
                 .join(" → ")})
             : active
-              ? tr("The first deviation is upstream of the first pressure alarm.")
-              : tr("Monitoring baseline. Cooling loop and downstream units are stable.")}
+              ? "The first deviation is upstream of the first pressure alarm."
+              : "Monitoring baseline. Cooling loop and downstream units are stable."}
         </span>
-        <span className="muted">{tr("hover to trace · click to inspect ↗")}</span>
+        <span className="muted">hover to trace · click to inspect ↗</span>
       </div>
     </Panel>
   );

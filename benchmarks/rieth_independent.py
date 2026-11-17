@@ -5,12 +5,9 @@ Training and testing simulations use nonoverlapping random-number seeds per
 the original data documentation. The data's simulationRun *index* may still
 repeat between the two disjoint-seed datasets.
 
-Only TWO fault-free RData files are downloaded. No fault labels are used to
-select a model or a threshold. All monitor options/policies/run IDs are fixed
-before observing the external normal-test trajectories.
-
-The 10 external normal test files below are different simulated trajectories
-of the SAME operating mode. They are not separate plant operating modes.
+Two fault-free RData files provide the training and test trajectories. The
+protocol fixes monitor options, policies, and run IDs before scoring ten
+external normal trajectories in TEP mode 1.
 """
 from __future__ import annotations
 
@@ -43,9 +40,7 @@ POLICIES = ("quantile-alpha-01", "normal-calibration-1episode-2pct")
 FOLDS = (("A", 1, 2, 3), ("B", 4, 5, 6))
 EXTERNAL_TEST_RUN_IDS = tuple(range(1, 11))
 MAX_BYTES = 100 * 1024 * 1024
-# SHA-256 observed in the first successful full Dataverse reference workflow.
-# Fail closed if file contents change instead of silently treating an upstream
-# modification as a reproducible replication.
+# Pinned SHA-256 values for the two Dataverse source files.
 PINNED_SHA256 = {
     "train": "12d1055b852763fac09ef36bd7c9612a800c8bf7b6f75f344d12119206f9e940",
     "test": "4f45afafa469793eeb7203fb9ed10ed0b1724c73c9c95537f15a0889ade0ebd4",
@@ -67,9 +62,7 @@ def _sha256(path: Path) -> str:
 
 
 def download_normal_data(directory: Path) -> dict:
-    """Retrieve only 23MB train + 45MB test (never fault files or source code).
-
-    Reject responses that look like error pages; keep data outside the repo.
+    """Retrieve and verify the 23 MB training and 45 MB test files.
     """
     directory.mkdir(parents=True, exist_ok=True)
     meta = {}
@@ -124,8 +117,7 @@ def extract_run_arrays(
 ) -> dict[int, np.ndarray]:
     """Validate the original 55-column schema and contiguous run sample order.
 
-    Metadata cols are never passed to detectors. Refuse incomplete/mixed runs
-    rather than silently reusing a different run or concatenating identities.
+    Return feature columns for the requested complete runs in sample order.
     """
     required = ("faultNumber", "simulationRun", "sample", *VARIABLES)
     if len(columns) != len(required) or set(columns) != set(required) or len(set(columns)) != len(columns):
@@ -233,12 +225,12 @@ def run_independent_runs(
         "rows": [],
         "paired_vs_maxz": [],
         "limitations": [
-            "Independent simulation seed runs are not different plant modes; this evaluates TEP mode 1 only.",
+            "The protocol assesses independently seeded trajectories in TEP mode 1.",
             "Training and testing run index numbers can coincide while original random seeds do not overlap per the dataset authors.",
-            "Neither held-out normal test nor an anomaly/fault label participates in model fitting or calibration.",
-            "A normal-calibration alarm workload cap is not a guaranteed population false alarm limit.",
-            "Only 10 predeclared external normal simulations are inspected; ranges are descriptive, not confidence intervals.",
-            "This PR measures held-out NORMAL false alarms. It does not claim an independent fault-detection evaluation.",
+            "Separate normal training runs supply fitting and calibration samples.",
+            "The workload cap applies to alarms observed during normal calibration.",
+            "Reported ranges describe the ten preselected external normal simulations.",
+            "The study measures false alarms in held-out normal trajectories.",
         ],
     }
     for name,fit_id,cal_id,val_id in folds:
@@ -306,7 +298,7 @@ def render_markdown(report: dict) -> str:
         "# Rieth TEP: independently seeded normal-run holdout", "",
         "Distinct training/calibration/validation simulation runs and 10 external",
         "**separately seeded normal test trajectories**. All runs remain TEP mode 1.",
-        "No fault-based algorithm or threshold selection and no fault-test data.",
+        "Separate normal runs supply the fit, calibration, validation, and test data.",
         "",
         "| Fold | Policy | Detector | Calibration episodes / active | Untouched normal validation episodes / active | External 10 runs: total episodes | Median episodes per run | External total active samples |",
         "|:--|:--|:--|:--|:--|--:|--:|--:|",

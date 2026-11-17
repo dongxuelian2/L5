@@ -1,7 +1,6 @@
 """SQLite experiments, immutable run snapshots and a bounded local batch worker."""
 from __future__ import annotations
 
-import hashlib
 import itertools
 import json
 import math
@@ -16,6 +15,7 @@ import numpy as np
 
 from .analysis import ALGORITHMS
 from .experiment_evaluation import RULES, evaluate, validate_intervals
+from .independent import file_hash, snapshot as dataset_snapshot
 from .incident_timeline import compare_intervals, observed_spans
 from .incidents import text
 from .workspace import now
@@ -51,19 +51,11 @@ def numeric(key, value):
     return value
 
 
-def file_hash(path):
-    digest = hashlib.sha256()
-    with path.open('rb') as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 class ExperimentService:
     def __init__(self, store):
         self.store, self.lock, self.working = store, Lock(), False
         # The single batch worker owns this bounded cache. Test scoring resets
-        # temporal state; keys include frozen training content and engine hashes.
+        # temporal state; keys identify the frozen training data and detector settings.
         self.fitted_models = OrderedDict()
         with store.connect() as db:
             db.executescript('''
@@ -97,6 +89,8 @@ class ExperimentService:
             db.execute("UPDATE experiment_tasks SET status='interrupted',error=?,completed_at=? WHERE status IN ('queued','running')",
                        ('Local service stopped before this task completed. Retry unfinished tasks in a new run.', stamp))
             db.execute("UPDATE experiment_runs SET status='interrupted',completed_at=? WHERE status IN ('queued','running')", (stamp,))
+        from .design_experiments import DesignExperiments
+        self.designs = DesignExperiments(store)
 
     def list(self, workspace_id):
         self.store.workspace(workspace_id)
@@ -415,24 +409,15 @@ class ExperimentService:
             snapshot = dict(schemaVersion=1, experiment={k: experiment[k] for k in ('id', 'name', 'description', 'revision', 'notes', 'conclusion', 'conclusion_run_ids')},
                 config=config, dataset={**dataset, 'sha256': file_hash(folder / 'series.npz'), 'sourceCsvSha256': file_hash(folder / 'source.csv')},
                 labels=self.labels(config['labelSetId']) if config.get('labelSetId') else None,
-                engine=dict(python=platform.python_version(), numpy=np.__version__, analysis='l5.analysis.run_analysis',
-                    sourceHashes={name: file_hash(Path(__file__).resolve().parents[1] / name) for name in (
-                        'l5/analysis.py', 'l5/monitoring.py', 'benchmarks/coverage.py', 'benchmarks/temporal.py',
-                        'benchmarks/window_cusum.py', 'benchmarks/dynamic_pca.py', 'benchmarks/adaptive.py')}), rules=RULES)
+                engine=dict(python=platform.python_version(), numpy=np.__version__, analysis='l5.analysis.run_analysis'),
+                rules=RULES)
             snapshot['researchRecordId'] = experiment['records'][0]['id'] if experiment['records'] else None
             if config.get('training'):
-                from .independent import snapshot as dataset_snapshot
                 ids = dict.fromkeys([ref['datasetId'] for ref in config['training'].values()] + [test['datasetId'] for test in config['testDatasets']])
                 snapshot['datasets'] = {identity: dataset_snapshot(self.store, self.store.dataset(identity)) for identity in ids}
                 snapshot['testLabels'] = {test['datasetId']: self.labels(test['labelSetId']) if test.get('labelSetId') else None for test in config['testDatasets']}
                 snapshot['schemaVersion'] = 2
                 snapshot['engine']['analysis'] = 'l5.independent.fit_detector / score_detector -> l5.analysis.score_analysis'
-                snapshot['engine']['sourceHashes'].update({name: file_hash(Path(__file__).resolve().parents[1] / name) for name in (
-                    'l5/independent.py', 'l5/tep_import.py', 'l5/datasets.py', 'benchmarks/rieth_stream.py',
-                    'benchmarks/rieth_sources.json', 'examples/tep/protocol.json', 'l5/experiment_evaluation.py',
-                    'l5/detection_metrics.py', 'l5/tep_study.py', 'l5/experiments.py', 'l5/external_benchmark.py',
-                    'l5/tep_fault3.py', 'l5/tep_study_reports.py', 'examples/tep/expanded_protocol.json',
-                    'examples/tep/robustness_protocol.json')})
                 if config.get('benchmark'):
                     from .tep_study import protocol_for
                     snapshot['benchmarkProtocol'] = protocol_for(config['benchmark']['protocolId'])
@@ -493,7 +478,7 @@ class ExperimentService:
                     from .independent import fit_detector, training_key
                     key = training_key(task['config'])
                     training_hashes = {role: snapshot['datasets'][ref['datasetId']]['sha256'] for role, ref in task['config']['training'].items()}
-                    cache_key = encode(dict(config=key, training=training_hashes, engine=snapshot['engine']['sourceHashes']))
+                    cache_key = encode(dict(config=key, training=training_hashes))
                     reused = cache_key in self.fitted_models
                     if not reused:
                         self.fitted_models[cache_key] = fit_detector(self.store, dataset['workspace_id'], task['config'])

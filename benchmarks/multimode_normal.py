@@ -2,18 +2,13 @@
 
 Source: Lichen0102 / THUFDD MMFDD-TEP v1.0 (2023).
 Pinned GitHub commit 09c194f78281bb495da6669cae7a726515f4a4cb.
-This is NOT Reinartz et al.'s 133GB DTU dataset or Rieth's Dataverse.
+Each m{1..6}d00.mat file contains a single normal trajectory. The benchmark
+uses columns 0 through 52, which the source identifies as 41 measurements
+and 12 inputs. It treats the THUFDD schema as a separate channel definition.
 
-The six m{1..6}d00.mat files contain SINGLE normal trajectories per
-mode, in columns 0..52 of an 81-column MATLAB matrix. Remaining
-28 disturbance columns are never used. Original README describes 41
-measurements and 12 input variables; exact channel equivalence to the
-older canonical 52-variable Braatz/Rieth representation is NOT assumed.
-
-This tests cross-mode nuisance alarms only, NOT new fault-detection scores.
-Every model is fitted/calibrated on one mode's early/medium normal period,
-and scored on strictly future portions of ALL six normal mode trajectories.
-The target-mode sequence never influences training or calibration.
+The study measures nuisance alarms across operating modes. Fit and calibrate
+on the early and middle sections of one source mode, then score the later
+sections of all six normal trajectories.
 """
 from __future__ import annotations
 
@@ -67,7 +62,7 @@ def original_git_blob_sha(data: bytes) -> str:
 
 def download_mode_data(directory: Path, *, modes: tuple[int, ...] = MODE_IDS,
                        allow_network: bool = True) -> dict:
-    """Only six 1.6 MB normal source files; fail closed on changed content."""
+    """Load the six 1.6 MB normal source files and validate their content."""
     if not modes or len(set(modes)) != len(modes) or any(i not in MODE_IDS for i in modes):
         raise ValueError("Choose distinct official operating modes 1..6.")
     directory.mkdir(parents=True, exist_ok=True)
@@ -160,8 +155,7 @@ def run_transfer(
     """The six source trajectories have one fixed, untouched test tail each.
 
     FIT=first 720, CAL=next 360, EVAL=all later samples, for EVERY mode.
-    No target-mode observations enter the source-mode fitted model/threshold.
-    This is not cross-run independence within a mode; only ONE run/mode.
+    Fit and calibrate on the source mode. Each mode contributes one trajectory.
     """
     if not modes or len(set(modes)) != len(modes) or any(i not in MODE_IDS for i in modes):
         raise ValueError("Expected unique declared mode IDs 1..6.")
@@ -172,8 +166,7 @@ def run_transfer(
         raise ValueError("Each normal mode requires at least 1200 time samples.")
     evaluation = {mode: batch(data[mode][CAL_END:], TEP_MULTIMODE_SCHEMA, f'thufdd-mode-{mode}-normal',
                               'normal_test', start=CAL_END, operating_mode=str(mode)) for mode in modes}
-    # Cross-mode only tests after an identical logical time boundary.
-    # The tails remain untouched by fitting and threshold selection.
+    # Use the same held-out time boundary for every mode.
     report = {
         "schema_version": 1, "benchmark": VERSION,
         "source": SOURCE_REPO, "source_commit": SOURCE_COMMIT,

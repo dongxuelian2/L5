@@ -1,7 +1,7 @@
 """TripLens investigation engine. Native Python, observed data in / evidence out.
 
-Fault labels only enter the simulator and the evaluation harness. diagnose() has
-no scenario parameter. All scores are rule support, never probabilities.
+The simulator and evaluation harness use fault labels. Diagnosis uses observed
+rows, and its scores summarize support from investigation rules.
 """
 from __future__ import annotations
 
@@ -10,12 +10,8 @@ import io
 import json
 import math
 import statistics as stats
-import sys
 from dataclasses import dataclass, asdict
-from pathlib import Path
 
-if __package__ in (None, ''):  # Preserve the original `python simulation/platform.py` entry point.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from l5.contracts import Signal, SignalSchema
 
 DURATION = 240
@@ -45,7 +41,7 @@ FAULTS = {
     'temperature_drift': 'Temperature sensor drift', 'sensor_freeze': 'Pressure sensor freeze',
     'controller_limit': 'Controller output limit', 'loop_oscillation': 'Control-loop oscillation',
 }
-# Typed edges are also consumed by propagation analysis, not only the drawing.
+# Propagation analysis and the process diagram share the typed edges.
 EDGES = [
     ('utility', 'flow', 'energy'), ('pump', 'flow', 'material'),
     ('cooling_op', 'valve', 'control'), ('valve', 'flow', 'material'),
@@ -311,7 +307,7 @@ def propagation(rows, ev):
 
 
 def diagnose(rows):
-    """Blind entry point: only timestamped observations, no labels or config."""
+    """Rank fault hypotheses from timestamped observations."""
     ev = evidence(rows)
     d, h = ev['changes'], ev['health']
     def delta(key): return d.get(key, 0)
@@ -360,7 +356,7 @@ def diagnose(rows):
             }.get((fid,key),[key])
             unusable = [k for k in dependencies if not h.get(k,{}).get('usable',False)]
             usable = not unusable
-            # Sensor health itself is evidence of a fault, never evidence of process causality.
+            # Use sensor health as evidence for measurement faults.
             if fid=='sensor_freeze' and key=='pressure' and h.get(key,{}).get('status')=='frozen':
                 usable=True
             if not usable:
@@ -492,7 +488,7 @@ def fit_hypothesis(rows, diagnosis, *, hypothesis=None, duration=None):
     onset=min((v['onset']-origin for v in diagnosis['detections'].values()),default=observed_duration)
     operating = stats.median(r['temperature_peer'] for r in rows if r['t'] < origin + BASELINE and finite(r.get('temperature_peer'))) - 120 if any(finite(r.get('temperature_peer')) for r in rows if r['t'] < origin + BASELINE) else 0
     best=None
-    # Fit numerical parameters to observed traces; never pass the case's ground truth.
+    # Fit numerical parameters from the observed traces.
     for start in sorted(set(max(0, min(observed_duration, onset-d)) for d in (0,3,6))):
         for severity in (.25,.5,.75,1,1.25,1.5,2):
             c=Config(fault=leader,start=start,severity=severity,operating=operating,duration=observed_duration,step=step)
@@ -537,7 +533,7 @@ def interventions(config, *, fit_error=None, from_time=BASELINE, resolution=None
     return dict(threshold=THRESHOLD,resolution=resolution,horizon=config.duration,base=base,actions=results,
                 status='model_conditional' if base['trip'] is not None else 'baseline_below_pressure_limit',
                 fitError=fit_error,scope='simulation-only',
-                uncertainty='No predictive intervals; parameter error and model mismatch are not bounded.',
+                uncertainty='Predictions are point estimates subject to parameter error and model mismatch.',
                 evaluated=len(selected)*len(times),
                 safest=max(safe,key=lambda r:r['margin'])['id'] if safe else None,
                 lowestLoss=min(safe,key=lambda r:(r['productionLoss'],r['severity'],r['utilityCost']))['id'] if safe else None,
@@ -709,38 +705,6 @@ def benchmark():
                 limitation='Internal varied-parameter diagnosis regression, not independent validation. External TEP anomaly studies are separate and do not validate this diagnosis engine.')
 
 
-def build_platform():
-    cases=[]
-    for i,fid in enumerate(FAULTS):
-        print(f'Computing case {i+1}/{len(FAULTS)}: {fid}',flush=True)
-        rows=simulate(Config(fault=fid,seed=i+1))
-        analyzed=analyze_rows(rows)
-        fit=fit_hypothesis(rows,analyzed['diagnosis'])
-        recovery=interventions(fit[0],fit_error=fit[1])
-        snapshots=[]
-        for end in (40,70,110,180,240):
-            prefix=[r for r in rows if r['t']<=end]
-            snapshots.append(dict(time=end,**analyze_rows(prefix)))
-        trace=tool_trace(rows,analyzed['diagnosis'],analyzed['alarms'],fit)
-        trace.append(dict(index=len(trace)+1,tool='simulate_intervention',args=dict(actions=len(ACTIONS),resolution=1),result=dict(evaluated=recovery['evaluated'],latest=recovery['latest']),status='completed'))
-        analyzed['trace']=trace
-        cases.append(dict(id=f'INC-{i+101}',title=f'Process session {i+1:02}',rows=rows,**analyzed,snapshots=snapshots,
-                          fit=dict(hypothesis=fit[0].fault,parameters=asdict(fit[0]),error=fit[1]),recovery=recovery))
-    # Historical matches use observed signal fingerprints, with no asserted root-cause labels.
-    for case in cases:
-        fingerprint=case['diagnosis']['changes']
-        matches=[]
-        for other in cases:
-            if case is other: continue
-            distance=sum(min(4,abs(fingerprint.get(k,0)-other['diagnosis']['changes'].get(k,0))/max(1,abs(META[k]['nominal'])*.05)) for k in KEYS)/len(KEYS)
-            shared=[META[k]['tag'] for k in case['diagnosis']['detections'] if k in other['diagnosis']['detections'] and case['diagnosis']['detections'][k]['direction']==other['diagnosis']['detections'][k]['direction']]
-            matches.append(dict(id=other['id'],similarity=round(max(0,1-distance/4)*100),shared=shared,leading=other['diagnosis']['candidates'][0]['name']))
-        case['similar']=sorted(matches,key=lambda m:-m['similarity'])[:3]
-    return dict(schemaVersion=2,model='TripLens coupled process model v2',signals=list(META.values()),edges=[dict(source=a,target=b,kind=k) for a,b,k in EDGES],
-                faults=FAULTS,cases=cases,benchmark=benchmark(),limitations=['Evidence scores are not calibrated probabilities.','Counterfactuals depend on the fitted leading hypothesis and a 240-second horizon.','Local deterministic investigation policy; external model inference is not enabled.'])
 
-
-if __name__=='__main__':
-    target=Path(__file__).resolve().parents[1]/'src/data/platform.json'
-    target.write_text(json.dumps(build_platform(),separators=(',',':'),allow_nan=False)+'\n',encoding='utf-8',newline='\n')
-    print(f'Wrote {target}')
+if __name__ == '__main__':
+    print(json.dumps(benchmark(), indent=2, allow_nan=False))

@@ -1,4 +1,3 @@
-import { useLocale } from "../i18n";
 import { animate, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Tone } from "../types";
@@ -10,7 +9,6 @@ export function Glyph({
   children: ReactNode;
   className?: string;
 }) {
-  useLocale();
   return (
     <span aria-hidden="true" className={`glyph ${className}`}>
       {children}
@@ -33,7 +31,6 @@ export function Panel({
   className?: string;
   tone?: Tone;
 }) {
-  useLocale();
   return (
     <section className={`panel ${className} ${tone ? `panel-${tone}` : ""}`}>
       <div className="panel-heading">
@@ -49,7 +46,6 @@ export function Panel({
 }
 
 export function Count({ value }: { value: number }) {
-  useLocale();
   const ref = useRef<HTMLSpanElement>(null);
   const previous = useRef(value);
   const reduced = useReducedMotion();
@@ -64,17 +60,16 @@ export function Count({ value }: { value: number }) {
       ease: "easeOut",
       onUpdate: (latest) => {
         if (ref.current)
-          ref.current.textContent = Math.round(latest).toLocaleString();
+          ref.current.textContent = Math.round(latest).toLocaleString("en");
       },
     });
     previous.current = value;
     return () => animation.stop();
   }, [value, reduced]);
-  return <span ref={ref}>{value.toLocaleString()}</span>;
+  return <span ref={ref}>{value.toLocaleString("en")}</span>;
 }
 
 export function ScrambleText({ text }: { text: string }) {
-  useLocale();
   const [display, setDisplay] = useState(text);
   const reduced = useReducedMotion();
   useEffect(() => {
@@ -114,7 +109,6 @@ export function BlockBar({
   color?: Tone;
   count?: number;
 }) {
-  useLocale();
   return (
     <span className={`block-bar text-${color}`} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
@@ -133,7 +127,6 @@ export function StatusDot({
   tone?: Tone;
   pulse?: boolean;
 }) {
-  useLocale();
   return (
     <span
       aria-hidden="true"
@@ -151,7 +144,6 @@ export function Reveal({
   delay?: number;
   className?: string;
 }) {
-  useLocale();
   return (
     <motion.div
       className={className}

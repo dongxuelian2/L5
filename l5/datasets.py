@@ -9,7 +9,7 @@ import pandas as pd
 
 from .data_quality import cadence, segment_ids, summarize
 
-TIME_NAMES = {'time', 'timestamp', 'datetime', 'date', 't', '时间', '日期'}
+TIME_NAMES = {'time', 'timestamp', 'datetime', 'date', 't'}
 TIME_UNITS = {'seconds': 1, 'milliseconds': .001, 'minutes': 60, 'hours': 3600}
 
 

@@ -43,8 +43,12 @@ class WorkspaceStore:
         self.runtime = SimulationService(self)
         from .scenarios import ScenarioService
         self.scenarios = ScenarioService(self)
+        from .estimation_workspace import EstimationService
+        self.estimations = EstimationService(self)
         from .incidents import IncidentService
         self.incidents = IncidentService(self)
+        from .recovery_studies import RecoveryStudies
+        self.recovery = RecoveryStudies(self)
         from .signals import SignalWorkspace
         self.signals = SignalWorkspace(self)
         from .transformations import TransformationService
@@ -53,10 +57,36 @@ class WorkspaceStore:
         self.experiments = ExperimentService(self)
         from .guided_demo import GuidedDemo
         self.guided_demo = GuidedDemo(self)
+        from .regime_workspace import RegimeService
+        self.regimes = RegimeService(self)
+        from .prognostic_sessions import PrognosticSessions
+        self.prognostics = PrognosticSessions(self)
         from .tep_import import TEPImportService
         self.tep = TEPImportService(self)
         from .tep_study import TEPStudyService
         self.tep_studies = TEPStudyService(self)
+        from .replay import ReplayService
+        self.replays = ReplayService(self)
+        from .sensor_health_service import SensorHealthService
+        self.sensor_health = SensorHealthService(self)
+        from .control_service import ControlService
+        self.control = ControlService(self)
+        from .calibration_service import CalibrationService
+        self.calibration = CalibrationService(self)
+        from .live import LiveGateway
+        self.live = LiveGateway(self)
+
+        from .alarm_sessions import AlarmService
+        self.alarms = AlarmService(self)
+        from .safety import SafetyService
+        self.safety = SafetyService(self)
+        from .resilience import ResilienceService
+        self.resilience = ResilienceService(self)
+        from .sensor_placement_service import SensorPlacementService
+        self.sensor_placement = SensorPlacementService(self)
+
+    def close(self):
+        self.live.close()
 
     @contextmanager
     def connect(self):
@@ -105,7 +135,7 @@ class WorkspaceStore:
         self.workspace(identity)
         simulations = {s['id'] for s in self.runtime.list(identity)}
         simulations.update(d['metadata']['model']['simulationId'] for d in self.datasets(identity) if d['metadata'].get('model'))
-        with self.connect() as db:
+        with self.live.workspace_removal(identity), self.connect() as db:
             db.execute('DELETE FROM workspaces WHERE id=?', (identity,))
             remaining = [self.dataset_row(r) for r in db.execute('SELECT * FROM datasets')]
         folder = self.root / identity  # identity has been resolved against an existing generated ID.
@@ -151,7 +181,7 @@ class WorkspaceStore:
 
         return self.save_dataset(workspace_id, name, metadata, times, values, body['csv'])
 
-    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None):
+    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None, on_save=None):
         """Persist imported and generated datasets through the same repository path."""
         self.workspace(workspace_id)
         name = self.name(name)
@@ -164,6 +194,8 @@ class WorkspaceStore:
             with self.connect() as db:
                 db.execute('INSERT INTO datasets VALUES (?,?,?,?,?)', (identity, workspace_id, name, json.dumps(metadata), stamp))
                 self.signals.register(dict(id=identity, metadata=metadata), db)
+                if on_save is not None:
+                    on_save(db, identity)
                 db.execute('UPDATE workspaces SET updated_at=? WHERE id=?', (stamp, workspace_id))
         except Exception:
             shutil.rmtree(folder)
@@ -179,6 +211,8 @@ class WorkspaceStore:
             return data['observed'] if 'observed' in data.files else np.isfinite(data['values'])
 
     def provenance_sample(self, dataset, index, signals):
+        if dataset['metadata'].get('estimation'):
+            return dict(provenance={s:'state-estimation' for s in signals}, observed={s:False for s in signals})
         if not dataset['metadata'].get('transformation'):
             return {}
         from .resampling import PROVENANCE
@@ -209,12 +243,12 @@ class WorkspaceStore:
     def sample(self, identity, at, signals=None):
         """Nearest full-resolution observation for a shared incident cursor."""
         if not np.isfinite(at):
-            raise ValueError('请选择有限的观察时间。')
+            raise ValueError('Enter a finite observation time.')
         dataset = self.dataset(identity)
         names = [c['name'] for c in dataset['metadata']['columns']]
         signals = names[:4] if signals is None else signals
         if not signals or any(s not in names for s in signals):
-            raise ValueError('请选择此数据集的数值变量。')
+            raise ValueError('Choose numeric variables from this dataset.')
         times, values = self.load_data(dataset)
         right = min(len(times)-1, int(np.searchsorted(times, at)))
         index = right-1 if right and abs(times[right-1]-at) <= abs(times[right]-at) else right
@@ -241,12 +275,15 @@ class WorkspaceStore:
         else:
             times, values = self.load_data(dataset)
             result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
-                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') else None)
+                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') or dataset['metadata'].get('estimation') else None)
+        return self.save_analysis(workspace_id, dataset, result, body.get('name'), experiment=experiment)
+
+    def save_analysis(self, workspace_id, dataset, result, name=None, *, experiment=None):
         if dataset['metadata'].get('transformation'):
             lineage = dataset['metadata']['transformation']
             result['transformation'] = {k: lineage[k] for k in ('definitionId', 'revision', 'executionId', 'createdAt')}
         identity, stamp = uuid4().hex, now()
-        name = self.name(body.get('name') or f"{result['algorithmLabel']} · {dataset['name']}")
+        name = self.name(name or f"{result['algorithmLabel']} · {dataset['name']}")
         result.update({'id': identity, 'workspaceId': workspace_id, 'datasetId': dataset['id'], 'name': name, 'createdAt': stamp})
         if experiment is not None:
             result['experiment'] = experiment
@@ -268,7 +305,9 @@ class WorkspaceStore:
 
     def result(self, identity: str) -> dict:
         with self.connect() as db:
-            row = db.execute('SELECT workspace_id FROM jobs WHERE id=?', (identity,)).fetchone()
+            row = db.execute('SELECT workspace_id,config FROM jobs WHERE id=?', (identity,)).fetchone()
         if row is None:
             raise KeyError('Analysis not found.')
+        if json.loads(row['config']).get('regimeRunId') == identity:
+            return self.regimes.analysis(identity)
         return json.loads((self.root / row['workspace_id'] / 'results' / f'{identity}.json').read_text(encoding='utf-8'))

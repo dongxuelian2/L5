@@ -1,8 +1,4 @@
-"""Exploratory fault-3 controls reconstructed from saved model parameters.
-
-The shared axis is simulation elapsed time, not evidence of a common physical
-clock or a guaranteed paired random seed. No model is fitted by this view.
-"""
+"""Compare fault-3 and normal trajectories on elapsed time using saved parameters."""
 from __future__ import annotations
 
 import hashlib
@@ -123,4 +119,4 @@ def compare_fault3(store, study, simulation_run=1):
                 alarmSpans=task['metrics']['behavior']['alarmSpans'], events=task['metrics']['detection']['events']))
     return dict(simulationRun=simulation_run, onset=ONSET, targetTime=TARGET, configurations=configurations,
                 raw=raw, diagnostics=diagnostics, controls=controls,
-                interpretation='Elapsed-time exploratory controls. Equality before injection is an observed data property. The published description establishes distinct simulationRun RNG states and non-overlapping training/testing seeds, but does not guarantee identical physical/noise realizations across fault identities. A coincident late alarm is retained as a nominal hit, not evidence of fault-specific discrimination.')
+                interpretation='The controls share an elapsed-time axis. Pre-injection equality is measured directly. The published protocol separates training and testing seeds, and simulationRun indexes the trajectories within each fault. A coincident late alarm counts toward the nominal detection total.')

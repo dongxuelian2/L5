@@ -32,7 +32,7 @@ def run_benchmark(
     onset_sample: int = 160,
     early_window_samples: int = 20,
 ) -> dict:
-    """Fit and calibrate only on d00.dat; never fit on *_te or fault data."""
+    """Fit and calibrate using chronological partitions of the healthy d00.dat sequence."""
     folder = Path(data_dir)
     if not folder.is_dir():
         raise ValueError(f"Not a directory: {folder}")
@@ -94,10 +94,10 @@ def run_benchmark(
             "persistence_consecutive_samples": persistence,
             "sample_interval_seconds": SAMPLE_SECONDS,
             "notes": [
-                "A sample above threshold is not an automatically validated real process fault.",
-                "Calibration quantiles are empirical, not guaranteed test false-alarm bounds.",
-                "The fault onset of 160 is a conventional TEP test protocol, not inferred from samples.",
-                "Post-onset detection and attribution are not a claim of accurate fault classification.",
+                "A sample above threshold contributes to the alarm persistence rule.",
+                "The empirical quantile sets the threshold. The separate healthy test run measures alarm burden.",
+                "The TEP test protocol sets fault onset to sample index 160.",
+                "The benchmark counts post-onset alarms and reports contributing signals.",
                 "Temporal correlations, split selection and dataset edition affect results.",
             ],
         },
@@ -195,15 +195,11 @@ def render_markdown(report: dict) -> str:
         "",
         "## Limits and reproducibility",
         "",
-        "- Eventual detection over 800 post-fault samples (~40 hours) is not rapid detection.",
-        "- False alarm fraction measures alarm-active samples, not statistically",
-        "  independent false alarm episodes.",
-        "- Mean delay excludes undetected faults, so it must be read alongside",
-        "  detected counts and the early-horizon metric.",
-        "- Calibration is healthy training-only; the threshold is an empirical",
-        "  quantile and does not establish a guaranteed deployment false-alarm rate.",
-        "- The highlighted variables are descriptive signal deviations, not",
-        "  verified physical or causal root causes.",
+        "- Eventual detection spans 800 post-fault samples (about 40 hours).",
+        "- False alarm fraction is the share of normal test samples with an active alarm.",
+        "- Mean delay is calculated over detected faults. Compare it alongside detection counts.",
+        "- Calibration uses an empirical quantile of healthy training scores.",
+        "- Highlighted variables identify observed statistical deviations.",
         "",
         "### Input provenance (SHA-256)",
         "",
@@ -245,7 +241,7 @@ def write_report(report: dict, output_dir: str | Path) -> tuple[Path, Path, Path
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Normal-only TEP anomaly benchmark (not fault classification)")
+    parser = argparse.ArgumentParser(description="TEP anomaly detection benchmark with normal training data")
     parser.add_argument("data_dir", type=Path, help="Directory containing the original TEP DAT reference files")
     parser.add_argument("--faults", type=int, nargs="+", default=list(range(1, 22)),
                         help="Fault IDs to evaluate (default: all 1..21, with normal test)")

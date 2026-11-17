@@ -1,2 +1,4 @@
 numpy==2.3.5
 pandas==2.3.3
+scipy==1.16.2
+asyncua==1.1.8

@@ -1,5 +1,6 @@
-import type { TransformationLineage } from "./transformationTypes";
-import { getLocale, t } from "../i18n";
+import type { TransformationLineage } from "./data/transformationTypes";
+import type { ForecastStatus, MaintenanceEvent, PrognosticConfig } from "./reliability/prognosticTypes";
+import { t } from "../lib/text";
 export type Workspace = { id: string; name: string; created_at: string; updated_at: string; dataset_count?: number; analysis_count?: number };
 export type TimeAxis = { kind: "numeric" | "datetime" | "generated" | "unix"; column: string | null; origin: string | null; start: number; end: number; sampleInterval?: number; sourceUnit?: string; naiveTimezone?: string; typicalInterval?: number | null; gapCount?: number; duplicateCount?: number; invalidTimeCount?: number; irregularCount?: number };
 export type Signal = { name: string; missing: number; min: number | null; max: number | null; id?: string; displayName?: string; unit?: string; description?: string; category?: string; device?: string; tags?: string[]; logicalKey?: string };
@@ -20,38 +21,57 @@ export type ExternalRun = { kind: string; id: string; sourceDoi: string; sourceU
 export type TrainingReference = { datasetId: string; range: [number, number]; signalMapping?: Record<string, string> };
 export type TrainingConfig = { fit: TrainingReference; calibration: TrainingReference };
 export type TestDatasetPlan = { datasetId: string; analysisRange: [number, number]; labelSetId?: string; signalMapping?: Record<string, string> };
-export type Metadata = { external?: ExternalRun; rowCount: number; columns: Signal[]; sourceColumns: string[]; ignoredColumns: string[]; missingCount: number; time: TimeAxis; notes: string[]; suggestedRanges?: Ranges; filename?: string; model?: { id: string; simulationId: string; capabilities: string[]; version?: string; name?: string; scenarioId?: string | null; scenarioVersion?: number | null; config?: Record<string, unknown>; groundTruth?: unknown }; quality?: DataQuality; clock?: DatasetClock; transformation?: TransformationLineage };
+export type Metadata = { estimation?: {runId:string; createdAt:string; source:Record<string,unknown>; request:Record<string,unknown>}; acquisition?: { sessionId: string; endpoint: string; start: string; end: string }; resilience?: ResilienceSource; recovery?: { studyId: string; strategy: string; modelId: string; modelVersion: string; status: string; disturbance: string; scope: string }; prognosticBenchmark?: { indicator: PrognosticConfig["indicator"]; load_signal: string; events: MaintenanceEvent[]; operating_periods?: [number, number][]; end_status: PrognosticConfig["endStatus"]; cutoff?: number; horizon?: number }; external?: ExternalRun; rowCount: number; columns: Signal[]; sourceColumns: string[]; ignoredColumns: string[]; missingCount: number; time: TimeAxis; notes: string[]; suggestedRanges?: Ranges; filename?: string; model?: { id: string; simulationId: string; capabilities: string[]; version?: string; name?: string; scenarioId?: string | null; scenarioVersion?: number | null; config?: Record<string, unknown>; groundTruth?: unknown; control?: {experimentId:string;controller:string;protocol:unknown;settings:unknown;solver:unknown;metrics:unknown} }; quality?: DataQuality; clock?: DatasetClock; transformation?: TransformationLineage };
 export type Dataset = { id: string; workspace_id: string; name: string; metadata: Metadata; created_at: string };
 export type Series = { times: number[]; values: Record<string, (number | null)[]>; segmentIds?: Record<string, number[]>; sourceRows: number; displayRows: number };
-export type Config = Ranges & { training?: TrainingConfig; signalMapping?: Record<string, string>; datasetId: string; signals: string[]; algorithm: string; alpha: number; variance: number; name?: string; smoothing?: number; reference?: number; window?: number; lags?: number; rate?: number; guard?: number; maxShift?: number; fitFraction?: number; minCoverage?: number; persistence?: number; requiredSignals?: string[]; observationPolicy?: "measured" | "processed"; stress?: { missingFraction?: number; noise?: number; offset?: number; seed?: number; missingSignals?: string[] } };
+export type Config = Ranges & { regimeRunId?: string; training?: TrainingConfig; signalMapping?: Record<string, string>; datasetId: string; signals: string[]; algorithm: string; alpha: number; variance: number; name?: string; smoothing?: number; reference?: number; window?: number; lags?: number; rate?: number; guard?: number; maxShift?: number; fitFraction?: number; minCoverage?: number; persistence?: number; requiredSignals?: string[]; observationPolicy?: "measured" | "processed"; stress?: { missingFraction?: number; noise?: number; offset?: number; seed?: number; missingSignals?: string[] } };
 export type Contribution = { signal: string; value: number };
 export type ExperimentSource = { experimentId: string; runId: string; taskId: string };
-export type ContributionMetric = "absolute-robust-z" | "squared-residual" | "model-leverage" | "history-contribution";
-export type Interval = { start: number; end: number; samples: number; peakScore: number; peakTime: number; signals: string[]; contributions?: Contribution[] };
+export type ContributionMetric = "absolute-robust-z" | "squared-residual" | "model-leverage" | "history-contribution" | "regime-detector-specific";
+export type Interval = { start: number; end: number; samples: number; peakScore: number; peakTime: number; signals: string[]; contributions?: Contribution[]; rawPeakScore?: number; threshold?: number };
 export type Summary = { analysisSamples: number; baselineSamples: number; fitSamples: number; calibrationSamples: number; flaggedSamples: number; peakScore: number; firstDetection: number | null; imputedValues: { baseline: number; analysis: number }; abstainedSamples?: number; coverageFraction?: number };
-export type AnalysisResult = { training?: Record<string, unknown>; external?: ExternalRun | null; experiment?: ExperimentSource; id: string; workspaceId: string; datasetId: string; name: string; createdAt: string; completedAt: string; durationMs: number; config: Config; algorithmLabel: string; times: number[]; scores: number[]; threshold: number; intervals: Interval[]; relatedSignals: string[]; summary: Summary; model: Record<string, unknown>; signalContributions?: Contribution[]; peakTime?: number; contributionMetric?: ContributionMetric; states?: ("normal" | "alarm" | "abstain")[]; observedFraction?: number[] };
+export type AnalysisResult = { regimeRunId?: string; training?: Record<string, unknown>; external?: ExternalRun | null; experiment?: ExperimentSource; id: string; workspaceId: string; datasetId: string; name: string; createdAt: string; completedAt: string; durationMs: number; config: Config; algorithmLabel: string; times: number[]; scores: number[]; threshold: number; intervals: Interval[]; relatedSignals: string[]; summary: Summary; model: Record<string, unknown>; signalContributions?: Contribution[]; peakTime?: number; contributionMetric?: ContributionMetric; states?: ("normal" | "alarm" | "abstain")[]; observedFraction?: number[] };
 export type Job = { id: string; workspace_id: string; dataset_id: string; name: string; config: Config; summary: Summary; created_at: string };
 
 export type IncidentStatus = "open" | "investigating" | "resolved" | "archived";
 export type IncidentSummary = { id: string; workspace_id: string; title: string; description: string; start_time: number | null; end_time: number | null; time_origin: string | null; time_axis_key?: string | null; status: IncidentStatus; conclusion: string; created_at: string; updated_at: string; analysis_count?: number; interval_count?: number };
-export type IncidentSource = { kind: "dataset" | "analysis" | "interval" | "simulation" | "run"; datasetId?: string; analysisId?: string; intervalIndex?: number; simulationId?: string; runId?: string; hypothesis?: string; asOf?: number; windowStart?: number };
+export type IncidentSource = { kind: "dataset" | "analysis" | "interval" | "simulation" | "run" | "sensor-health" | "prognostic" | "safety-observed" | "safety-predicted"; diagnosticId?: string; episodeIndex?: number; sessionId?: string; datasetId?: string; analysisId?: string; intervalIndex?: number; simulationId?: string; runId?: string; hypothesis?: string; asOf?: number; windowStart?: number; assessmentId?: string; constraintId?: string; raw?: boolean };
+export type ResilienceSource = { runId?: string; campaignId?: string; caseId?: string; modelId: string; modelVersion: string; timeAxis: "acquisition-seconds" };
 export type RuntimeRun = { modelId?: string; modelVersion?: string; scenarioId?: string | null; scenarioVersion?: number | null; id: string; kind: string; request: Record<string, unknown>; result: unknown; createdAt: string };
-export type IncidentLink = { id: string; incident_id: string; kind: IncidentSource["kind"]; reference_id: string; selector: string; created_at: string; details: { experiment?: ExperimentSource; title: string; datasetId?: string; analysisId?: string; algorithmLabel?: string; analysisRange?: [number, number]; signals?: string[]; contributionMetric?: ContributionMetric; intervalIndex?: number; interval?: Interval; simulationId?: string; modelId?: string; modelVersion?: string; modelName?: string; scenarioId?: string | null; scenarioVersion?: number | null; run?: RuntimeRun; observationWindow?: { asOf: number; windowStart: number; hypothesis?: string } } };
+export type SafetyIncidentEvidence = { kind: "observed" | "predicted"; raw: boolean; constraintId: string; constraintName: string; unit: string; interval: { start: number; end: number; maximumExceedance: number; peakTime: number }; asOf: number | null; forecastOrigin: number | null; timeToViolation: number | null };
+export type IncidentLink = { id: string; incident_id: string; kind: IncidentSource["kind"]; reference_id: string; selector: string; created_at: string; details: { experiment?: ExperimentSource;
+  resilience?: ResilienceSource; diagnosticId?: string; episodeIndex?: number;
+  episode?: import("./monitoring/sensorHealthTypes").HealthEpisode; sessionId?: string; assetName?: string;
+  cutoff?: number; status?: ForecastStatus; rulMedian?: number | null; title: string; datasetId?: string; analysisId?: string; algorithmLabel?: string; analysisRange?: [number, number]; signals?: string[]; contributionMetric?: ContributionMetric; intervalIndex?: number; interval?: Interval; simulationId?: string; modelId?: string; modelVersion?: string; modelName?: string; scenarioId?: string | null; scenarioVersion?: number | null; run?: RuntimeRun; observationWindow?: { asOf: number; windowStart: number; hypothesis?: string }; assessmentId?: string; safety?: SafetyIncidentEvidence; clock?: { axisId: string; offset: number } } };
 export type IncidentEntry = { id: string; incident_id: string; kind: "note" | "evidence" | "hypothesis"; title: string; content: string; hypothesis_id: string | null; stance: "neutral" | "support" | "oppose"; source_link_id: string | null; observed_at: number | null; observed_axis_key?: string | null; created_at: string; updated_at: string };
 export type Incident = IncidentSummary & { links: IncidentLink[]; entries: IncidentEntry[] };
 
 export type IncidentAxis = { id: string; label: string; origin: string | null; start: number; end: number };
-export type TimelineEvent = { id: string; kind: string; title: string; axisId: string | null; start: number | null; end: number | null; peakTime?: number; peakScore?: number; analysisId?: string; intervalIndex?: number; linkId?: string | null; entryId?: string; recordedAt?: string; updatedAt?: string; content?: string; signals?: string[]; stance?: string; observationWindow?: [number, number]; actionAt?: number; changes?: Record<string, { before: unknown; after: unknown }>; target: string };
+export type TimelineEvent = { diagnosticAssessment?: string; diagnosticSeverity?: number; rawPeakScore?: number; id: string; kind: string; title: string; axisId: string | null; start: number | null; end: number | null; peakTime?: number; peakScore?: number; analysisId?: string; intervalIndex?: number; linkId?: string | null; entryId?: string; recordedAt?: string; updatedAt?: string; content?: string; signals?: string[]; stance?: string; observationWindow?: [number, number]; actionAt?: number; changes?: Record<string, { before: unknown; after: unknown }>; target: string; assessmentId?: string; safety?: SafetyIncidentEvidence };
 export type LinkedInterval = Interval & { index: number; linkId: string };
 export type IncidentAnalysis = { id: string; result: AnalysisResult; datasetId: string; datasetName: string; axisId: string; offset: number; scope: string; linkId: string; intervals: LinkedInterval[]; observedSpans: [number, number][] };
 export type ComparisonSegment = { start: number; end: number; kind: "common" | "unique" | "partial" | "uncompared"; analysisIds: string[] };
 export type IncidentComparisonGroup = { axisId: string; analysisIds: string[]; segments: ComparisonSegment[]; common: ComparisonSegment[]; unique: ComparisonSegment[]; firstDetection: number | null; firstAlarmSpread: number | null };
 export type IncidentView = { incident: Incident; workspace: Workspace; generatedAt: string; axes: IncidentAxis[]; primaryAxisId: string; events: TimelineEvent[]; analyses: IncidentAnalysis[]; comparisons: IncidentComparisonGroup[]; datasets: Dataset[] };
 export type IncidentSelection = { axisId: string; start: number; end: number; at: number; eventId?: string; analysisId?: string; intervalIndex?: number; linkId?: string };
+export function safetyEvidenceLabel(value: SafetyIncidentEvidence) {
+  return t(value.raw ? "Raw threshold breach" : value.kind === "observed" ? "Observed constraint violation" : "Predicted constraint violation");
+}
+export function safetyEvidenceSummary(value: SafetyIncidentEvidence) {
+  const { interval, unit, asOf, forecastOrigin, timeToViolation } = value;
+  const parts = [safetyEvidenceLabel(value), `${number(interval.start)}–${number(interval.end)} s`, `${"Maximum exceedance"} ${number(interval.maximumExceedance)} ${unit}`];
+  if (asOf != null) parts.push(`${"Forecast observation cutoff (s)"} ${number(asOf)}`);
+  if (forecastOrigin != null && forecastOrigin !== asOf) parts.push(`${"Forecast origin (s)"} ${number(forecastOrigin)}`);
+  if (timeToViolation != null) parts.push(`${"Time to violation (s)"} ${number(timeToViolation)}`);
+  return parts.join(" · ");
+}
+export function safetyAssessmentHref(workspaceId: string, assessmentId: string) {
+  return `#/workspaces/${workspaceId}/safety/${assessmentId}`;
+}
 export function axisLabel(axis: { id: string; label: string; origin: string | null }, datasets: Dataset[] = []) {
-  if (axis.origin || axis.id === "utc") return t("UTC absolute time");
-  if (axis.label === "Transformation source clock" && datasets.some(d => d.metadata.transformation && d.metadata.clock?.axisId === axis.id)) return t("Transformation source clock");
-  return axis.id.startsWith("incident:") ? t("事件独立时间轴") : axis.label;
+  if (axis.origin || axis.id === "utc") return "UTC absolute time";
+  if (axis.label === "Transformation source clock" && datasets.some(d => d.metadata.transformation && d.metadata.clock?.axisId === axis.id)) return "Transformation source clock";
+  return axis.id.startsWith("incident:") ? "Independent incident time axis" : axis.label;
 }
 export function timelineTitle(event: TimelineEvent, view: IncidentView) {
   if (event.kind === "alarm") {
@@ -79,10 +99,10 @@ export function datasetTimeLabel(dataset: Dataset, value: number) {
 }
 
 export function number(value: number) {
-  return value === 0 ? "0" : Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(2) : Number(value.toPrecision(5)).toLocaleString(getLocale());
+  return value === 0 ? "0" : Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(2) : Number(value.toPrecision(5)).toLocaleString("en");
 }
 export function timeLabel(axis: TimeAxis, value: number) {
   if (axis.origin) return new Date(new Date(axis.origin).getTime() + value * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
   return `${number(value)} s`;
 }
-export function dateLabel(value: string) { return new Date(value).toLocaleString(getLocale()); }
+export function dateLabel(value: string) { return new Date(value).toLocaleString("en"); }

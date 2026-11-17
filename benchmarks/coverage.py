@@ -44,7 +44,7 @@ class CoveragePolicy:
             raise ValueError("Required channels must belong to the selected feature names.")
 
     def public_metadata(self) -> dict:
-        # JSON round-trips should retain stable types rather than a tuple.
+        # Use a list to preserve the JSON representation on round trip.
         return {
             "min_observed_fraction": self.min_observed_fraction,
             "required_channels": list(self.required_channels),

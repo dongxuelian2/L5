@@ -1,4 +1,4 @@
-import { runtimeText, t as tr, useLocale } from "../i18n";
+import { runtimeText, t as tr } from "../lib/text";
 import { useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { BlockBar, Count, Panel } from "./Primitives";
@@ -31,8 +31,7 @@ const EDGE_COLOR: Record<string, string> = {
   feedback: "#71858e",
 };
 
-export function EvidenceResult({ pending, children, pendingLabel = tr("Updating evidence for the selected window…") }: { pending: boolean; children: ReactNode; pendingLabel?: string }) {
-  useLocale();
+export function EvidenceResult({ pending, children, pendingLabel = "Updating evidence for the selected window…" }: { pending: boolean; children: ReactNode; pendingLabel?: string }) {
   return <div className="runtime-evidence-result" aria-busy={pending}>
     <div className="runtime-evidence-content" style={{ visibility: pending ? "hidden" : undefined }} aria-hidden={pending || undefined} inert={pending}>{children}</div>
     {pending && <p className="runtime-evidence-updating" role="status">{pendingLabel}</p>}
@@ -50,7 +49,6 @@ function MiniPlot({
   width?: number;
   height?: number;
 }) {
-  useLocale();
   const data = rows.map((r) => r[signal]).filter((v): v is number => v != null);
   if (!data.length) return null;
   const low = Math.min(...data),
@@ -87,21 +85,20 @@ function Topology({
   selected: string;
   onSelect: (s: string) => void;
 }) {
-  useLocale();
   const row = incident.rows.filter(r => r.t <= time).at(-1)!;
   return (
     <Panel
-      title={tr("Process & control topology")}
+      title={"Process & control topology"}
       code="01"
       className="p-topology"
-      action={<span className="p-tag">{tr("14 typed paths")}</span>}
+      action={<span className="p-tag">14 typed paths</span>}
     >
       <div className="p-map-scroll">
         <svg
           className="p-map"
           viewBox="0 0 900 344"
           role="group"
-          aria-label={tr("Branching process and controller evidence graph")}
+          aria-label={"Branching process and controller evidence graph"}
         >
           <defs>
             <pattern
@@ -188,11 +185,11 @@ function Topology({
                   <tspan className="p-node-unit"> {signalMeta[key].unit}</tspan>
                 </text>
                 <text x="10" y="56" className="p-node-sub">
-                  {!analysis ? tr("EVIDENCE UPDATING") : bad
-                    ? tr("EVIDENCE CHECK")
+                  {!analysis ? "EVIDENCE UPDATING" : bad
+                    ? "EVIDENCE CHECK"
                     : detection
                       ? tr("ONSET +{0}s", {0: detection.onset})
-                      : tr("WITHIN BASELINE")}
+                      : "WITHIN BASELINE"}
                 </text>
               </g>
             );
@@ -206,7 +203,7 @@ function Topology({
             {name}
           </span>
         ))}
-        <span className="p-push">{tr("◆ observed deviation")}</span>
+        <span className="p-push">◆ observed deviation</span>
       </div>
     </Panel>
   );
@@ -224,7 +221,6 @@ export function EvidenceView({
   onHypothesis: (id: string) => void;
   updating?: boolean;
 }) {
-  useLocale();
   const d = analysis.diagnosis;
   const [selected, setSelected] = useState("valve");
   const candidateId = hypothesis || d.candidates[0].id;
@@ -241,9 +237,9 @@ export function EvidenceView({
           onSelect={setSelected}
         />
         <Panel
-          title={tr("Competing hypotheses")}
+          title={"Competing hypotheses"}
           code="02"
-          action={<span className="p-tag">{tr("12 CANDIDATES")}</span>}
+          action={<span className="p-tag">12 CANDIDATES</span>}
         >
           <EvidenceResult pending={updating}>
             <div className="p-candidates">
@@ -271,11 +267,11 @@ export function EvidenceView({
               ))}
             </div>
             <div className="p-score-note">
-              {" "}{tr("Evidence support ≠ calibrated probability")}{" "}</div>
+              {" "}Evidence support ≠ calibrated probability{" "}</div>
             <div className="p-candidate-detail" key={candidate.id}>
               <div className="p-subtitle">
-                <span>{tr(candidate.confidence.toUpperCase())}{" "}{tr("SUPPORT")}</span>
-                <span>{tr("topology +")}{candidate.topology}</span>
+                <span>{tr(candidate.confidence.toUpperCase())}{" "}SUPPORT</span>
+                <span>topology +{candidate.topology}</span>
               </div>
               {candidate.support.map((s) => (
                 <p key={s}>
@@ -295,13 +291,13 @@ export function EvidenceView({
                   {runtimeText(s)}
                 </p>
               ))}
-              <details><summary>{tr("Observed paths involving this hypothesis")}</summary>{d.paths.filter(path=>candidate.parts.some(p=>p.signal===path.source||p.signal===path.target)).map((path,i)=><p key={i}>{signalMeta[path.source].tag} → {signalMeta[path.target].tag}{" "}{tr("· lag")}{" "}{path.lag}{tr("s · correlation")}{" "}{path.correlation} · {path.trusted ? tr("usable") : tr("unreliable evidence")}</p>)}</details>
+              <details><summary>Observed paths involving this hypothesis</summary>{d.paths.filter(path=>candidate.parts.some(p=>p.signal===path.source||p.signal===path.target)).map((path,i)=><p key={i}>{signalMeta[path.source].tag} → {signalMeta[path.target].tag}{" "}· lag{" "}{path.lag}s · correlation{" "}{path.correlation} · {path.trusted ? "usable" : "unreliable evidence"}</p>)}</details>
               <details className="p-score-detail">
-                <summary>{tr("Inspect score components ＋")}</summary>
+                <summary>Inspect score components ＋</summary>
                 {candidate.parts.map((p) => (
                   <div key={p.signal}>
                     <span>{signalMeta[p.signal].tag}</span>
-                    <span>{tr("weight")}{" "}{p.weight}</span>
+                    <span>weight{" "}{p.weight}</span>
                     <b
                       className={p.contribution >= 0 ? "text-mint" : "text-coral"}
                     >
@@ -311,7 +307,7 @@ export function EvidenceView({
                   </div>
                 ))}
                 <small>
-                  {" "}{tr("Sum of signed evidence + topology; clipped to 0–100.")}{" "}</small>
+                  {" "}Sum of signed evidence + topology; clipped to 0–100.{" "}</small>
               </details>
             </div>
           </EvidenceResult>
@@ -319,9 +315,9 @@ export function EvidenceView({
       </div>
       <div className="p-controls-grid">
         <Panel
-          title={tr("Controller evidence")}
+          title={"Controller evidence"}
           code="03"
-          action={<span className="p-tag">{tr("SP / PV / OP / FEEDBACK")}</span>}
+          action={<span className="p-tag">SP / PV / OP / FEEDBACK</span>}
         >
           <EvidenceResult pending={updating}>
             <div className="p-controllers">
@@ -337,10 +333,10 @@ export function EvidenceView({
                       }
                     >
                       {c.mismatch == null
-                        ? tr("EVIDENCE MISSING")
+                        ? "EVIDENCE MISSING"
                         : Math.abs(c.mismatch) > 12
-                          ? tr("ACTUATOR MISMATCH")
-                          : tr("TRACKING")}
+                          ? "ACTUATOR MISMATCH"
+                          : "TRACKING"}
                     </span>
                   </div>
                   <div className="p-controller-values">
@@ -357,9 +353,9 @@ export function EvidenceView({
                     ))}
                   </div>
                   <div className="p-controller-footer">
-                    <span>{tr("Output ceiling")}{" "}{num(c.limit, 0)}%</span>
+                    <span>Output ceiling{" "}{num(c.limit, 0)}%</span>
                     <span>
-                      {" "}{tr("Demand − feedback")}{" "}<strong>{num(c.mismatch)}%</strong>
+                      {" "}Demand − feedback{" "}<strong>{num(c.mismatch)}%</strong>
                     </span>
                   </div>
                 </div>
@@ -368,13 +364,13 @@ export function EvidenceView({
           </EvidenceResult>
         </Panel>
         <Panel
-          title={tr("Signal evidence")}
+          title={"Signal evidence"}
           code="04"
           action={
             <span
               className={`p-tag ${!updating && health?.usable ? "text-mint" : "text-amber"}`}
             >
-              {updating ? tr("UPDATING") : tr(health?.status.toUpperCase())}
+              {updating ? "UPDATING" : tr(health?.status.toUpperCase())}
             </span>
           }
         >
@@ -396,38 +392,38 @@ export function EvidenceView({
           <EvidenceResult pending={updating}>
             <div className="p-signal-facts">
               <p>
-                {" "}{tr("First confirmed deviation")}{" "}
+                {" "}First confirmed deviation{" "}
                 <strong>
                   {d.detections[selected]
                     ? `+${d.detections[selected].time}s`
-                    : tr("none")}
+                    : "none"}
                 </strong>
               </p>
               <p>
-                {" "}{tr("Baseline-relative change")}{" "}
+                {" "}Baseline-relative change{" "}
                 <strong>{num(d.changes[selected])}</strong>
               </p>
               <p>
-                {" "}{tr("Freshness")}{" "}
+                {" "}Freshness{" "}
                 <strong>
-                  {health?.freshness == null ? tr("missing") : `${health.freshness}s`}
+                  {health?.freshness == null ? "missing" : `${health.freshness}s`}
                 </strong>
               </p>
             </div>
             <div className="p-panel-note">
               {runtimeText(health?.detail)}.{" "}
               {health?.usable
-                ? tr("Available to the evidence scorer.")
-                : tr("Excluded from strong process-causality evidence.")}
+                ? "Available to the evidence scorer."
+                : "Excluded from strong process-causality evidence."}
             </div>
           </EvidenceResult>
         </Panel>
       </div>
       <div className="p-triple">
-        <Panel title={tr("Next best observation")} code="05" tone="violet">
+        <Panel title={"Next best observation"} code="05" tone="violet">
           <EvidenceResult pending={updating}>
             <div className="p-next">
-              <div className="p-subtitle">{tr("DISCRIMINATOR PRIORITY · HEURISTIC")}</div>
+              <div className="p-subtitle">DISCRIMINATOR PRIORITY · HEURISTIC</div>
               {d.nextMeasurements.map((m, i) => (
                 <div key={m.signal}>
                   <span className="text-violet">{String(i + 1).padStart(2, "0")}</span>
@@ -439,20 +435,20 @@ export function EvidenceView({
                 </div>
               ))}
               <p className="p-panel-note">
-                {" "}{tr("Distinguishes")}{" "}
+                {" "}Distinguishes{" "}
                 {d.candidates
                   .slice(0, 2)
                   .map((c) => tr(c.name))
                   .join(" / ")}
-                {" "}{tr(". Scores are uncalibrated inspection priorities.")}{" "}</p>
+                {" "}. Scores are uncalibrated inspection priorities.{" "}</p>
             </div>
           </EvidenceResult>
         </Panel>
-        <Panel title={tr("Procedure alignment")} code="06">
+        <Panel title={"Procedure alignment"} code="06">
           <EvidenceResult pending={updating}>
             <div className="p-sop">
               <div className="p-subtitle">
-                {analysis.sop.id}{" "}{tr("· REV")}{" "}{analysis.sop.revision}
+                {analysis.sop.id}{" "}· REV{" "}{analysis.sop.revision}
               </div>
               <h3>{runtimeText(analysis.sop.title)}</h3>
               {analysis.sop.preconditions.map((p) => (
@@ -467,14 +463,14 @@ export function EvidenceView({
                 className={`p-procedure-status ${analysis.sop.applicable ? "text-mint" : "text-amber"}`}
               >
                 {analysis.sop.applicable
-                  ? tr("PRECONDITIONS SATISFIED")
-                  : tr("PRECONDITIONS NOT SATISFIED")}
+                  ? "PRECONDITIONS SATISFIED"
+                  : "PRECONDITIONS NOT SATISFIED"}
               </div>
               <small>{tr(analysis.sop.status)}</small>
             </div>
           </EvidenceResult>
         </Panel>
-        <Panel title={tr("Evidence health")} code="07">
+        <Panel title={"Evidence health"} code="07">
           <EvidenceResult pending={updating}>
             <div className="p-health-summary">
               <b>
@@ -484,8 +480,8 @@ export function EvidenceView({
                 <small>/18</small>
               </b>
               <span>
-                {" "}{tr("channels available")}{" "}<br />
-                {" "}{tr("for causal evidence")}{" "}</span>
+                {" "}channels available{" "}<br />
+                {" "}for causal evidence{" "}</span>
             </div>
             <div className="p-health-grid">
               {platform.signals.map((s) => (
@@ -501,11 +497,11 @@ export function EvidenceView({
               ))}
             </div>
             <div className="p-panel-note">
-              {" "}{tr("Clock:")}{" "}
+              {" "}Clock:{" "}
               {d.clock.regular
                 ? tr("regular {0}s cadence", {0: d.clock.step ?? 1})
                 : tr("{0} gaps detected", {0: d.clock.gaps})}{" "}
-              {" "}{tr("· sustained deviation confirmed over 3 seconds.")}{" "}</div>
+              {" "}· sustained deviation confirmed over 3 seconds.{" "}</div>
           </EvidenceResult>
         </Panel>
       </div>
@@ -514,7 +510,6 @@ export function EvidenceView({
 }
 
 export function AlarmView({ analysis }: { analysis: Analysis }) {
-  useLocale();
   const a = analysis.alarms;
   const [filter, setFilter] = useState("all");
   const events = a.events.filter((e) => filter === "all" || e.kind === filter);
@@ -527,24 +522,24 @@ export function AlarmView({ analysis }: { analysis: Analysis }) {
   return (
     <div className="p-alarm-layout">
       <Panel
-        title={tr("Flood compression")}
+        title={"Flood compression"}
         code="01"
-        action={<span className="p-tag">{tr("10 EVENTS / 30s")}</span>}
+        action={<span className="p-tag">10 EVENTS / 30s</span>}
       >
         <div className="p-alarm-funnel">
           <div>
             <b>{a.eventCount}</b>
-            <span>{tr("journal events")}</span>
+            <span>journal events</span>
           </div>
           <i>→</i>
           <div>
             <b>{a.uniqueConditions}</b>
-            <span>{tr("unique conditions")}</span>
+            <span>unique conditions</span>
           </div>
           <i>→</i>
           <div>
             <b>{a.clusters.length}</b>
-            <span>{tr("process clusters")}</span>
+            <span>process clusters</span>
           </div>
         </div>
         <div className="p-alarm-histogram">
@@ -562,24 +557,24 @@ export function AlarmView({ analysis }: { analysis: Analysis }) {
         <div className="p-panel-note">
           {a.floods.length
             ? a.floods.map((f) => tr("Flood +{0}–{1}s", {0: f.start, 1: f.end})).join(" · ")
-            : tr("No flood segment detected.")}{" "}
-          · {a.reannunciations}{" "}{tr("repeated annunciations retained in the journal.")}{" "}</div>
+            : "No flood segment detected."}{" "}
+          · {a.reannunciations}{" "}repeated annunciations retained in the journal.{" "}</div>
         <div className="p-condition-list">
           {a.conditions.map((c) => (
             <div key={c.id}>
               <span className="text-amber">{c.id}</span>
               <span>{c.classification}</span>
-              <span>{c.activations}{" "}{tr("onset(s)")}</span>
+              <span>{c.activations}{" "}onset(s)</span>
               <b>{c.events}</b>
               <span className={c.actionable ? "text-mint" : "text-muted"}>
-                {c.actionable ? tr("REVIEW ACTION") : tr("CONSEQUENTIAL")}
+                {c.actionable ? "REVIEW ACTION" : "CONSEQUENTIAL"}
               </span>
             </div>
           ))}
         </div>
       </Panel>
       <Panel
-        title={tr("Raw alarm journal")}
+        title={"Raw alarm journal"}
         code="02"
         action={
           <button
@@ -592,7 +587,7 @@ export function AlarmView({ analysis }: { analysis: Analysis }) {
               )
             }
           >
-            {" "}{tr("Export ↓")}{" "}</button>
+            {" "}Export ↓{" "}</button>
         }
       >
         <div className="p-alarm-filters">
@@ -628,7 +623,7 @@ export function AlarmView({ analysis }: { analysis: Analysis }) {
               </div>
             ))
           ) : (
-            <div className="p-empty">{tr("No matching events in this window.")}</div>
+            <div className="p-empty">No matching events in this window.</div>
           )}
         </div>
       </Panel>
@@ -637,20 +632,19 @@ export function AlarmView({ analysis }: { analysis: Analysis }) {
 }
 
 export function TraceView({ analysis }: { analysis: Analysis }) {
-  useLocale();
   return (
     <div className="p-trace-layout">
       <div className="p-trace-intro">
-        <div className="eyebrow text-mint">{tr("INVESTIGATION AUDIT")}</div>
+        <div className="eyebrow text-mint">INVESTIGATION AUDIT</div>
         <h2>
-          {" "}{tr("Every conclusion.")}{" "}<br />
-          {" "}{tr("An inspectable trail.")}{" "}</h2>
+          {" "}Every conclusion.{" "}<br />
+          {" "}An inspectable trail.{" "}</h2>
         <p>
-          {" "}{tr("Observe → compare → challenge → verify. Each record contains the exact inputs and computed output of the investigation policy.")}{" "}</p>
+          {" "}Observe → compare → challenge → verify. Each record contains the exact inputs and computed output of the investigation policy.{" "}</p>
         <div className="p-policy">
-          <span className="text-violet">●</span>{" "}{tr("Local deterministic policy")}{" "}<br />
+          <span className="text-violet">●</span>{" "}Local deterministic policy{" "}<br />
           <span className="text-muted">
-            {" "}{tr("Tools can be invoked from the investigation controls.")}{" "}</span>
+            {" "}Tools can be invoked from the investigation controls.{" "}</span>
         </div>
       </div>
       <div className="p-trace-list">
@@ -673,7 +667,7 @@ export function TraceView({ analysis }: { analysis: Analysis }) {
               <span className="text-muted">＋</span>
             </summary>
             <div className="p-trace-result">
-              <span className="eyebrow text-muted">{tr("COMPUTED OUTPUT")}</span>
+              <span className="eyebrow text-muted">COMPUTED OUTPUT</span>
               <pre>{JSON.stringify(step.result, null, 2)}</pre>
             </div>
           </motion.details>

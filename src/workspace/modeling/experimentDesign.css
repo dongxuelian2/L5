@@ -1,0 +1,23 @@
+.oed-library label { max-width: 38rem; }
+.oed-library button { margin-top: .75rem; }
+.oed-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.oed-form legend, .oed-results caption { color: var(--ws-text, #e5eadf); text-align: left; font-weight: 600; }
+.oed-form details { margin: 1rem 0; }
+.oed-editor { margin: 1rem 0; }
+.oed-editor summary, .oed-results summary { cursor: pointer; padding: .65rem 0; }
+.oed-fields, .oed-pairs, .oed-plots, .oed-metrics { display: grid; gap: .8rem; margin: .75rem 0; min-width: 0; }
+.oed-fields { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); align-items: end; }
+.oed-pairs, .oed-plots { grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr)); }
+.oed-metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.oed-metrics div { padding: .6rem .75rem; border: 1px solid #30392d; }
+.oed-metrics dt { color: var(--ws-muted, #a3ae9c); font-size: .8rem; }
+.oed-metrics dd { margin: .25rem 0 0; font-variant-numeric: tabular-nums; }
+.oed-form .oed-pair { border: 1px solid #30392d; border-radius: 3px; padding: .55rem .75rem; margin-bottom: .55rem; }
+.oed-form .oed-pair legend { padding: 0 .25rem; }
+.oed-form .oed-check { display: flex; flex-direction: row; align-items: center; gap: .5rem; margin: .4rem 0; }
+.oed-check input[type="checkbox"] { width: auto; accent-color: #b5ed9a; }
+.oed-observation { align-self: start; min-width: 0; }
+.oed-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+.oed-results .ws-link[aria-pressed="true"] { text-decoration: underline; font-weight: 650; }
+.oed-results th[scope="row"] { text-align: left; white-space: normal; }
+.oed-results caption { padding: .7rem 0 .4rem; }

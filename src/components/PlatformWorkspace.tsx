@@ -1,9 +1,7 @@
-import { useLocale } from "../i18n";
-import { RuntimeWorkbench } from "../workspace/RuntimeWorkbench";
+import { RuntimeWorkbench } from "../workspace/modeling/RuntimeWorkbench";
 export function PlatformWorkspace({ mode }: {
   mode: "investigate" | "learn";
   onModeChange: (mode: "investigate" | "learn") => void;
 }) {
-  useLocale();
   return <RuntimeWorkbench initialTab={mode === "learn" ? "history" : "evidence"} />;
 }

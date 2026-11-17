@@ -1,13 +1,8 @@
-"""Run the declared expansion through persisted Workspace Experiments.
-
-The same command can export/resume a saved study. No external files are fetched
-implicitly. Use examples.tep.prepare or the opt-in external workflow first.
-"""
+"""Run or resume the saved TEP expansion using data from examples.tep.prepare."""
 from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -33,8 +28,7 @@ def export(store, study, output):
             experimentId=task['experimentId'], runId=task['run_id'], datasetId=task['datasetId'], analysisId=task['result_id'],
             externalRun=task['external']['id'], sourceSequence=task['external']['sequenceId'],
             faultNumber=task['external']['faultNumber'], simulationRun=task['external']['simulationRun'], algorithm=task['algorithm'],
-            status=task['status'], error=task['error'], threshold=result['threshold'] if result else None, metrics=task['metrics'],
-            scoreSha256=hashlib.sha256(json.dumps(result['scores'], separators=(',', ':')).encode()).hexdigest() if result else None))
+            status=task['status'], error=task['error'], threshold=result['threshold'] if result else None, metrics=task['metrics']))
     snapshots = {}
     for batch in study['batches']:
         if batch['runId']:
@@ -89,8 +83,7 @@ def run_study(store, workspace_id, protocol_id, study_id=None, output=None):
         if batch['status'] == 'completed':
             continue
         if batch['runId']:
-            # Failures are retained. A rerun requires an explicit Experiment retry,
-            # rather than this CLI silently replacing failed published evidence.
+            # Keep prior failures in the study. Retry failed tasks from Experiments.
             print(f'Retained {batch["status"]}: {batch["experimentId"]}', flush=True)
             continue
         saved = store.experiments.execute(batch['experimentId'], {})

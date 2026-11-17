@@ -148,13 +148,13 @@ def run_comparison(
         "methods": list(METHODS),
         "rows": rows,
         "caveats": [
-            "Both threshold policies use the healthy calibration segment only; neither uses test fault labels.",
-            "Zero episodes in the short healthy calibration segment is not an independent healthy-test workload guarantee.",
-            "Nominally equal calibration alarm budgets do not imply equal realized healthy-test episodes.",
-            "CUSUM's long-held alarm state is counted in active alarm samples, not hidden by episode counts.",
+            "Both threshold policies use the healthy calibration segment.",
+            "The healthy test run measures alarm workload independently of calibration.",
+            "Healthy-test episode counts can differ across equal calibration budgets.",
+            "Active alarm samples capture how long CUSUM stays in alarm.",
             "Windowed CUSUM observes at most the previous 12/24 samples (36/72 min) and restarts at each file boundary.",
             "Models and candidate windows were predeclared before inspecting the held-out fault scores.",
-            "No test-set-tuned winner is selected; monitoring alarms are not fault diagnosis or safe physical actuation.",
+            "The study evaluates fixed monitors on held-out fault runs.",
         ],
     }
 
@@ -163,7 +163,7 @@ def render_markdown(report: dict) -> str:
     lines = [
         "# Tennessee Eastman: bounded-history CUSUM and calibration workload", "",
         "Same normal-only train/calibration files and 21 held-out fault records;",
-        "two precommitted thresholds per monitor. No choice of a held-out winner.", "",
+        "two fixed thresholds per monitor.", "",
         "| Calibration policy | Detector | Early / faults | Eventual / faults | Calibration episodes | Healthy test episodes | Healthy test alarm-active samples |",
         "|:--|:--|--:|--:|--:|--:|--:|",
     ]
@@ -177,9 +177,8 @@ def render_markdown(report: dict) -> str:
             f"{row['healthy_test_alarm_active_samples']} |"
         )
     lines.extend([
-        "", "Zero calibration alarm episodes do not ensure zero held-out normal",
-        "episodes. Longer healthy-test sequences may expose shifts and",
-        "temporal accumulation invisible in the brief calibration set.",
+        "", "Longer healthy-test sequences can reveal shifts and temporal accumulation",
+        "after a brief calibration segment with zero alarm episodes.",
         "See JSON for all source hashes, thresholds and per-fault outcomes.",
         "", "## Input SHA-256", "",
     ])

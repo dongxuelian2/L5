@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+TEP_RESULTS = Path(__file__).with_name("tep-results.csv")
 MIN_ROWS = 300
 MAX_ROWS = 3000
 MAX_SIGNALS = 12
@@ -15,7 +15,7 @@ MAX_UPLOAD_BYTES = 2_000_000
 
 
 def example_data(samples: int = 900) -> pd.DataFrame:
-    """Reproducible synthetic process measurements; not Tennessee Eastman data."""
+    """Generate reproducible measurements for the four-channel process example."""
     if not MIN_ROWS <= samples <= MAX_ROWS:
         raise ValueError("Sample count is outside the demonstration budget.")
     rng = np.random.default_rng(2026)
@@ -85,18 +85,11 @@ def analyze(frame: pd.DataFrame, algorithms: list[str], signals: list[str], norm
 
 
 def tep_table(configuration: str = "A") -> pd.DataFrame:
-    """Summarize existing official TEP test results without launching calculations."""
+    """Summarize recorded TEP results for a normal training configuration."""
     if configuration not in ("A", "B", "C"):
         raise ValueError("Unknown TEP training configuration.")
-    path = ROOT / "examples" / "tep" / "robustness_per_run.csv"
-    source = pd.read_csv(path)
-    required = {
-        "configuration", "algorithm", "status", "faultNumber",
-        "detected30m", "detectedEventually", "normalAlarmSamples", "normalSamples",
-    }
-    if not required.issubset(source.columns):
-        raise ValueError("The committed TEP results lack required metric columns.")
-    rows = source[(source["configuration"] == configuration) & (source["status"] == "succeeded")]
+    source = pd.read_csv(TEP_RESULTS)
+    rows = source[source["configuration"] == configuration]
     faults = rows[rows["faultNumber"] > 0]
     healthy = rows[rows["faultNumber"] == 0]
     detected = faults.groupby("algorithm")[["detected30m", "detectedEventually"]].sum()
@@ -110,23 +103,23 @@ def tep_table(configuration: str = "A") -> pd.DataFrame:
         "normalSamples": "Normal samples",
     })
     if summary.empty:
-        raise ValueError("No verified TEP results for this configuration.")
+        raise ValueError("No TEP results for this configuration.")
     return summary.sort_values("Detected within 30 min", ascending=False).reset_index(drop=True)
 
 
 def tep_faults(configuration: str, algorithm: str) -> pd.DataFrame:
-    path = ROOT / "examples" / "tep" / "robustness_per_run.csv"
-    source = pd.read_csv(path)
-    selected = source[
+    source = pd.read_csv(TEP_RESULTS)
+    selected = source.loc[
         (source["configuration"] == configuration)
         & (source["algorithm"] == algorithm)
-        & (source["faultNumber"] > 0)
-        & (source["status"] == "succeeded")
+        & (source["faultNumber"] > 0),
+        ["faultNumber", "runs", "detected30m", "detectedEventually"],
     ]
     if selected.empty:
         return pd.DataFrame()
-    return selected.groupby("faultNumber", as_index=False).agg(
-        runs=("detected30m", "size"),
-        detected_30m=("detected30m", "sum"),
-        detected_eventually=("detectedEventually", "sum"),
-    ).rename(columns={"faultNumber": "Fault", "runs": "Runs", "detected_30m": "Detected in 30 min", "detected_eventually": "Eventually detected"})
+    return selected.rename(columns={
+        "faultNumber": "Fault",
+        "runs": "Runs",
+        "detected30m": "Detected in 30 min",
+        "detectedEventually": "Eventually detected",
+    }).reset_index(drop=True)

@@ -1,7 +1,6 @@
 """Pinned, auditable download of publicly mirrored original TEP reference files.
 
-Use only in an explicit benchmark run; no runtime or unit test downloads.
-Original reference files are never committed to this repository.
+Run this command to prepare local reference data for a benchmark.
 """
 from __future__ import annotations
 
@@ -15,8 +14,7 @@ from urllib.request import Request, urlopen
 
 from .tep import read_tep_dat
 
-# Reference commit (not floating 'master'): verified as the mirror's master
-# on 2026-10-21. All benchmark reports include per-file SHA-256 checksums.
+# The manifest records the source revision and per-file SHA-256 checksums.
 REFERENCE_REVISION = "9a6c8e5fcef4a2850778704e7793c87b0a187005"
 SOURCE_BASE = (
     "https://raw.githubusercontent.com/jkitchin/"

@@ -1,8 +1,7 @@
 """Head-to-head evaluation of fixed causal temporal and static TEP baselines.
 
-This entry point reuses exactly the existing normal-only fit/calibration,
-held-out test files and onset/persistence/early-window rules. No model or
-threshold is chosen based on the results of these held-out faults.
+The monitors share normal fit and calibration partitions, held-out test
+files, and fixed onset, persistence, and early-window rules.
 """
 from __future__ import annotations
 
@@ -76,11 +75,11 @@ def run_comparison(
         "method_parameters_selected_before_held_out_evaluation": True,
         "caveats": [
             "Every monitor uses the same chronological healthy fit/calibration partition and identical test cases.",
-            "The monitor-specific empirical threshold targets are not equalized nuisance-alarm episode rates.",
-            "CUSUM may accumulate normal drift for long records; it is never reset on each alarm, only at file boundaries.",
-            "Calibration and test windows have different lengths; no distribution-free false-alarm guarantee is implied.",
-            "Mean detection delay includes detected faults only; early counts and nuisance alarms are essential.",
-            "The study reports baseline performance, not optimized state-of-the-art scores or fault diagnosis.",
+            "Each monitor uses its own empirical threshold. The healthy test sequence measures the resulting nuisance alarm workload.",
+            "CUSUM resets at file boundaries and can accumulate normal drift across long sequences.",
+            "Calibration and test windows have different lengths. The report measures test false alarms separately.",
+            "Mean delay describes detected faults. The report also includes early detections and nuisance alarms.",
+            "The study compares fixed baseline monitors.",
         ],
     }
 
@@ -89,7 +88,7 @@ def render_markdown(report: dict) -> str:
     lines = [
         "# Tennessee Eastman: causal temporal vs static baseline monitors", "",
         "Fixed method parameters, same healthy-only fit/calibration and the same",
-        "21 held-out fault scenarios. **No selection on held-out fault results.**", "",
+        "21 held-out fault scenarios.", "",
         "| Monitor | Type | Faults early (60 min) | Eventual | Healthy nuisance episodes | Healthy alarm-active samples | Mean detected delay |",
         "|:--|:--|--:|--:|--:|--:|--:|",
     ]
@@ -106,9 +105,8 @@ def render_markdown(report: dict) -> str:
     lines += [
         "", "## Limitations", "",
         "New early detections must be read alongside nuisance-alarm episodes.",
-        "A longer CUSUM trace can accumulate harmless nonstationarity; no",
-        "automatic alarm reset or physical fault-ID explanation is assumed.",
-        "A statistical channel contribution is **not** a validated causal root cause.",
+        "CUSUM accumulates evidence across a trace and resets at the next file.",
+        "Channel contributions describe statistical signal deviations.",
         "The entire per-fault table and input hashes are included in JSON.", "",
         "## Reference source SHA-256", "",
     ]
