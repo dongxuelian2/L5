@@ -7,9 +7,8 @@ The training partitions supply the fit, calibration, and budget inputs.
 The primary budget is fixed before examining any fault outcomes:
 at most one confirmed normal-calibration alarm episode and at most 2%
 normal-calibration alarm-active samples, with three-sample persistence.
-Choose the LEAST restrictive observed calibration-score threshold
-satisfying both constraints. It does not guarantee matching held-out
-healthy nuisance alarms; always report that measured burden separately.
+Choose the least restrictive observed calibration-score threshold satisfying
+both constraints. Measure held-out healthy alarm burden separately.
 """
 from __future__ import annotations
 

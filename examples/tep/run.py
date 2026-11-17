@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -111,8 +110,7 @@ def export(store, experiment_id, output, *, incident_id=None):
         result = store.result(task['result_id']) if task['result_id'] else None
         tasks.append(dict(id=task['id'], algorithm=task['algorithm'], status=task['status'], error=task['error'], analysisId=task['result_id'],
             externalRun=dataset['metadata']['external']['id'], sourceSequence=dataset['metadata']['external']['sequenceId'],
-            threshold=result['threshold'] if result else None, metrics=task['metrics'],
-            scoreSha256=hashlib.sha256(json.dumps(result['scores'], separators=(',', ':')).encode()).hexdigest() if result else None))
+            threshold=result['threshold'] if result else None, metrics=task['metrics']))
     report = dict(protocol=PROTOCOL, workspaceId=experiment['workspace_id'], experimentId=experiment_id, runId=run['id'], status=run['status'],
                   sourceFiles=source_files, runSnapshot=dict(config=run['snapshot']['config'], engine=run['snapshot']['engine'],
                   datasetHashes={identity:d['sha256'] for identity,d in run['snapshot']['datasets'].items()}), cells=cells, tasks=tasks,

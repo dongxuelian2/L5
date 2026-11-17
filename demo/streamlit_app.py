@@ -106,11 +106,11 @@ with tab_live:
                                 "End sample": item["end"],
                                 "Peak score": round(item["peakScore"], 3),
                                 "Related signals": ", ".join(item["signals"]),
-                            } for item in result["intervals"]]).head(30), hide_index=True, use_container_width=True)
+                            } for item in result["intervals"]]).head(30), hide_index=True)
                         else:
                             st.info("No alarm intervals for the selected detector.")
                         st.write("Signal contributions at the peak")
-                        st.dataframe(pd.DataFrame(result["signalContributions"]).head(10), hide_index=True, use_container_width=True)
+                        st.dataframe(pd.DataFrame(result["signalContributions"]).head(10), hide_index=True)
                 st.download_button(
                     "Download analysis results (JSON)",
                     json.dumps(results, ensure_ascii=False, allow_nan=False, indent=2),
@@ -131,13 +131,13 @@ with tab_tep:
     except (OSError, ValueError, KeyError) as exc:
         st.error(f"Unable to load the benchmark results: {exc}")
     else:
-        st.dataframe(summary, hide_index=True, use_container_width=True)
+        st.dataframe(summary, hide_index=True)
         st.bar_chart(summary.set_index("Detector")[["Detected within 30 min", "Eventually detected"]])
         algorithm = st.selectbox("Inspect detection by fault type", summary["Detector"].tolist(),
                                  format_func=lambda value: ALGORITHMS.get(value, value))
         fault_table = tep_faults(configuration, algorithm)
         if not fault_table.empty:
-            st.dataframe(fault_table, hide_index=True, use_container_width=True)
+            st.dataframe(fault_table, hide_index=True)
             st.bar_chart(fault_table.set_index("Fault")[["Detected in 30 min", "Eventually detected"]])
         st.caption("Each configuration scores 60 fault runs and 4,800 samples from separate normal runs.")
 

@@ -4,7 +4,6 @@ Run: node scripts/python.mjs -m benchmarks.estimation_evaluate
 """
 from copy import deepcopy
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -43,7 +42,6 @@ def evaluate():
             metrics = score(result,truth)
             runs.append(dict(case=case['id'],seed=seed,sensors=case['sensors'],model=case.get('model',{}),
                 source=resolved, config=cfg, samples=len(observations), predictionOnly=result['predictionOnly'],
-                inputSha256=hashlib.sha256(json.dumps(dict(observations=observations,controls=controls),sort_keys=True).encode()).hexdigest(),
                 score=metrics, innovationConsistency=result['innovationConsistency'], warnings=result['warnings'],
                 maxAbsoluteError=np.max(np.abs(np.array([r['estimate'] for r in result['rows']])-
                     np.array([[r['level1'],r['level2']] for r in truth])),axis=0).tolist()))

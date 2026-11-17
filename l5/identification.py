@@ -252,8 +252,8 @@ def fit(config, calibration, validation=None, progress=lambda value: None):
     mask=np.isfinite(observed)
     for i,key in enumerate(outputs):
         if key in ('level1','level2') and f'initial{key[-1]}' not in names:
-            # A measurement used as an exact initialization is not a second,
-            # independent output observation for the likelihood or its dof.
+            # Use the first measurement to anchor the initial level. Count
+            # independent output observations for the likelihood after that point.
             mask[0,i]=False
     if mask.sum() <= len(names)+2:
         raise ValueError('Calibration needs more finite output observations than estimated parameters.')

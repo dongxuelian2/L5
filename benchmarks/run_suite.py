@@ -1,14 +1,7 @@
-"""Run all retained Braatz studies from one frozen, hash-checked data cache.
-
-This command performs no downloads. Use benchmarks.fetch_reference explicitly
-first. Each study runs in a fresh process; logs and derived reports are retained.
-"""
+"""Run the Braatz studies in separate processes with verified reference inputs."""
 from __future__ import annotations
 
 import argparse
-import hashlib
-import importlib.metadata
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -30,23 +23,12 @@ STUDIES = (
 def run_suite(data: Path, output: Path):
     for name in reference_filenames(): validate_reference_hash(name,(data/name).read_bytes())
     output.mkdir(parents=True,exist_ok=True)
-    manifest={'python':sys.version.split()[0], 'numpy':importlib.metadata.version('numpy'), 'studies':[]}
-    env={**os.environ,'PYTHONUTF8':'1','OPENBLAS_NUM_THREADS':'1','OMP_NUM_THREADS':'1'}
-    for name,module,extra in STUDIES:
-        destination=output/name
-        log=output/(name+'.log')
-        command=[sys.executable,'-m','benchmarks.'+module,str(data),'--output-dir',str(destination),*extra]
-        with log.open('w',encoding='utf-8') as stream:
-            result=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,env=env)
-        manifest['studies'].append({'study':name,'module':module,'arguments':list(extra),'exit_code':result.returncode})
-        (output/'suite_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
-        if result.returncode:
-            raise RuntimeError(f'{name} failed; see {log}')
-        print(f'PASS {name}',flush=True)
-    manifest['reports']={str(p.relative_to(output)):hashlib.sha256(p.read_bytes()).hexdigest()
-                         for p in sorted(output.rglob('*')) if p.is_file() and p.suffix in ('.json','.md','.csv') and p.name!='suite_manifest.json'}
-    (output/'suite_manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n',encoding='utf-8')
-    return manifest
+    env = {**os.environ, 'PYTHONUTF8': '1', 'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1'}
+    for name, module, extra in STUDIES:
+        print(f'Running {name}', flush=True)
+        command = [sys.executable, '-m', 'benchmarks.' + module, str(data),
+                   '--output-dir', str(output / name), *extra]
+        subprocess.run(command, env=env, check=True)
 
 
 def main():

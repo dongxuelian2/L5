@@ -10,12 +10,8 @@ import io
 import json
 import math
 import statistics as stats
-import sys
 from dataclasses import dataclass, asdict
-from pathlib import Path
 
-if __package__ in (None, ''):  # Preserve the original `python simulation/platform.py` entry point.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from l5.contracts import Signal, SignalSchema
 
 DURATION = 240
@@ -709,38 +705,6 @@ def benchmark():
                 limitation='Internal varied-parameter diagnosis regression, not independent validation. External TEP anomaly studies are separate and do not validate this diagnosis engine.')
 
 
-def build_platform():
-    cases=[]
-    for i,fid in enumerate(FAULTS):
-        print(f'Computing case {i+1}/{len(FAULTS)}: {fid}',flush=True)
-        rows=simulate(Config(fault=fid,seed=i+1))
-        analyzed=analyze_rows(rows)
-        fit=fit_hypothesis(rows,analyzed['diagnosis'])
-        recovery=interventions(fit[0],fit_error=fit[1],resolution=1.)
-        snapshots=[]
-        for end in (40,70,110,180,240):
-            prefix=[r for r in rows if r['t']<=end]
-            snapshots.append(dict(time=end,**analyze_rows(prefix)))
-        trace=tool_trace(rows,analyzed['diagnosis'],analyzed['alarms'],fit)
-        trace.append(dict(index=len(trace)+1,tool='simulate_intervention',args=dict(actions=len(ACTIONS),resolution=1),result=dict(evaluated=recovery['evaluated'],latest=recovery['latest']),status='completed'))
-        analyzed['trace']=trace
-        cases.append(dict(id=f'INC-{i+101}',title=f'Process session {i+1:02}',rows=rows,**analyzed,snapshots=snapshots,
-                          fit=dict(hypothesis=fit[0].fault,parameters=asdict(fit[0]),error=fit[1]),recovery=recovery))
-    # Rank historical matches by observed signal fingerprints.
-    for case in cases:
-        fingerprint=case['diagnosis']['changes']
-        matches=[]
-        for other in cases:
-            if case is other: continue
-            distance=sum(min(4,abs(fingerprint.get(k,0)-other['diagnosis']['changes'].get(k,0))/max(1,abs(META[k]['nominal'])*.05)) for k in KEYS)/len(KEYS)
-            shared=[META[k]['tag'] for k in case['diagnosis']['detections'] if k in other['diagnosis']['detections'] and case['diagnosis']['detections'][k]['direction']==other['diagnosis']['detections'][k]['direction']]
-            matches.append(dict(id=other['id'],similarity=round(max(0,1-distance/4)*100),shared=shared,leading=other['diagnosis']['candidates'][0]['name']))
-        case['similar']=sorted(matches,key=lambda m:-m['similarity'])[:3]
-    return dict(schemaVersion=2,model='TripLens coupled process model v2',signals=list(META.values()),edges=[dict(source=a,target=b,kind=k) for a,b,k in EDGES],
-                faults=FAULTS,cases=cases,benchmark=benchmark(),limitations=['Evidence scores summarize investigation rule support.','Counterfactuals use the fitted leading hypothesis and a 240-second horizon.','The investigation policy runs locally and deterministically.'])
 
-
-if __name__=='__main__':
-    target=Path(__file__).resolve().parents[1]/'src/data/platform.json'
-    target.write_text(json.dumps(build_platform(),separators=(',',':'),allow_nan=False)+'\n',encoding='utf-8',newline='\n')
-    print(f'Wrote {target}')
+if __name__ == '__main__':
+    print(json.dumps(benchmark(), indent=2, allow_nan=False))

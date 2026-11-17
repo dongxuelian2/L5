@@ -71,9 +71,9 @@ def observed_spans(result, offset, gap_threshold=None):
 def compare_intervals(analyses):
     """Partition linked alarms within jointly evaluated time, retaining point alarms.
 
-    Duration is last-sample minus first-sample seconds, never inferred cadence.
+    Duration is the elapsed time between the first and last samples.
     Unique means one selected analysis alarms while all selected analyses have
-    observations. A different observation window or an abstention is not a miss.
+    observations. Treat abstentions and nonoverlapping windows as missing coverage.
     """
     if not analyses:
         return dict(segments=[], common=[], unique=[], firstDetection=None, firstAlarmSpread=None)

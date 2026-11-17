@@ -70,9 +70,8 @@ def evaluate(kind, seed, noise, intensity):
     alarms = np.zeros(len(result['times']), bool)
     for episode in result['episodes']:
         alarms |= (np.asarray(result['times']) >= episode['start']) & (np.asarray(result['times']) <= episode['end'])
-    # An episode may already be active after a legitimate excitation. Measure
-    # new confirmed indicator intervals, rather than losing later detections
-    # when the union of indicators is one continuous episode.
+    # Count new confirmed indicator intervals, including detections that start
+    # within an existing episode after an excitation.
     detected = [s['detectedAt'] for i in result['indicators'] for s in i['intervals'] if s['detectedAt'] >= onset]
     # Dominant interval by evaluated duration, with abstention retained as an outcome.
     after = [e for e in result['episodes'] if e['end'] >= onset]

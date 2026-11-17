@@ -182,10 +182,10 @@ def run_experiment(
             "A gradual genuine fault may be absorbed into an adaptive baseline, reducing fault sensitivity.",
             "Frozen adaptation parameters come from predeclared engineering choices, not independent fault-free validation.",
             "All nuisance-alarm rates are measured on the same held-out healthy test trajectory.",
-            "Holding an alarm during recovery increases active-alarm time; it never creates a timed suppression.",
+            "Holding an alarm during recovery adds to active alarm time.",
             "An unobservable sample abstains and resets detector and decision history.",
-            "A monitor's empirical alpha does not guarantee equal realized false-alarm episode workloads.",
-            "This is statistical monitoring, not certified fault classification, root-cause explanation or closed-loop control.",
+            "Compare the measured false-alarm episode workload for each empirically calibrated threshold.",
+            "The evaluation measures statistical monitoring on recorded time series.",
         ],
     }
     for scenario in scenarios:
