@@ -5,6 +5,7 @@ export const algorithms: Record<string,string> = {
   get "robust-maxz"() { return "Robust Max-Z"; }, "pca-q":"PCA-Q", "pca-t2":"PCA-T²", ewma:"EWMA",
   get cusum() { return "Page CUSUM"; }, get "window-cusum"() { return "Finite-window CUSUM"; },
   get "dpca-q"() { return "Dynamic PCA-Q"; }, get "dpca-t2"() { return "Dynamic PCA-T²"; },
+  mahalanobis: "Squared Mahalanobis distance",
   get "adaptive-maxz"() { return "Adaptive Max-Z · Experimental"; },
 };
 const parameters: Record<string, [keyof Config, string, number, number, number, number][]> = {

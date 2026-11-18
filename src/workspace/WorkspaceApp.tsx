@@ -144,9 +144,9 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   </form>;
 }
 
-function DatasetPage({ workspaceId, datasets, onImport, selected, setSelected, preferences, setPreferences, datasetId }: {
+function DatasetPage({ workspaceId, datasets, onImport, selected, setSelected, preferences, setPreferences, datasetId, range }: {
   workspaceId: string; datasets: Dataset[]; onImport: (dataset: Dataset, open: boolean) => void; selected: string; setSelected: (id: string) => void;
-  preferences: Record<string, string[]>; setPreferences: (id: string, signals: string[]) => void; datasetId?: string;
+  preferences: Record<string, string[]>; setPreferences: (id: string, signals: string[]) => void; datasetId?: string; range?: [number, number];
 }) {
   const [importing, setImporting] = useState(false);
   const dataset = datasets.find(d => d.id === (datasetId || selected)) || (datasetId ? undefined : datasets[0]);
@@ -159,7 +159,7 @@ function DatasetPage({ workspaceId, datasets, onImport, selected, setSelected, p
       <div className="ws-section-heading"><h2>Saved datasets{" "}<span className="ws-muted">/ {datasets.length}</span></h2><label className="ws-inline">Dataset<select aria-label={"Saved dataset"} value={dataset.id} onChange={e => setSelected(e.target.value)}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label></div>
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title={"Signals to plot and analyze"} />
-        <SignalPlots dataset={dataset} signals={chosen} />
+        <SignalPlots dataset={dataset} signals={chosen} range={range} />
         {dataset.metadata.processRun && <p>{dataset.metadata.processRun.plant} · {dataset.metadata.processRun.type} · {dataset.metadata.processRun.role} · <a className="ws-link" href={`#/workspaces/${workspaceId}/tep`}>Open cooling-water study ↗</a></p>}
         <TransformationLineage dataset={dataset} /><ExternalProvenance dataset={dataset} /><EstimationProvenance dataset={dataset} />
         {dataset.metadata.model?.control && <a className="ws-link" href={`#/workspaces/${workspaceId}/control/${dataset.metadata.model.control.experimentId}`}>Open saved control comparison ↗</a>}
@@ -279,6 +279,9 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
   }, [revision, workspaceId, guided]);
   useEffect(() => { if (tab === "datasets" && jobId) setSelected(jobId); }, [tab, jobId]);
   useEffect(() => {
+    if (tab === "datasets" && jobId && routeContext.signals.length) {
+      setPreferences(p => ({ ...p, [jobId]: routeContext.signals }));
+    }
     if (tab === "analysis" && !jobId && routeContext.datasetId) {
       setSelected(routeContext.datasetId);
       if (routeContext.signals.length) setPreferences(p => ({ ...p, [routeContext.datasetId!]: routeContext.signals }));
@@ -316,13 +319,22 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
     tab === "estimations" ? <Suspense fallback={<p>Computing or opening estimation…</p>}><EstimationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} runId={jobId} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> :
     tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId!} /> :
     tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} initialDatasetId={routeContext.datasetId} initialSignals={routeContext.signals} initialRange={routeContext.range} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
-    <DatasetPage workspaceId={workspaceId!} datasetId={jobId} datasets={datasets} onImport={(dataset, open) => {
+    <DatasetPage range={routeContext.range} workspaceId={workspaceId!} datasetId={jobId} datasets={datasets} onImport={(dataset, open) => {
       setDatasets(previous => [dataset, ...previous.filter(d => d.id !== dataset.id)]);
       if (open) {
         setSelected(dataset.id); go(`workspaces/${workspaceId}/datasets/${dataset.id}`);
       }
       refresh();
     }} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
+  const query = new URLSearchParams(search);
+  const investigationLinks = query.has("incident") && query.has("analysis") && query.has("dataset") && query.has("experiment") ? (
+    <nav className="ws-inline" aria-label="Cooling-water investigation">
+      <a className="ws-link" href={`#/workspaces/${workspaceId}/tep`}>Cooling-water study</a>
+      {([["datasets", "dataset", "Measurements"], ["analysis", "analysis", "Detection"],
+        ["experiments", "experiment", "Experiment"], ["incidents", "incident", "Incident"]] as const)
+        .filter(([section]) => section !== tab).map(([section, key, label]) => <a key={key} className="ws-link"
+          href={`#/workspaces/${workspaceId}/${section}/${encodeURIComponent(query.get(key)!)}?${query}`}>{label}</a>)}
+    </nav>) : null;
   const activeTab = tab === "simulations" ? "models" : tab;
   const currentDataset = datasets.find(d => d.id === selected);
   function workspaceRoute(key: string) {
@@ -366,7 +378,7 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
         })}
       </section>)}</nav>
     </aside>
-      <main className="ws-main"><ErrorText error={error} />{content}</main>
+      <main className="ws-main"><ErrorText error={error} />{investigationLinks}{content}</main>
     </div> : guided ? <Suspense fallback={<main className="ws-main" role="status">Loading guided demo…</main>}><GuidedDemo onPrepared={refresh} /></Suspense> :
       <><div className="ws-home-error"><ErrorText error={error} />{error && <button className="ws-outlined" onClick={refresh}>Reconnect</button>}</div>{loading ? <main className="ws-main" role="status">Loading workspaces…</main> : <WorkspaceHome workspaces={workspaces} refresh={refresh} />}</>}
   </div>;

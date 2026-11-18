@@ -4,7 +4,7 @@
 
 L5 turns process measurements into a connected workflow: import or record signals, inspect their quality, run anomaly detectors, investigate alarms, simulate equipment behavior, evaluate control strategies, and export the resulting evidence. Workspaces preserve datasets, configurations, analyses, experiments, and incidents across sessions.
 
-Open **Tennessee Eastman benchmark** in a workspace to run the [reactor cooling-water study](docs/industrial-process.md). One action simulates the plant, detects the disturbance and compares matched control trajectories. This study requires GNU Fortran on the server path.
+Open **Tennessee Eastman benchmark** in a workspace to run the [reactor cooling-water study](docs/industrial-process.md). One action saves the detection analysis, experiment and incident. Inspect the aligned diagnosis and matched control comparison, then export the incident report. This study requires GNU Fortran on the server path.
 
 ![L5 guided investigation of a coupled-tank pump fault](docs/l5-workspace.jpg)
 

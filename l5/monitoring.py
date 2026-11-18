@@ -74,6 +74,36 @@ class MaxZMonitor:
         return {"statistic": "maximum absolute robust z-score", "features": self.features}
 
 
+class MahalanobisMonitor:
+    name = "mahalanobis"
+    history_dependent = False
+
+    def fit(self, train):
+        data = as_matrix(train)
+        self.center = data.mean(axis=0)
+        self.covariance = np.atleast_2d(np.cov(data.T))
+        self.scale = np.sqrt(np.diag(self.covariance))
+        try:
+            self.factor = np.linalg.cholesky(self.covariance)
+        except np.linalg.LinAlgError as error:
+            raise ValueError("Mahalanobis fitting requires a positive definite sample covariance.") from error
+
+    def score(self, samples):
+        z = np.linalg.solve(self.factor, (samples - self.center).T)
+        return np.sum(z*z, axis=0)
+
+    def _contributions(self, samples):
+        # Signed terms sum to the score. Magnitudes rank channel influence.
+        delta = samples - self.center
+        return np.abs(delta * np.linalg.solve(self.covariance, delta.T).T)
+
+    def explain(self, sample, feature_names, count=5):
+        return _top_names(self._contributions(np.asarray([sample]))[0], feature_names, count)
+
+    def metadata(self):
+        return dict(statistic="Squared Mahalanobis distance", covariance=self.covariance.tolist())
+
+
 class PCAMonitor:
     history_dependent = False
     def __init__(self, mode: str = "q", variance: float = 0.90, max_components: int = 20):

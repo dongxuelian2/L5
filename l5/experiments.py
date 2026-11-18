@@ -24,6 +24,7 @@ MAX_TASKS = 64
 MAX_EXTERNAL_TASKS = 256
 MAX_ACTIVE_RUNS = 4
 PARAMETERS = {
+    'mahalanobis': (),
     'robust-maxz': (), 'pca-q': ('variance',), 'pca-t2': ('variance',),
     'ewma': ('smoothing',), 'cusum': ('reference',), 'window-cusum': ('reference', 'window'),
     'dpca-q': ('variance', 'lags'), 'dpca-t2': ('variance', 'lags'),
@@ -77,6 +78,9 @@ class ExperimentService:
                     id TEXT PRIMARY KEY, experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
                     snapshot TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL,
                     started_at TEXT, completed_at TEXT, duration_ms REAL, retry_of TEXT);
+                CREATE TABLE IF NOT EXISTS industrial_evidence (
+                    run_id TEXT PRIMARY KEY REFERENCES experiment_runs(id) ON DELETE CASCADE,
+                    payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS experiment_tasks (
                     id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES experiment_runs(id) ON DELETE CASCADE,
                     ordinal INTEGER NOT NULL, algorithm TEXT NOT NULL, config TEXT NOT NULL, status TEXT NOT NULL,
@@ -158,6 +162,23 @@ class ExperimentService:
         if not isinstance(required, list) or any(s not in signals for s in required):
             raise ValueError('Required observed signals must be selected input signals.')
         config['requiredSignals'] = list(dict.fromkeys(required))
+        if 'industrialStudy' in raw:
+            context = raw['industrialStudy']
+            from .industrial_study import CASES, DIAGNOSIS
+            from simulation.tep import MODEL
+            if not isinstance(context, dict) or context.get('protocol') != DIAGNOSIS or context.get('modelVersion') != MODEL:
+                raise ValueError('Unknown industrial investigation protocol.')
+            sources = context.get('sources')
+            if not isinstance(sources, dict) or set(sources) != set(CASES) or sources['evaluation'] != dataset['id']:
+                raise ValueError('Choose the complete set of process trajectories.')
+            for role, source_id in sources.items():
+                source = self.store.base_dataset(source_id)
+                process = source['metadata'].get('processRun', {})
+                if (source['workspace_id'] != workspace_id or process.get('modelVersion') != MODEL
+                        or process.get('role') != role or process.get('studyId') != dataset['metadata'].get('processRun', {}).get('studyId')
+                        or role in ('fit', 'calibration') and (not training or source_id != training[role]['datasetId'])):
+                    raise ValueError('Industrial source belongs to another investigation.')
+            config['industrialStudy'] = context
         if raw.get('benchmark') is not None:
             from .tep_study import validate_benchmark
             config['benchmark'] = validate_benchmark(raw['benchmark'])
@@ -189,7 +210,7 @@ class ExperimentService:
                 raise ValueError('The experiment dataset must be the first declared test dataset.')
         algorithms = raw.get('algorithms')
         if not isinstance(algorithms, list) or not 1 <= len(algorithms) <= len(ALGORITHMS):
-            raise ValueError('Choose one or more of the nine available algorithms.')
+            raise ValueError('Choose one or more available algorithms.')
         config['algorithms'], seen = [], set()
         for item in algorithms:
             if not isinstance(item, dict) or item.get('algorithm') not in ALGORITHMS:
