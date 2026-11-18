@@ -1,6 +1,8 @@
 """Synchronous anomaly analysis, fitted and calibrated on the user's normal interval."""
 from __future__ import annotations
 
+from .data_quality import cadence
+
 from datetime import datetime, timezone
 from time import perf_counter
 
@@ -176,18 +178,21 @@ def run_analysis(times: np.ndarray, values: np.ndarray, columns: list[str], conf
         {**config, 'algorithm': algorithm, 'alpha': alpha, 'variance': variance, 'fitFraction': fit_fraction},
         policy, medians, fit_samples=len(fit), calibration_samples=len(calibration), baseline_samples=len(normal),
         imputed=imputed, processed_count=processed_count, observation_policy=observation_policy,
-        observed=observed is not None, started=started)
+        observed=observed is not None, started=started, gap_threshold=cadence(times)['gapThreshold'])
 
 
 def score_analysis(monitor, threshold, target, original_mask, target_times, signals, config, policy, medians, *,
                    fit_samples, calibration_samples, baseline_samples, imputed, processed_count=0,
-                   observation_policy='measured', observed=False, started=None):
+                   observation_policy='measured', observed=False, started=None, gap_threshold=None):
     """Shared saved AnalysisResult projection for single- and cross-dataset paths."""
     from benchmarks.coverage import decide, score_with_observation_resets
     started = perf_counter() if started is None else started
     persistence = config.get('persistence', 1)
     scores = score_with_observation_resets(monitor, target, original_mask, policy)
-    states = decide(scores, original_mask, threshold=threshold, consecutive=persistence, policy=policy)
+    breaks = np.flatnonzero(np.diff(target_times) > gap_threshold) + 1 if gap_threshold else []
+    boundaries = [0, *breaks, len(scores)]
+    states = [state for a, b in zip(boundaries, boundaries[1:])
+              for state in decide(scores[a:b], original_mask[a:b], threshold=threshold, consecutive=persistence, policy=policy)]
     weights = np.zeros_like(target)
     valid = np.array([state != 'abstain' for state in states])
     # Explanations restart at the same observation gaps as temporal scores.
@@ -202,14 +207,14 @@ def score_analysis(monitor, threshold, target, original_mask, target_times, sign
         weights[begin:end] = contribution_matrix(monitor, target[begin:end])
         begin = end
     return project_analysis(monitor, threshold, scores, states, weights, original_mask, target_times, signals,
-        config, policy, medians, fit_samples=fit_samples, calibration_samples=calibration_samples,
+        config, policy, medians, breaks=breaks, fit_samples=fit_samples, calibration_samples=calibration_samples,
         baseline_samples=baseline_samples, imputed=imputed, processed_count=processed_count,
         observation_policy=observation_policy, observed=observed, started=started)
 
 
 def project_analysis(monitor, threshold, scores, states, weights, original_mask, target_times, signals,
                      config, policy, medians, *, fit_samples, calibration_samples, baseline_samples, imputed,
-                     processed_count=0, observation_policy='measured', observed=False, started=None):
+                     processed_count=0, observation_policy='measured', observed=False, started=None, breaks=()):
     """Build a saved analysis from already-calculated scores and decisions."""
     started = perf_counter() if started is None else started
     algorithm = config['algorithm']
@@ -223,8 +228,12 @@ def project_analysis(monitor, threshold, scores, states, weights, original_mask,
     if not np.isfinite(scores).all():
         raise ValueError('Signal magnitudes produced nonfinite scores; check the selected measurements.')
     flags = np.array([s == 'alarm' for s in states])
-    starts = np.flatnonzero(flags & ~np.r_[False, flags[:-1]])
-    ends = np.flatnonzero(flags & ~np.r_[flags[1:], False])
+    previous = np.r_[False, flags[:-1]]
+    following = np.r_[flags[1:], False]
+    for boundary in breaks:
+        previous[boundary] = following[boundary - 1] = False
+    starts = np.flatnonzero(flags & ~previous)
+    ends = np.flatnonzero(flags & ~following)
     intervals = []
     for a, b in zip(starts, ends):
         peak = int(a + np.argmax(scores[a:b + 1]))

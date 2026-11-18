@@ -18,48 +18,48 @@ def detection_metrics(result, labels, gap_threshold=None):
     states = np.asarray(result['states'])
     valid, alarm = states != 'abstain', states == 'alarm'
 
-    def burden(mask, episodes=None):
-        observed, flags = mask & valid, mask & alarm
-        episodes = spans(times, flags, gap_threshold) if episodes is None else episodes
-        return dict(samples=int(mask.sum()), observedSamples=int(observed.sum()),
-                    alarmSamples=int(flags.sum()), alarmFraction=ratio(int(flags.sum()), int(observed.sum())),
-                    alarmEvents=len(episodes), alarmDuration=sum(s['end']-s['start'] for s in episodes))
+    def phase_burden(intervals, before=None):
+        samples = observed = alarms = episodes = 0
+        duration = exposure = 0.
+        for interval in intervals:
+            mask = (times >= interval['start']) & (times <= interval['end'])
+            if before is not None:
+                mask &= times < before
+            flags = spans(times, mask & alarm, gap_threshold)
+            measured = spans(times, mask & valid, gap_threshold)
+            samples += int(mask.sum())
+            observed += int((mask & valid).sum())
+            alarms += int((mask & alarm).sum())
+            episodes += len(flags)
+            duration += sum(s['end'] - s['start'] for s in flags)
+            exposure += sum(s['end'] - s['start'] for s in measured)
+        return dict(samples=samples, observedSamples=observed, alarmSamples=alarms,
+                    alarmFraction=ratio(alarms, observed), alarmEvents=episodes, alarmDuration=duration,
+                    observedSeconds=exposure, episodesPerObservedHour=ratio(3600 * episodes, exposure))
 
     if labels is None:
-        return dict(version=1, windows=None, events=[], normal=None, preInjection=None, postInjection=None)
-    normal, anomaly = np.zeros(len(times), dtype=bool), np.zeros(len(times), dtype=bool)
+        return dict(version=2, windows=None, events=[], normal=None, preInjection=None, postInjection=None)
+    normal = [i for i in labels['intervals'] if i['kind'] == 'normal']
+    anomalies = [i for i in labels['intervals'] if i['kind'] == 'anomaly'
+                 and i['end'] >= times[0] and i['start'] <= times[-1]]
     events = []
-    normal_episodes, anomaly_episodes = [], []
-    for interval in labels['intervals']:
+    for interval in anomalies:
         inside = (times >= interval['start']) & (times <= interval['end'])
-        if interval['kind'] == 'normal':
-            normal |= inside
-            normal_episodes.extend(spans(times, inside & alarm, gap_threshold))
-            continue
-        if interval['end'] < times[0] or interval['start'] > times[-1]:
-            continue
-        anomaly |= inside
-        anomaly_episodes.extend(spans(times, inside & alarm, gap_threshold))
+        observed = times[inside & valid]
         onset = interval.get('onset', interval['start'])
         detections = times[inside & alarm]
         first = float(detections[0]) if len(detections) else None
         events.append(dict(onset=onset, start=interval['start'], end=interval['end'],
-                           observedSamples=int((inside & valid).sum()),
+                           observedSamples=len(observed), firstObserved=float(observed[0]) if len(observed) else None,
                            firstDetection=first, delay=first-onset if first is not None else None,
                            followUpSeconds=max(0., min(float(times[-1]), interval['end'])-onset)))
     windows = {}
     for key, horizon in WINDOWS.items():
         hits = sum(v['delay'] is not None and (horizon is None or v['delay'] <= horizon) for v in events)
         windows[key] = dict(detectedEvents=hits, totalEvents=len(events), rate=ratio(hits, len(events)),
-                            unobservedEvents=sum(not v['observedSamples'] for v in events),
+                            unobservedEvents=sum(v['firstObserved'] is None or
+                                (horizon is not None and v['firstObserved'] - v['onset'] > horizon) for v in events),
                             truncatedEvents=sum(v['followUpSeconds'] < (v['end']-v['onset'] if horizon is None else horizon) for v in events))
-    # Distinct annotations remain separate episodes, even when adjacent.
-    normal_burden = burden(normal, normal_episodes)
-    pre = np.zeros(len(times), dtype=bool)
-    if events:
-        pre = normal & (times < min(v['onset'] for v in events))
-    pre_episodes = [span for interval in labels['intervals'] if interval['kind'] == 'normal'
-        for span in spans(times, pre & alarm & (times >= interval['start']) & (times <= interval['end']), gap_threshold)]
-    return dict(version=1, windows=windows, events=events, normal=normal_burden,
-                preInjection=burden(pre, pre_episodes) if events else None,
-                postInjection=burden(anomaly, anomaly_episodes) if events else None)
+    return dict(version=2, windows=windows, events=events, normal=phase_burden(normal),
+                preInjection=phase_burden(normal, min(v['onset'] for v in events)) if events else None,
+                postInjection=phase_burden(anomalies) if events else None)

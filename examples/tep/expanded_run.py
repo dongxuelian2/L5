@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,6 +29,7 @@ def export(store, study, output):
             experimentId=task['experimentId'], runId=task['run_id'], datasetId=task['datasetId'], analysisId=task['result_id'],
             externalRun=task['external']['id'], sourceSequence=task['external']['sequenceId'],
             faultNumber=task['external']['faultNumber'], simulationRun=task['external']['simulationRun'], algorithm=task['algorithm'],
+            scoreSha256=hashlib.sha256(json.dumps(result['scores'], separators=(',', ':')).encode()).hexdigest() if result else None,
             status=task['status'], error=task['error'], threshold=result['threshold'] if result else None, metrics=task['metrics']))
     snapshots = {}
     for batch in study['batches']:
@@ -44,7 +46,7 @@ def export(store, study, output):
     fields = ['configuration', 'batch', 'externalRun', 'faultNumber', 'simulationRun', 'algorithm', 'status', 'error', 'threshold',
               'fitId', 'modelKey', 'eventCount', 'detected30m', 'detected1h', 'detected4h', 'detectedEventually', 'unobservedEvents',
               'missedEvents', 'firstDelaySeconds', 'TP', 'FP', 'TN', 'FN', 'recall', 'normalSamples', 'normalAlarmSamples',
-              'normalAlarmEvents', 'normalAlarmDurationSeconds', 'preInjectionAlarmSamples', 'preInjectionAlarmEvents',
+              'normalAlarmEvents', 'normalAlarmDurationSeconds', 'normalObservedSeconds', 'normalEpisodesPerObservedHour', 'preInjectionAlarmSamples', 'preInjectionAlarmEvents',
               'preInjectionAlarmDurationSeconds', 'postInjectionAlarmFraction', 'alarmSegments', 'coverage', 'abstainedSamples',
               'experimentId', 'runId', 'datasetId', 'analysisId', 'scoreSha256']
     with (output/'per-run.csv').open('w', encoding='utf-8', newline='') as stream:
@@ -60,9 +62,10 @@ def export(store, study, output):
                     eventCount=windows['eventual']['totalEvents'], detected30m=windows['1800']['detectedEvents'],
                     detected1h=windows['3600']['detectedEvents'], detected4h=windows['14400']['detectedEvents'],
                     detectedEventually=windows['eventual']['detectedEvents'], unobservedEvents=windows['eventual']['unobservedEvents'],
-                    missedEvents=windows['eventual']['totalEvents']-windows['eventual']['detectedEvents'],
+                    missedEvents=labelled['event']['missedEvents'],
                     firstDelaySeconds=labelled['event']['firstDetectionDelay'], **{k: labelled['sample'][k] for k in ('TP', 'FP', 'TN', 'FN', 'recall')},
                     normalSamples=normal['observedSamples'], normalAlarmSamples=normal['alarmSamples'],
+                    normalObservedSeconds=normal.get('observedSeconds'), normalEpisodesPerObservedHour=normal.get('episodesPerObservedHour'),
                     normalAlarmEvents=normal['alarmEvents'], normalAlarmDurationSeconds=normal['alarmDuration'],
                     preInjectionAlarmSamples=(detection['preInjection'] or {}).get('alarmSamples'),
                     preInjectionAlarmEvents=(detection['preInjection'] or {}).get('alarmEvents'),

@@ -14,7 +14,9 @@ from scipy.optimize import minimize
 
 def solve_qp(h, g, a, lower, upper, *, initial=None, iterations=1200, tolerance=1e-5):
     h,g,a,lower,upper=(np.asarray(v,dtype=float) for v in (h,g,a,lower,upper))
-    if not all(np.all(np.isfinite(v)) for v in (h,g,a)) or np.any(lower>upper):
+    invalid_bounds = (np.isnan(lower).any() or np.isnan(upper).any() or np.isposinf(lower).any()
+                      or np.isneginf(upper).any() or np.any(lower > upper))
+    if invalid_bounds or not all(np.all(np.isfinite(v)) for v in (h,g,a)):
         raise ValueError('Invalid QP coefficients.')
     if not np.allclose(h,h.T,atol=1e-12):
         raise ValueError('QP Hessian must be symmetric positive definite.')

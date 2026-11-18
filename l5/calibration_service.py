@@ -10,6 +10,7 @@ import numpy as np
 from .identification import (FIXED, INPUTS, OUTPUTS, PARAMETERS, VERSION, Observations,
                              configuration, fit)
 from .models.base import finite
+from .models.tanks import validate_tank_measurements
 
 
 class CalibrationService:
@@ -52,6 +53,7 @@ class CalibrationService:
         dataset=self.store.dataset(ref.get('datasetId',''))
         if dataset['workspace_id'] != workspace_id:
             raise ValueError('Calibration datasets must belong to this workspace.')
+        validate_tank_measurements(self.store, dataset)
         interval=ref.get('range')
         if (not isinstance(interval,list) or len(interval)!=2 or any(not finite(v) for v in interval) or
                 not dataset['metadata']['time']['start'] <= interval[0] < interval[1] <= dataset['metadata']['time']['end']):

@@ -77,8 +77,8 @@ L5 includes numerical studies for Tennessee Eastman anomaly detection and couple
 
 Selected measured results:
 
-- **Tennessee Eastman:** Dynamic PCA-Q detected **54 of 60** fault runs during the run under normal training configuration A, with **2 alarm samples across 4,800** normal observations.
-- **Closed-loop control:** For a 1 → 1.25 m coupled-tank setpoint step, measured integrated absolute error was **12.3028 m·s** for PI and **9.8953 m·s** for MPC with the same reference information.
+- **Tennessee Eastman:** Dynamic PCA-Q detected **54 of 60** fault runs eventually and **20 of 60** within 30 minutes under normal training configuration A, with **2 alarm samples across 4,800** normal observations.
+- **Closed-loop control:** For a 1 → 1.25 m coupled-tank setpoint step, measured integrated absolute error was **12.3028 m·s** for PI and **9.8953 m·s** for MPC with the same unannounced reference step. MPC used its PI fallback at one control decision.
 
 The **[Benchmark guide](docs/benchmarks.md)** contains datasets, protocols, reproduction commands, and further results for detector robustness, parameter calibration, state estimation, fault studies, and recovery.
 

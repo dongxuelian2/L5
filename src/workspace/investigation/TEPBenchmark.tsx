@@ -9,8 +9,8 @@ export type StudyCell = BenchmarkCell & { configuration?: string; windows?: Reco
 
 export function MatrixMetric({ metric, setMetric }: { metric: string; setMetric: (value: string) => void }) {
   return <label>Matrix metric<select value={metric} onChange={e => setMetric(e.target.value)}>
-    <option value="event">Event detection / eligible events</option><option value="1800">Detected within 30 minutes</option><option value="3600">Detected within 1 hour</option><option value="14400">Detected within 4 hours</option><option value="eventual">Eventual detection / all declared events</option>
-    <option value="recall">Sample recall</option><option value="far">False alarm rate on labelled normal samples</option><option value="normalBurden">Normal alarm samples / episodes / seconds</option><option value="delay">First detection delay · median seconds</option><option value="sustained">Post-onset alarm fraction</option><option value="coverage">Valid observation coverage</option>
+    <option value="event">Event detection / eligible events</option><option value="1800">Detected within 30 minutes</option><option value="3600">Detected within 1 hour</option><option value="14400">Detected within 4 hours</option><option value="eventual">Eventual detection / completed-run events</option>
+    <option value="recall">Fault-period sample recall</option><option value="far">False alarm rate on labelled normal samples</option><option value="episodeRate">False alarm episodes per observed normal hour</option><option value="normalBurden">Normal alarm samples / episodes / seconds</option><option value="delay">First detection delay · median seconds</option><option value="sustained">Post-onset alarm fraction</option><option value="coverage">Valid observation coverage</option>
   </select></label>;
 }
 
@@ -21,6 +21,7 @@ export function FaultMatrix({ cells, metric, onCell }: { cells: StudyCell[]; met
     if (["1800","3600","14400","eventual"].includes(metric)) { const w = cell.windows?.[metric]; return w ? tr("{0}/{1} events", {0: w.detectedEvents, 1: w.totalEvents}) : "Not recorded"; }
     if (metric === "event") return cell.event.eligibleEvents ? tr("{0}/{1} events", {0: cell.event.detectedEvents, 1: cell.event.eligibleEvents}) : "No eligible events";
     if (metric === "recall") return value(cell.sample.recall);
+    if (metric === "episodeRate") return value(cell.burden?.normal.episodesPerObservedHour);
     if (metric === "far") return value(cell.sample.falseAlarmRate);
     if (metric === "coverage") return value(cell.coverage);
     if (metric === "normalBurden") { const b = cell.burden?.normal; return b ? tr("{0}/{1} samples · {2} episodes · {3} s", {0: b.alarmSamples, 1: b.observedSamples, 2: b.alarmEvents, 3: value(b.alarmDuration)}) : "Not recorded"; }

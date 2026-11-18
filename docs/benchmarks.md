@@ -8,6 +8,21 @@ The expanded study uses nine methods on 65 test trajectories (three runs per fau
 
 On the same normal runs, Page CUSUM produced 0, 739, and 1,833 alarm samples under configurations A, B, and C. Thresholds and alarm burden depend on the normal training data. The configured reporting windows also include one hour, four hours, and the full run. [Configuration A results](../README.md#reproducible-results)
 
+### Reading detection results
+
+Rieth labels identify simulated operating periods. A post-injection alarm counts as a hit even if the same detector also alarms on the matched normal trajectory. Sample recall measures alarm occupancy during the labelled fault period. The 30-minute window includes the sample exactly 1,800 seconds after injection (indices 160 through 170). Each detector confirms on the third exceedance, without backdating to the first.
+
+| Quantity | Counting rule |
+| --- | --- |
+| Sample precision, recall, F1 | Pool TP, FP, TN and FN over explicitly labelled, evaluable samples. Precision = TP/(TP+FP), recall = TP/(TP+FN), F1 = 2TP/(2TP+FP+FN). An empty denominator gives an undefined value. |
+| Event recall | Count hits divided by in-scope fault intervals with at least one evaluable sample. A miss has observed samples and zero alarms. |
+| Detection by a horizon | Divide hits by all in-scope declared events in completed evaluations, including wholly abstained events. Each hit requires a confirmed alarm sample inside the interval and a delay within the horizon. Eventual detection uses the entire available interval. |
+| First detection delay | Subtract original onset from the first in-interval alarm time, in seconds. Report distributions over hits. Early alarms count separately in labelled normal periods. |
+| Coverage and incomplete work | Coverage is evaluable samples / submitted samples. Unobserved counts indicate no evaluable sample in the window. Truncated counts indicate that the available time range ends before the window endpoint. These counts can overlap. Failed, interrupted and pending tasks contribute to workload counts only. Version 1 records retain their original whole-event observation counts. |
+| False alarms | Sample FPR = FP/(FP+TN). Normal alarm frequency = 3,600 × normal episodes / observed normal seconds. Split spans at annotation boundaries, abstentions and acquisition gaps above five median positive sample intervals. Exposure and alarm duration sum last minus first time per span. Singletons contribute zero time. Pool episode counts and exposure before dividing. Historical records without exposure have an undefined frequency. |
+
+The A/B/C replay reproduced every count in the 567 published configuration–detector–fault rows. Configuration A DPCA-Q detected 20/60 fault runs within 30 minutes and 54/60 eventually. The corresponding B results were 21/60 and 57/60, and C yielded 20/60 and 55/60. Its independent normal alarm samples were 2, 5 and 2 out of 4,800 respectively. The expanded A study repeats the A condition. The 2,340 recorded executions represent 1,755 distinct configuration–detector–trajectory combinations.
+
 ### Prepare the source data
 
 Install L5 using the [README](../README.md#installation). Run the following commands at the repository root. The three source files total about 909 MB. The preparation command extracts the selected runs after verifying the original files. Use `--source-dir` to point to local originals and omit `--download` to prepare data offline.
@@ -70,6 +85,10 @@ node scripts/python.mjs -m simulation.platform
 ## Coupled-tank simulation studies
 
 The model uses square-root flow laws with signed inter-tank transfer and conservative volume updates. State and fault truth are available in seeded simulations for evaluation. Identification fits measurements with bounded, noise-weighted least squares. Use an independent run or disjoint interval to evaluate predictions with frozen coefficients. Fit rank and residual structure help identify weak parameter combinations. Additional input excitation or flow measurements can help separate their effects.
+
+For constant areas, storage satisfies A₁ dh₁/dt = inlet − transfer − leak₁ − spill₁ and A₂ dh₂/dt = transfer − outlet − spill₂ in the base plant. Orifice coefficients absorb discharge coefficient, opening area and √(2g), with units m⁵ᐟ²/s. The overflow law uses positive head above the crest to the power 3/2. A rectangular free weir has coefficient (2/3) Cd b √(2g), in m³ᐟ²/s. L5 assumes a lumped value of 0.1. Equipment geometry, measured head–discharge curves and fitted Cd are required to validate it. [US Bureau of Reclamation, thin-plate weir relationships](https://www.usbr.gov/tsc/techreferences/mands/wmm/chap02_09.html)
+
+Pump and valve fault intensities interpolate linearly to 30% of nominal pump delivery and 15% of nominal valve opening at full severity. Those endpoints, the nominal geometry and the default 2 mm sensor noise are illustrative assumptions. Flow-meter tests across commands and heads, valve characterization and sensor residual measurements would establish equipment-specific values. SSPRK2 uses shared donor-volume-limited stage fluxes. Smooth positive-head cases permit second-order convergence. Drying, flow reversal and switching require case-specific step refinement.
 
 With the application requirements installed, run these fixed studies at the repository root.
 

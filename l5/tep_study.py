@@ -13,9 +13,7 @@ import re
 from uuid import uuid4
 
 from .contracts import TEP_CLASSIC_SCHEMA
-from .detection_metrics import WINDOWS
-from .external_benchmark import distribution, summarize
-from .experiment_evaluation import ratio
+from .external_benchmark import summarize
 
 ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL_FILES = {'rieth-expanded-nine-v1': 'expanded_protocol.json', 'rieth-robustness-nine-v1': 'robustness_protocol.json'}
@@ -98,20 +96,8 @@ def aggregate(tasks):
         unresolved = len(members)-len(scored)
         cell.update(configuration=cell['runId'], plannedRuns=len(members), unresolvedRuns=unresolved,
                     pending=sum(t['status'] in ('not-run', 'queued', 'running') for t in members))
-        cell['windows'] = {}
-        for key in WINDOWS:
-            observed = [t['metrics']['detection']['windows'][key] for t in scored if t['metrics'].get('detection', {}).get('windows')]
-            total = sum(v['totalEvents'] for v in observed) + (unresolved if positive else 0)
-            hits = sum(v['detectedEvents'] for v in observed)
-            cell['windows'][key] = dict(detectedEvents=hits, totalEvents=total, rate=ratio(hits, total),
-                unresolvedEvents=unresolved if positive else 0, unobservedEvents=sum(v['unobservedEvents'] for v in observed),
-                truncatedEvents=sum(v['truncatedEvents'] for v in observed))
-        cell['burden'] = {}
-        for phase in ('normal', 'preInjection', 'postInjection'):
-            records = [t['metrics']['detection'][phase] for t in scored if t['metrics'].get('detection', {}).get(phase) is not None]
-            counts = {k: sum(v[k] for v in records) for k in ('samples', 'observedSamples', 'alarmSamples', 'alarmEvents', 'alarmDuration')}
-            cell['burden'][phase] = {**counts, 'alarmFraction': ratio(counts['alarmSamples'], counts['observedSamples'])}
-        delays = [v['delay'] for t in scored for v in t['metrics'].get('detection', {}).get('events', [])]
+        delays = [e['delay'] for t in scored if t['metrics']['labelled']
+                  for e in t['metrics']['labelled']['event']['events'] if e['observedSamples']]
         cell['delayDistribution'] = dict(within30m=sum(v is not None and v <= 1800 for v in delays),
             from30mTo1h=sum(v is not None and 1800 < v <= 3600 for v in delays),
             from1hTo4h=sum(v is not None and 3600 < v <= 14400 for v in delays),
