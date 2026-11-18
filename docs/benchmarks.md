@@ -35,14 +35,14 @@ node scripts/python.mjs -m examples.tep.prepare --source-dir output/rieth --cach
 
 ### Run the fixed studies
 
-Run the studies with a dedicated data directory. Set `L5_TEP_CACHE` to `output/tep-cache` in the server environment to browse the extracted trajectories and saved studies in **Tennessee Eastman benchmark**. Start the server with `npm run serve -- --data-dir output/tep-workspace` after the CLI jobs finish.
+Run the studies with a dedicated data directory. Set `L5_TEP_CACHE` to `output/tep-cache` in the server environment to browse the extracted trajectories and saved studies in **Tennessee Eastman histories**. Start the server with `npm run serve -- --data-dir output/tep-workspace` after the CLI jobs finish.
 
 ```sh
 node scripts/python.mjs -m examples.tep.expanded_run --data-dir output/tep-workspace --cache-dir output/tep-cache --output-dir output/tep-expanded
 node scripts/python.mjs -m examples.tep.robustness --data-dir output/tep-workspace --cache-dir output/tep-cache --output-dir output/tep-robustness
 ```
 
-Each output directory contains `study.json` with the saved workspace and study IDs, `results.json` with per-run model and detection results, and `per-run.csv` for tabular comparison. Pass `--workspace-id` to reuse a workspace. Pass `--workspace-id` and `--study-id` together to continue or export a saved study. The [Streamlit result table](../demo/tep-results.csv) aggregates the recorded A/B/C per-run counts by configuration, detector, and fault. Normal alarm counts use the rows for fault 0.
+Each output directory contains `study.json` with the saved workspace and study IDs, `results.json` with per-run model and detection results, and `per-run.csv` for tabular comparison. Pass `--workspace-id` to reuse a workspace. Pass `--workspace-id` and `--study-id` together to continue or export a saved study. The [recorded result table](../benchmarks/tep-results.csv) aggregates the A/B/C per-run counts by configuration, detector and fault. Normal alarm counts use the rows for fault 0.
 
 For a shorter case, the original protocol uses two independent normal runs and two runs each for faults 1, 3, and 5. The command below evaluates 72 tasks and exports an experiment report and a linked example incident report.
 
@@ -50,7 +50,7 @@ For a shorter case, the original protocol uses two independent normal runs and t
 node scripts/python.mjs -m examples.tep.run --data-dir output/tep-small-workspace --cache-dir output/tep-cache --output-dir output/tep-small --investigate
 ```
 
-Open the resulting workspace and select **Tennessee Eastman benchmark** to compare the detection matrix, training configurations, and individual trajectories. Drill into an experiment to inspect its synchronized scores and raw signals, or link an alarm interval to an incident for export.
+Open the resulting workspace and select **Tennessee Eastman histories** to compare the detection matrix, training configurations, and individual trajectories. Drill into an experiment to inspect its synchronized scores and raw signals, or link an alarm interval to an incident for export.
 
 ### Independent reference evaluation
 

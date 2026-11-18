@@ -1,20 +1,16 @@
 # L5 user guide
 
-## Investigate a reactor cooling-water disturbance
+## Run a plant investigation
 
-Install GNU Fortran on the L5 server and confirm that `gfortran --version` succeeds. Open a workspace, select **Tennessee Eastman benchmark** under Investigation and choose **Run study**. The first stage saves independent normal and disturbed trajectories. **Inspect simulated measurements** opens the evaluation dataset while the investigation finishes.
+Open **Plants and runs** and select a plant and scenario. Tennessee Eastman requires GNU Fortran on the server path. Expand **Run settings and plant equipment** to change duration, disturbance time, intervention time or the evaluation seed.
 
-Expand **Diagnostic evidence** to compare reactor and condenser signatures. The control table shows the cost of reducing valve movement in reactor-temperature tracking. **Analyze these five signals** opens the specialist analysis with the evaluation dataset and channels selected. **Export study report** downloads the evidence, scenario, thresholds, source dataset IDs and matched control results. Reopening the study restores its saved runs. The [model and protocol guide](industrial-process.md) gives the numerical references and reproduction commands.
+Choose **Run investigation**. The measurements panel updates during simulation. The completed study presents the alarm delay, the closest reference trajectory and the intervention metrics. **Export investigation report** downloads HTML. The linked measurements, detection analysis, experiment and incident open with the original run context. Expand **Diagnostic residuals and exports** to download evidence JSON or inspect the intervention trace.
 
-## Start with an example
-
-From the workspace list, choose **Open guided demo**, then select **Load the scenario**. The example creates a saved dataset from a seeded coupled-tank simulation. The inlet pump loses efficiency while its command stays constant. Inspect the tank level charts, then switch to the inlet flow and pump command to see the supply loss.
-
-Choose **Run both detectors** to fit and score Robust Max-Z and EWMA on the same pair of level signals. Compare alarm delays from the simulated onset and move the shared cursor between the curves and alarm intervals. **Create linked incident** saves the dataset, simulation reference, and detector results. Reopen the incident to record evidence and a conclusion, then generate and download a standalone HTML report. Return to the guided example from the workspace list to resume the saved case.
+**Saved runs** reopens investigations after navigation or refresh. **Cancel run** preserves the available measurements. **Resume investigation** repeats an interrupted trajectory from initialization and reuses complete sources with the same configuration. For a staged study, choose **Run measurements only** under the run settings, then **Complete investigation** when ready. See the [industrial process guide](industrial-process.md) for model provenance and numerical assumptions.
 
 ## Import and prepare measurements
 
-1. Create a workspace and open **Datasets**. Select a CSV or TSV with a unique, nonempty name for each column and inspect the preview. Choose the time column and its unit, or supply a sample interval. Set the interpretation timezone when the file has date and time values without a timezone.
+1. Create a workspace and open **Datasets**. Select a CSV or TSV with a unique, nonempty name for each column and inspect the preview. Enter the recorded plant name when known. Choose the time column and its unit, or supply a sample interval. Set the interpretation timezone for local dates.
 2. Inspect missing measurements, duplicate times, and acquisition gaps in **Data quality**. Use **Signal catalog** to update engineering units, display names, and device tags. Use transformations to convert values between units.
 3. Open **Signal explorer** to browse multiple sources. Absolute clocks share a UTC time base. For a relative clock, select a reference source and set an offset before aligning with other measurements.
 4. Use **Transformations** to resample signals, choose missing-value and duplicate policies, or derive values from expressions. Preview the output grid and quality, then save the transformed output as a new dataset. Derived columns retain sample lineage and indicate which values were observed or processed.

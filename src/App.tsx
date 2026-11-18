@@ -1,7 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import WorkspaceApp from "./workspace/WorkspaceApp";
-
-const ExamplesApp = lazy(() => import("./ExamplesApp"));
 
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
@@ -18,6 +16,5 @@ export default function App() {
   }, []);
   const [route, search = ""] = hash.replace(/^#\/?/, "").split("?");
   const path = route.split("/").filter(Boolean);
-  if (path[0] === "examples") return <><div className="ws-example-banner"><a href="#/">← L5 Workspaces</a><span>TRIPLENS / PROCESS MODELS &amp; EXAMPLES</span></div><Suspense fallback={<p className="ws-main">Loading TripLens examples…</p>}><ExamplesApp /></Suspense></>;
   return <WorkspaceApp key={path[0] === "workspaces" ? path[1] : path[0]} path={path} search={search} />;
 }

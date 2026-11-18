@@ -2,15 +2,15 @@
 
 **Industrial process analysis, simulation, and investigation in a local workstation.**
 
-L5 turns process measurements into a connected workflow: import or record signals, inspect their quality, run anomaly detectors, investigate alarms, simulate equipment behavior, evaluate control strategies, and export the resulting evidence. Workspaces preserve datasets, configurations, analyses, experiments, and incidents across sessions.
+Open a workspace, select **Tennessee Eastman** or **Cascaded stirred-tank reactors**, then choose an operating scenario. **Run investigation** starts the plant and saves measurements, detection, a matched intervention and an incident. **Export investigation report** downloads the linked evidence as standalone HTML.
 
-Open **Tennessee Eastman benchmark** in a workspace to run the [reactor cooling-water study](docs/industrial-process.md). One action saves the detection analysis, experiment and incident. Inspect the aligned diagnosis and matched control comparison, then export the incident report. This study requires GNU Fortran on the server path.
+The [industrial process guide](docs/industrial-process.md) documents the equations, supported operating points, reference comparisons and intervention results.
 
-![L5 guided investigation of a coupled-tank pump fault](docs/l5-workspace.jpg)
+![L5 warm-feed investigation for the stirred-tank reactor cascade](docs/l5-workspace.jpg)
 
 ## Quick start
 
-Requirements: **Node.js 22.12+**, **npm**, and **Python 3.12+**. From the repository root:
+Use **Node.js 22.12+**, **npm**, and **Python 3.12+**. Tennessee Eastman also requires GNU Fortran on PATH. From the repository root:
 
 ```sh
 npm ci
@@ -22,12 +22,7 @@ npm run serve
 
 On Windows, create the environment with `py -3.12 -m venv .venv`. The remaining commands use the same Node.js entry points.
 
-Open **[http://127.0.0.1:8787](http://127.0.0.1:8787)** and choose **Open guided demo**.
-
-1. **Load the scenario** to generate a coupled-tank case with inlet-pump degradation. Inspect measured levels, inlet flow, and pump commands.
-2. **Run both detectors** to compare Robust Max-Z and EWMA scores, thresholds, alarm delays, and signal contributions.
-3. **Create linked incident** to preserve the dataset and detector results, then record observations and a conclusion.
-4. **Export the investigation** as standalone HTML for review or printing to PDF.
+Open **[http://127.0.0.1:8787](http://127.0.0.1:8787)** and create or open a workspace. **Plants and runs** opens first. Choose **Run investigation** to use the default reactor cooling-water scenario, or select another plant and scenario. Measurements appear while the simulation runs.
 
 To work with your own measurements, create a workspace and import a CSV or TSV under **Datasets**. The [motor cooling example](examples/data-foundation/README.md) provides three sources with different clocks, acquisition gaps, and transformations. Workspace records are stored locally in `data/`.
 
@@ -52,7 +47,7 @@ L5 connects five areas of industrial analysis through shared datasets, models, a
 
 ### Simulation, modeling, and control
 
-- **Simulate and control processes.** Run TripLens scenarios and a coupled-tank hydraulic model with configurable faults, interventions, and measurement noise. Compare held-input operation, PI, and receding-horizon model predictive control under matched conditions; inspect tracking errors, control effort, and constraint excursions.
+- **Simulate and control processes.** Run Tennessee Eastman or the exothermic CSTR cascade and compare seeded interventions. The coupled-tank specialist tools retain hydraulic calibration, PI and MPC reference studies.
 - **Calibrate and estimate.** Fit bounded physical parameters from measurements, inspect identifiability and residuals, validate predictions, and save digital twin revisions. Reconstruct process states from noisy or incomplete observations and export estimated trajectories.
 - **Design measurements and experiments.** Compare sensor placements under installation budgets, examine simulated fault distinguishability, and evaluate constrained pump and valve excitation schedules using information criteria and operating margins.
 
@@ -68,10 +63,8 @@ For workspace controls, input requirements, and example procedures, see the **[U
 | Starting point | Use L5 to | Output |
 | --- | --- | --- |
 | **Recorded process data** | Inspect signal quality → calibrate a detector → replay alarms → investigate an episode | A saved incident with synchronized measurements and an exportable report |
-| **A process model** | Configure a coupled-tank scenario → compare PI and MPC → examine tracking and constraints | A saved controller comparison and reusable simulated trajectories |
+| **An executable plant** | Select a scenario → run → inspect alarms and matched intervention | A plant run, native measurement traces and an exportable incident |
 | **Measurements and design questions** | Calibrate a digital twin → validate predictions → estimate states → evaluate sensors or excitation | Saved model revisions, estimated trajectories, and design studies |
-
-The [Streamlit demo](demo/README.md) offers a lightweight entry point for running detectors on an example or uploaded CSV and browsing recorded Tennessee Eastman results.
 
 ## Reproducible results
 
@@ -86,10 +79,9 @@ The **[Benchmark guide](docs/benchmarks.md)** contains datasets, protocols, repr
 
 ## Architecture and documentation
 
-L5 combines a **React/TypeScript** interface with a local **Python HTTP API**. NumPy, pandas, and SciPy support numerical analysis. **SQLite** stores workspace records, with CSV and NumPy files holding measurements and results. OPC UA supports read-only acquisition; control, fault injection, and recovery policies execute on local simulations.
+L5 combines a **React/TypeScript** interface with a local **Python HTTP API**. NumPy, pandas, and SciPy support analysis. **SQLite** stores workspace records and **NumPy** stores native simulation traces. File imports retain their original source. OPC UA supports read-only acquisition. Control, fault injection, and recovery policies execute on simulations.
 
 - **[User guide](docs/user-guide.md)** — Workspace operations, specialist tools, incident investigation, and local configuration.
 - **[Architecture](docs/architecture.md)** — Application structure, API workflow, storage, and adapters.
 - **[Benchmarks](docs/benchmarks.md)** — Data sources, experiment protocols, numerical results, and reproduction commands.
-- **[Streamlit demo](demo/README.md)** — Lightweight detector demonstration and deployment.
 - **[MIT license](LICENSE)**.

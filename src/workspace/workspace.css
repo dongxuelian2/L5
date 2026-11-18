@@ -276,3 +276,28 @@
 .incident-report iframe { width:100%; height:850px; margin-top:24px; border:1px solid #54634c; background:white; border-radius:3px; }
 .incident-report .incident-actions { margin:18px 0; }
 .incident-report .ws-notice { margin-top:18px; }
+.ws-plant-settings {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .85rem;
+  margin-bottom: .8rem;
+}
+.ws-plant-settings label { min-width: 11rem; }
+.ws-plant-settings label:nth-child(2) { flex: 1; }
+.ws-plant details .ws-plant-settings { margin-top: .75rem; }
+.ws-plant-status {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+  margin-top: .8rem;
+}
+.ws-plant-export { display: inline-block; text-decoration: none; }
+.ws-plant-runs { list-style: none; padding: 0; }
+.ws-plant-runs li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.2rem;
+  padding: .5rem 0;
+}
