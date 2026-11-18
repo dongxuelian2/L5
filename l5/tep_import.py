@@ -200,6 +200,8 @@ class TEPImportService:
             writer.writerows(((i*180, *row) for i, row in enumerate(values)))
             source_csv = out.getvalue()
             metadata, times, matrix = prepare_csv(source_csv, dict(timeColumn='t', timeKind='numeric', timeUnit='seconds'))
+            from simulation.tep import describe_columns
+            describe_columns(metadata['columns'])
             metadata.update(filename=source['source']['sourceFile'], external=dict(
                 kind='tep-rieth', **source['source'], **run, schema=source['schema'],
                 originalColumns=['faultNumber', 'simulationRun', 'sample', *TEP_CLASSIC_SCHEMA.keys],

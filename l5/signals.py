@@ -95,6 +95,8 @@ class SignalWorkspace:
                 source = 'Transformation'
             elif metadata.get('model'):
                 source = metadata['model'].get('name', metadata['model']['id']) + ' simulation'
+            elif metadata.get('processRun'):
+                source = metadata['processRun']['plant'] + ' ' + metadata['processRun']['type']
             elif metadata.get('resilience'):
                 source = 'Resilience simulation'
             for column in metadata['columns']:

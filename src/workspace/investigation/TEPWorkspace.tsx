@@ -1,3 +1,4 @@
+import { IndustrialStudy } from "./IndustrialStudy";
 import { errorMessage, t as tr, type Message } from "../../lib/text";
 import { useEffect, useState } from "react";
 import { api, go, message } from "../api";
@@ -44,7 +45,8 @@ export function TEPWorkspace({ workspaceId, search, onChanged }: { workspaceId: 
     try { const r = await api<{ id: string }>(`/workspaces/${workspaceId}/external/tep/experiment`, {}); onChanged(); go(`workspaces/${workspaceId}/experiments/${r.id}`); }
     catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
-  return <div className="notranslate" translate="no"><div className="ws-page-title"><div><div className="ws-kicker">EXTERNAL DATA / TENNESSEE EASTMAN</div><h1>A public process benchmark<span className="ws-accent">.</span></h1><p>Import verified independent simulation runs, fit on normal training data and evaluate untouched test trajectories.</p></div><span className="ws-badge">RIETH 2017 · 52 CHANNELS</span></div>
+  return <div className="notranslate" translate="no"><div className="ws-page-title"><div><div className="ws-kicker">EXTERNAL DATA / TENNESSEE EASTMAN</div><h1>Tennessee Eastman<span className="ws-accent">.</span></h1><p>Run the cooling-water investigation or explore published benchmark measurements.</p></div><span className="ws-badge">RIETH 2017 · 52 CHANNELS</span></div>
+    <IndustrialStudy key={workspaceId} workspaceId={workspaceId} onChanged={onChanged} />
     <section className="ws-panel"><h2>01 / Cached external runs</h2><p><a className="ws-link" href="https://doi.org/10.7910/DVN/6C3JR1" target="_blank" rel="noreferrer">Source data and citation ↗</a>{" "}· 180-second samples · file and run identities retained</p>
       {!sources.length ? <><p className="ws-notice">Prepare selected official runs in the local cache before importing.</p><pre>node scripts/python.mjs -m examples.tep.prepare --source-dir output/rieth --cache-dir output/tep-cache --source faulty-testing --faults 1 3 5 --runs 1 2 --download</pre><p>Set L5_TEP_CACHE to the cache directory when starting L5. See docs/benchmarks.md for all three source commands.</p></> : <>
         <label>Cached TEP source<select disabled={busy} value={sourceId} onChange={e => { setSourceId(e.target.value); setSelected([]); setPreview(null); setNotice(null); }}>{sources.map(s => <option key={s.id} value={s.id}>{s.source.sourceFile} · {s.runs.length}{" "}prepared runs</option>)}</select></label>

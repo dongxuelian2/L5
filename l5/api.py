@@ -108,6 +108,12 @@ def dispatch(handler, method: str) -> bool:
             result, status = route(handler, store.resilience, method, parts[2], parts[4:], body, url.query)
             if status is None:
                 return True
+        elif len(parts) == 4 and parts[1] == 'workspaces' and parts[3] == 'industrial-study' and method in ('GET', 'POST'):
+            from .industrial_study import study
+            stage = body.get('stage') if method == 'POST' else None
+            if method == 'POST' and stage not in ('measurements', 'investigation'):
+                raise ValueError('Choose the measurements or investigation stage.')
+            result = study(store, parts[2], stage)
         elif parts == ['api', 'external', 'tep', 'sources'] and method == 'GET':
             result = store.tep.sources()
         elif parts == ['api', 'external', 'tep', 'protocol'] and method == 'GET':
