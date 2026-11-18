@@ -50,7 +50,10 @@ def simulate(binary, fault, seed, gain=1., subdivisions=1, hours=24, state_offse
         raise ValueError('Choose an initial cooling-water temperature offset.')
     args = f'{hours * 3600} {fault} {gain} {subdivisions} {state} {offset}\n{seed}\n'
     start = time.perf_counter()
-    result = subprocess.run([binary], input=args, capture_output=True, text=True, timeout=120, check=True)
+    try:
+        result = subprocess.run([binary], input=args, capture_output=True, text=True, timeout=120, check=True)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError(f'The Tennessee Eastman simulation failed. Retry the study. {error}') from error
     rows = np.loadtxt(io.StringIO(result.stdout), ndmin=2)
     if (rows.shape != (hours * 20, 53) or not np.isfinite(rows).all()
             or not np.array_equal(rows[:, 0], np.arange(1, len(rows) + 1) * 180)):

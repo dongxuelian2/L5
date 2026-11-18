@@ -8,9 +8,9 @@ from time import perf_counter
 
 import numpy as np
 
-from .monitoring import MaxZMonitor, PCAMonitor, calibrate, split_normal_training
+from .monitoring import MahalanobisMonitor, MaxZMonitor, PCAMonitor, calibrate, split_normal_training
 
-ALGORITHMS = {'robust-maxz': 'Robust Max-Z', 'pca-q': 'PCA-Q', 'pca-t2': 'PCA-T²',
+ALGORITHMS = {'mahalanobis': 'Squared Mahalanobis distance', 'robust-maxz': 'Robust Max-Z', 'pca-q': 'PCA-Q', 'pca-t2': 'PCA-T²',
               'ewma': 'EWMA', 'cusum': 'Page CUSUM', 'window-cusum': 'Finite-window CUSUM',
               'dpca-q': 'Dynamic PCA-Q', 'dpca-t2': 'Dynamic PCA-T²',
               'adaptive-maxz': 'Adaptive Max-Z · Experimental'}
@@ -21,6 +21,8 @@ def build_monitor(algorithm, config):
     from benchmarks.window_cusum import WindowCUSUMMonitor
     from benchmarks.dynamic_pca import DynamicPCAMonitor
     from benchmarks.adaptive import AdaptiveMaxZMonitor
+    if algorithm == 'mahalanobis':
+        return MahalanobisMonitor()
     if algorithm == 'robust-maxz':
         return MaxZMonitor()
     if algorithm in ('pca-q', 'pca-t2'):
@@ -53,6 +55,8 @@ def contribution_matrix(monitor, target):
 
 
 def signal_contributions(monitor, sample: np.ndarray, names: list[str]) -> list[dict]:
+    if isinstance(monitor, MahalanobisMonitor):
+        return ranked_contributions(monitor._contributions(sample[None, :])[0], names)
     z = (sample - monitor.center) / monitor.scale
     if isinstance(monitor, MaxZMonitor):
         weights = np.abs(z)
@@ -252,7 +256,7 @@ def project_analysis(monitor, threshold, scores, states, weights, original_mask,
             'scores': scores.tolist(), 'states': list(states), 'observedFraction': original_mask.mean(axis=1).tolist(), 'threshold': threshold, 'intervals': intervals,
             'relatedSignals': [item['signal'] for item in contributions[:10]],
             'signalContributions': contributions, 'peakTime': float(target_times[peak_index]),
-            'contributionMetric': {'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
+            'contributionMetric': {'mahalanobis': 'absolute-quadratic-term', 'robust-maxz': 'absolute-robust-z', 'pca-q': 'squared-residual',
                                    'pca-t2': 'model-leverage', 'dpca-q': 'squared-residual', 'dpca-t2': 'model-leverage'}.get(algorithm, 'history-contribution'),
             'summary': {'analysisSamples': len(target_times), 'baselineSamples': baseline_samples,
                         'fitSamples': fit_samples, 'calibrationSamples': calibration_samples,

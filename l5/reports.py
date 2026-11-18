@@ -19,7 +19,7 @@ KINDS = {'alarm': 'Alarm', 'note': 'Investigation note', 'evidence': 'Evidence',
          'investigation': 'Tool investigation', 'status': 'Status change', 'conclusion': 'Conclusion update', 'incident': 'Incident range',
          'prognostic': 'Prognostic forecast', 'safety-observed': 'Observed constraint violation', 'safety-predicted': 'Predicted constraint violation'}
 STANCE = {'support': 'Supports', 'oppose': 'Opposes', 'neutral': 'Undecided'}
-METRIC = {'absolute-robust-z': 'Absolute robust z-score', 'squared-residual': 'PCA-Q standardized squared residual',
+METRIC = {'absolute-quadratic-term': 'Absolute channel term in the covariance quadratic form', 'absolute-robust-z': 'Absolute robust z-score', 'squared-residual': 'PCA-Q standardized squared residual',
           'model-leverage': 'PCA-T² model-space contribution (descriptive ranking; does not sum to T²)', 'history-contribution': 'History-based channel contribution',
           'regime-detector-specific': 'Regime detector contributions'}
 PROGNOSTIC_STATUS = {'ok': 'Forecast available', 'insufficient_data': 'There are too few usable measurements to fit this model.',
@@ -445,6 +445,26 @@ def render_report(store, identity):
     parts.append(f"<h2>{(6 if simulation_links else 5)}. Investigation conclusion and main evidence</h2><p>Current status: " + e(display_label(STATUS[incident['status']])) + '</p>' + prose(incident['conclusion']))
     evidence = [v for v in entries if v['kind'] == 'evidence']
     parts.append('<p>Saved evidence: ' + (', '.join(f"""<a href="#entry-{v['id']}">{e(v['title'])}</a>({e(display_label(STANCE[v['stance']]))})""" for v in evidence) or 'Not yet recorded') + '</p>')
+    for item in view['analyses']:
+        analysis = item['result']
+        if analysis['config'].get('industrialStudy') and analysis.get('experiment'):
+            from .industrial_study import saved_evidence
+            run = store.experiments.run(analysis['experiment']['runId'])
+            evidence = saved_evidence(store, run['id'])
+            if evidence:
+                parts.append('<h2>Mode 1 cooling-water investigation</h2>')
+                diagnosis = evidence['diagnosis']
+                if diagnosis:
+                    parts.append(prose(f"Closest trajectory: {diagnosis['hypothesis']}. Observed through {diagnosis['cutoff']} s."))
+                    parts.append(table(['Hypothesis', 'RMS whitened residual', 'Estimated onset (s)'],
+                        [[e(role), n(value), e(diagnosis['estimatedOnsets'].get(role))] for role, value in diagnosis['distances'].items()]))
+                parts.append(table(['Simulated trajectory', 'Temperature MAE (°C)', 'Valve travel (pp)', 'Peak pressure (kPa gauge)'],
+                    [[e(role), n(c['reactorTemperatureMAE']), n(c['coolingValveTravel']), n(c['peakReactorPressure'])]
+                     for role, c in evidence['comparison'].items()]))
+                parts.extend(prose(assumption) for assumption in evidence['assumptions'])
+                task = next(t for t in run['tasks'] if t['result_id'] == analysis['id'])
+                parts.append('<details><summary>Detection metrics, source runs and model provenance</summary>' +
+                             technical(task['metrics']['detection']) + technical(evidence['sources']) + technical(analysis['model']) + '</details>')
     parts.append('<h2>Appendix. Data, parameters and linked records</h2>')
     for dataset in view['datasets']:
         lineage = dataset['metadata'].get('transformation')

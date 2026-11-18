@@ -8,6 +8,7 @@ import { ExternalProvenance } from "../investigation/TEPWorkspace";
 import { TransformationLineage } from "../data/TransformationWorkspace";
 
 const metrics: Record<ContributionMetric, { label: string; description: string }> = {
+  "absolute-quadratic-term": { label: "Absolute covariance score term", description: "Magnitude of each centered channel times its precision-weighted residual. Signed terms sum to the squared distance." },
   "history-contribution": { get label() { return "History-based channel contribution"; }, get description() { return "Causal channel statistics use the observed sequence through this timestamp. State resets after insufficient observation coverage."; } },
   "absolute-robust-z": { get label() { return "Absolute robust z-score"; }, get description() { return "Absolute distance from the normal center, divided by the fitted robust scale. The largest value is the Max-Z score."; } },
   "squared-residual": { get label() { return "PCA-Q squared residual"; }, get description() { return "Each signal’s squared standardized residual outside the PCA model. Contributions sum to the Q score."; } },

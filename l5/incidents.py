@@ -143,7 +143,7 @@ class IncidentService:
         db.execute('UPDATE incidents SET updated_at=? WHERE id=?', (stamp, identity))
         db.execute('UPDATE workspaces SET updated_at=? WHERE id=?', (stamp, workspace_id))
 
-    def create(self, workspace_id, body, *, identity=None, sources=()):
+    def create(self, workspace_id, body, *, identity=None, sources=(), entries=()):
         self.store.workspace(workspace_id)
         source = body.get('source')
         if source is not None:
@@ -155,6 +155,8 @@ class IncidentService:
         self.validate_axis(workspace_id, values['time_axis_key'])
         with self.store.connect() as db:
             identity = self.insert_incident(db, workspace_id, values, identity=identity)
+            for entry in entries:
+                self.insert_entry(db, identity, **entry)
             for link in prepared:
                 self.insert_link(db, identity, link)
             self.touch(db, identity, workspace_id)

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from l5.industrial_study import CASES, CHANNELS
+from l5.industrial_study import CASES, CHANNELS, ONSET, diagnose
 from simulation.tep import executable, simulate
 
 
@@ -31,6 +31,37 @@ def compare_driver(binary, reference):
     # E13.5 carries five significant decimal digits in the upstream files.
     rounded = np.array([float(format(x, '.5g')) for x in rows.flat]).reshape(rows.shape)
     return dict(samples=160, channels=52, differencesAtPublishedPrecision=int((rounded != ref).sum()))
+
+
+def alignment_trials(binary, runs):
+    """Stress the alarm trigger and reference clock on held-out simulator seeds."""
+    fit = runs['fit'][:, CHANNELS]
+    center, factor = fit.mean(axis=0), np.linalg.cholesky(np.cov(fit.T))
+    rng = np.random.default_rng(91473)
+    totals = {}
+    roles = {0: 'normal', 4: 'reactor-reference', 5: 'condenser-reference'}
+    for fault, truth in roles.items():
+        correct, count = 0, 0
+        max_error = 0
+        for seed in (2112396789, 3549106923, 4126341789):
+            rows = simulate(binary, fault, seed)[0]
+            noise = rng.normal(size=(len(rows), len(CHANNELS))) * fit.std(axis=0)
+            for delay in (180, 540, 1440):
+                for duration in (900, 3600):
+                    cutoff = ONSET + delay + duration
+                    available = rows[:, 0] < cutoff
+                    for sigma in (0, .5):
+                        obs = rows[:, CHANNELS] + sigma * noise
+                        for shift in (-180, 0, 180):
+                            references = {role: (runs[role][:, 0] - ONSET - shift, runs[role][:, CHANNELS])
+                                          for role in ('reactor-reference', 'condenser-reference')}
+                            result = diagnose(rows[available, 0], obs[available], ONSET + delay, references, center, factor, duration)
+                            count += 1
+                            correct += result['hypothesis'] == truth
+                            if fault:
+                                max_error = max(max_error, abs(result['estimatedOnsets'][truth] - ONSET))
+        totals[truth] = dict(correct=correct, comparisons=count, maxOnsetErrorSeconds=max_error if fault else None)
+    return totals
 
 
 def main():
@@ -56,6 +87,7 @@ def main():
         result['comparisons'][file.name] = dict(sha256=hashlib.sha256(file.read_bytes()).hexdigest(),
             medianAbsoluteStandardizedMeanDifference=float(np.median(abs(generated.mean(0)-refs.mean(0))/refs.std(0))),
             reactorAndCondenserDistances=dist.tolist())
+    result['alignmentTrials'] = alignment_trials(binary, runs)
     result['refinement'] = {}
     for div in (1, 2, 4):
         rows, audit = simulate(binary, *CASES['evaluation'], subdivisions=div)

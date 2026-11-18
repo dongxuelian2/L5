@@ -14,6 +14,8 @@ These rules apply to all contributions and to every directory in the repository.
 10. Keep documentation, verification, and automation proportionate to the user-facing work they support.
 11. Track new files only when they contribute to functionality, distribution, installation, or necessary documentation.
 
+12. Design for human efficiency across the full workflow. Preserve context, derive meaningful defaults, and make the next useful action apparent. Measure required interactions, repeated selections, navigation, and configuration for a complete user task.
+
 ## Structure and delivery
 
 - Keep modules flat by default. Group closely related files one level deep by capability and keep adapters thin.
