@@ -47,7 +47,7 @@ function DetectorComparison({ run }: { run: RegimeRun }) {
         const eventual = detection.windows?.eventual;
         return <tr key={key}><th scope="row"><i className="regime-swatch" style={{ background: approachColors[key] }} />{tr(approachLabels[key])}</th>
           <td>{behavior.validSamples.toLocaleString("en")} / {behavior.totalSamples.toLocaleString("en")}</td><td>{behavior.alarmSamples.toLocaleString("en")}</td><td>{behavior.alarmIntervalCount.toLocaleString("en")}</td><td>{fraction(behavior.alarmFraction)}</td>
-          {run.labelSet && <><td>{fraction(labelled?.sample.falseAlarmRate ?? null)}</td><td>{eventual ? `${eventual.detectedEvents} / ${eventual.totalEvents}` : "—"}</td><td>{eventual ? eventual.totalEvents - eventual.detectedEvents : "—"}</td><td>{eventual?.unobservedEvents ?? "—"}</td><td>{display(labelled?.event.firstDetectionDelay)}</td></>}
+          {run.labelSet && <><td>{fraction(labelled?.sample.falseAlarmRate ?? null)}</td><td>{eventual ? `${eventual.detectedEvents} / ${eventual.totalEvents}` : "—"}</td><td>{labelled ? labelled.event.missedEvents : "—"}</td><td>{eventual?.unobservedEvents ?? "—"}</td><td>{display(labelled?.event.firstDetectionDelay)}</td></>}
         </tr>;
       })}</tbody>
     </table></div>

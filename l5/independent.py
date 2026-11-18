@@ -215,7 +215,8 @@ def score_detector(store, workspace_id, config, fitted):
     result = score_analysis(fitted.monitor, fitted.threshold, target, observed, times, list(mapping.values()), effective,
         fitted.policy, fitted.medians, fit_samples=fitted.fit_samples, calibration_samples=fitted.calibration_samples,
         baseline_samples=fitted.fit_samples+fitted.calibration_samples,
-        imputed=dict(baseline=fitted.missing, analysis=missing), started=started)
+        imputed=dict(baseline=fitted.missing, analysis=missing), started=started,
+        gap_threshold=dataset['metadata'].get('quality', {}).get('gapThreshold'))
     result['training'] = {**fitted.provenance, 'modelKey': fitted.key, 'fitId': fitted.fit_id, 'fitDurationMs': fitted.duration_ms,
                           'test': dict(dataset=snapshot(store, dataset), range=config['analysisRange'], signalMapping=mapping)}
     result['external'] = dataset['metadata'].get('external')

@@ -120,9 +120,15 @@ def simulate(config: Config, action: str | None = None, at: float = 90, *, compa
     physical_peak = pressure
     prod_loss = quality_loss = utility_cost = 0.
     count = math.ceil(c.duration / c.step)
-    for index in range(count + 1):
-        t = round(min(index * c.step, c.duration), 9)
-        dt = c.step if index == 0 else t - min((index - 1) * c.step, c.duration)
+    sample_times = [round(min(i * c.step, c.duration), 9) for i in range(count + 1)]
+    samples = set(sample_times)
+    switches = [c.start, c.start + c.delay]
+    if c.fault_duration is not None:
+        switches.append(c.start + c.fault_duration)
+    if action is not None:
+        switches.append(at)
+    grid = sorted(samples.union(t for t in switches if 0 < t < sample_times[-1]))
+    for index, t in enumerate(grid):
         active = t >= c.start and (c.fault_duration is None or t < c.start + c.fault_duration)
         s = c.severity if active else 0
         enabled = action is not None and t >= at
@@ -132,9 +138,29 @@ def simulate(config: Config, action: str | None = None, at: float = 90, *, compa
         composition = 1 + (.45 * s if c.fault == 'feed_composition' else 0)
         measured_temp = temp + (min(8, (t - c.start) * .065) * s if c.fault == 'temperature_drift' else 0)
         sp = 120 + c.operating - (p['setpointDrop'] if enabled and action == 'setpoint' else 0)
+        limit = 100 - (55 * s if c.fault == 'controller_limit' else 0)
+        if enabled and action == 'backup_pump':
+            pump = max(pump, p['pumpSpeed'])
+        if t in samples:
+            pressure_path.append(round(pressure, 2))
+        if t in samples and not compact:
+            primary_p = pressure + (180 * s if c.fault == 'pressure_bias' else 0)
+            if c.fault == 'sensor_freeze' and active:
+                primary_p = 2700
+            values = [valve, flow, measured_temp, primary_p, separator, purity, op, sp, temp, pressure,
+                      feed, feed_op, feed_valve, utility, pump, vibration, composition, limit]
+            row = {'t': t}
+            for i, (key, _, _, _, scale) in enumerate(SIGNALS):
+                noise = math.sin(t * .71 + i * 1.3 + c.seed) * scale * .4 * c.noise
+                if key in ('cooling_sp', 'cooling_limit') or (key == 'pressure' and c.fault == 'sensor_freeze' and active):
+                    noise = 0
+                row[key] = round(values[i] + noise, 4)
+            rows.append(row)
+        if index + 1 == len(grid):
+            break
+        dt = grid[index + 1] - t
         error = measured_temp - sp
         integral = max(-25, min(30, integral + error * .024 * c.response * dt))
-        limit = 100 - (55 * s if c.fault == 'controller_limit' else 0)
         target_op = max(10, min(limit, 62 + 2.4 * c.response * error + integral))
         if c.fault == 'loop_oscillation' and active:
             target_op = max(10, min(100, 62 + 27 * s * math.sin((t - c.start) / 6)))
@@ -148,8 +174,6 @@ def simulate(config: Config, action: str | None = None, at: float = 90, *, compa
         target_feed_valve = max(5, 50 - 27 * s) if c.fault == 'feed_valve' and active else feed_op
         feed_valve += (target_feed_valve - feed_valve) / 3 * dt
         feed += (2 * feed_valve - feed) / 10 * dt
-        if enabled and action == 'backup_pump':
-            pump = max(pump, p['pumpSpeed'])
         effective_valve = valve if t >= c.start + c.delay else 62
         cooling = max(0, 100 * effective_valve / 62 * pump / 100 * (1 - (utility - 25) * .035))
         if enabled and action in ('bypass', 'combined'):
@@ -168,30 +192,15 @@ def simulate(config: Config, action: str | None = None, at: float = 90, *, compa
         separator += (2630 + .58 * (pressure - 2700) + restriction - separator) / 27 * dt
         purity += (99.2 - .019 * (separator - 2630) - .025 * abs(feed - 100) - purity) / 35 * dt
         if pressure >= THRESHOLD and trip is None:
-            trip = t
+            trip = grid[index + 1]
         physical_peak = max(physical_peak, pressure)
-        pressure_path.append(round(pressure, 2))
-        weight = 0 if index == 0 else dt
-        prod_loss += max(0, 100 - feed) / 100 * weight
-        quality_loss += max(0, 99.2 - purity) * weight
-        utility_cost += max(0, flow - 100) / 100 * weight
-        if compact:
-            continue
-        primary_p = pressure + (180 * s if c.fault == 'pressure_bias' else 0)
-        if c.fault == 'sensor_freeze' and active:
-            primary_p = 2700
-        values = [valve, flow, measured_temp, primary_p, separator, purity, op, sp, temp, pressure,
-                  feed, feed_op, feed_valve, utility, pump, vibration, composition, limit]
-        row = {'t': t}
-        for i, (key, _, _, _, scale) in enumerate(SIGNALS):
-            noise = math.sin(t * .71 + i * 1.3 + c.seed) * scale * .4 * c.noise
-            if key in ('cooling_sp', 'cooling_limit') or (key == 'pressure' and c.fault == 'sensor_freeze' and active):
-                noise = 0
-            row[key] = round(values[i] + noise, 4)
-        rows.append(row)
+        prod_loss += max(0, 100 - feed) / 100 * dt
+        quality_loss += max(0, 99.2 - purity) * dt
+        utility_cost += max(0, flow - 100) / 100 * dt
+
     if compact:
         return dict(peak=round(physical_peak, 2), physicalPeak=physical_peak, trip=trip, pressure=pressure_path,
-                    times=[round(min(i * c.step, c.duration), 9) for i in range(count + 1)],
+                    times=sample_times,
                     productionLoss=round(prod_loss / c.duration * 100, 2),
                     qualityLoss=round(quality_loss / c.duration, 3), utilityCost=round(utility_cost, 2))
     return rows

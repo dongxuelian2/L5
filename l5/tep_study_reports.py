@@ -24,6 +24,9 @@ def training_summary(study):
                 sampleRecall=distribution([c['sample']['recall'] for c in faults]),
                 rankByEarlyDetection=None))
     for configuration in study['protocol']['configurations']:
+        cells = [c for c in study['cells'] if c['configuration'] == configuration and c['faultNumber']]
+        if not cells or any(c['unresolvedRuns'] or c['coverage'] != 1 for c in cells):
+            continue
         selected = [r for r in rows if r['configuration'] == configuration]
         counts = sorted({r['detection']['1800']['detectedEvents'] for r in selected}, reverse=True)
         for row in selected:
@@ -37,17 +40,17 @@ def render_study_report(store, study):
         '<body><div class="toolbar"><button onclick="window.print()">Print / Save A4 PDF</button><span>Offline saved TEP study</span></div><main>',
         f"""<div class="brand">L5 / TEP RESEARCH</div><h1>{e(study['protocol']['name'])}</h1>""",
         f"<p>Study {e(study['id'])} · protocol SHA-256 {e(study['protocolHash'])}. Status counts: {e(study['statusCounts'])}</p>",
-        '<p>Detection rates use all declared events as the denominator. Delay applies to detected events. Failed tasks have unresolved outcomes. Eventual detection counts an alarm inside the fault interval.</p>',
+        '<p>Detection rates use in-scope fault events from completed evaluations. Delay applies to detected events. Failed tasks have unresolved outcomes. Eventual detection counts an alarm inside the fault interval.</p>',
         '<h2>Normal-training configurations and fixed parameters</h2>', parameters(study['protocol']['configurations']),
         parameters(dict(algorithms=study['protocol']['algorithms'])), '<h2>Training sensitivity and normal alarm burden</h2>']
     rows = []
     for record in summary:
         normal = record['normal'] or {}
         rows.append([e(record['configuration']), e(record['algorithm']), n(record['thresholds']['median']),
-            e(f"{normal.get('alarmSamples', 0)}/{normal.get('observedSamples', 0)}"), e(normal.get('alarmEvents',0)), n(normal.get('alarmDuration')),
+            e(f"{normal.get('alarmSamples', 0)}/{normal.get('observedSamples', 0)}"), e(normal.get('alarmEvents',0)), n(normal.get('alarmDuration')), n(normal.get('episodesPerObservedHour')),
             *[e(f"{record['detection'][key]['detectedEvents']}/{record['detection'][key]['totalEvents']}") for key in ('1800','3600','14400','eventual')],
-            e(record['rankByEarlyDetection'])])
-    parts.append(table(['Config','Method','Threshold','Normal alarm samples','Normal episodes','Normal duration (s)','≤30m','≤1h','≤4h','Eventual','30m rank (ties)'], rows))
+            e(record['rankByEarlyDetection'] or '—')])
+    parts.append(table(['Config','Method','Threshold','Normal alarm samples','Normal episodes','Normal alarm duration (s)','Normal episodes / observed h','≤30m','≤1h','≤4h','Eventual','30m rank (ties)'], rows))
     parts.append('<h2>Fault × method, with every batch pooled within its configuration</h2>')
     rows = []
     for c in study['cells']:

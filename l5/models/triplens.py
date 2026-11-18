@@ -16,7 +16,7 @@ TOOLS = ['inspect_signal_window', 'analyze_window', 'find_change_point', 'inspec
 
 class TripLensModel:
     id = MODEL_ID
-    version = '2.0.0'
+    version = '2.1.0'
 
     def describe(self):
         defaults = asdict(Config(step=.2))

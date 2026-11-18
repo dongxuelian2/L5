@@ -190,7 +190,7 @@ def score_events(analysis, events, duration):
         end = event['recovery'] if event['recovery'] is not None else duration
         follow_up = max(0., end - event['onset'])
         delay_loss.append(min(1., event['delay'] / follow_up) if event['delay'] is not None and follow_up else 1.)
-    return dict(totalEvents=len(events), detectedEvents=hits, missedEvents=len(events)-hits,
+    return dict(totalEvents=len(events), detectedEvents=hits, missedEvents=sum(bool(event['observedSamples']) and not event['detected'] for event in details),
                 unobservedEvents=sum(not event['observedSamples'] for event in details),
                 eventDetectionRate=ratio(hits, len(events)), meanDelay=ratio(sum(delays), len(delays)),
                 presenceDetected=bool(len(presence)) if events else None,

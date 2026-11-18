@@ -48,8 +48,8 @@ class SimulationService:
         session.setdefault('modelId', MODEL_ID)
         if any(key not in session for key in ('modelVersion', 'modelDescriptor', 'groundTruth')):
             model = resolve(session['modelId'])
-            session.setdefault('modelVersion', model.version)
-            session.setdefault('modelDescriptor', model.describe())
+            session.setdefault('modelVersion', '2.0.0' if model.id == MODEL_ID else model.version)
+            session.setdefault('modelDescriptor', {**model.describe(), 'version': session['modelVersion']})
             if 'groundTruth' not in session:
                 session['groundTruth'] = model.truth(session['config']) if 'ground-truth' in model.describe()['capabilities'] else None
         session.setdefault('scenarioId', None)

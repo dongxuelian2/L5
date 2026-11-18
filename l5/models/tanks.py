@@ -60,9 +60,27 @@ PARAMETERS = dict(pumpControl=dict(default=125.,min=0,max=150,label='Pump comman
                   rampSeconds=dict(default=10.,min=.1,max=120,label='Supply stop ramp',unit='s'))
 
 
+def validate_tank_measurements(store, dataset):
+    """Check declared process identities through saved transformation sources."""
+    pending = [dataset]
+    seen = set()
+    while pending:
+        source = pending.pop()
+        if source['id'] in seen:
+            continue
+        seen.add(source['id'])
+        metadata = source['metadata']
+        model = metadata.get('model')
+        if metadata.get('external', {}).get('kind') == 'tep-rieth' or (
+                model and (model.get('id'), model.get('version')) != ('coupled-tanks', CoupledTankModel.version)):
+            raise ValueError('Tank measurements require a compatible coupled-tank process and model version.')
+        for record in metadata.get('transformation', {}).get('sources', []):
+            pending.append(store.dataset(record['datasetId']))
+
+
 def hydraulic_flows(c, heads, pump, opening, efficiency=1., leak_coefficient=0.,
                     inflow_bias=0., *, tank2_leak=None, inlet_factor=1., outlet_factor=1., ops=math):
-    """Evaluate scalar or batched hydraulic fluxes before volume limiting."""
+    """Square-root orifice flows and free overflow with illustrative K = 0.1 m^(3/2)/s."""
     maximum = max if ops is math else ops.maximum
     h1, h2 = heads
     delta = h1 - h2
@@ -215,6 +233,8 @@ def integrate(config, action=None, at=0., parameters=None, *, include_at=False,
         boundaries.add(c['start'] + c['fault_duration'])
     if action:
         boundaries.add(at)
+    if action == 'stop_supply':
+        boundaries.add(at + p['rampSeconds'])
 
     if sample_times is None:
         count = math.ceil(c['duration'] / c['step'])
@@ -263,10 +283,17 @@ def forecast_path(c, rows, physical, at, action=None, parameters=None):
     after = [i for i,r in enumerate(physical) if r['t'] >= at]
     deviation = sum((abs(physical[b]['level2']-c['targetLevel'])+abs(physical[a]['level2']-c['targetLevel']))/2*(physical[b]['t']-physical[a]['t']) for a,b in zip(after,after[1:]))
     first = after[0]
+    elapsed = physical[-1]['t'] - at
+    if action == 'stop_supply':
+        ramp = (parameters or {}).get('rampSeconds', PARAMETERS['rampSeconds']['default'])
+        rising = min(ramp, elapsed)
+        effort = c['pumpControl'] * (rising**2 / (2 * ramp) + elapsed - rising)
+    else:
+        effort = abs(rows[first]['pump'] - c['pumpControl']) * elapsed
     metrics = dict(levelDeviation=deviation, peakLevel=max(max(p['level1'],p['level2']) for p in physical[first:]),
                    delivered=physical[-1]['delivered']-physical[first]['delivered'],
                    overflow=physical[-1]['spilled']-physical[first]['spilled'],
-                   controlEffort=sum(abs(rows[b]['pump']-c['pumpControl'])*(rows[b]['t']-rows[a]['t']) for a,b in zip(after,after[1:])))
+                   controlEffort=effort)
     return dict(action=action, parameters=parameters or {},times=[r['t'] for r in physical],
                 values={key:[r[key] for r in physical] for key in ('level1','level2','outlet')},metrics=metrics)
 

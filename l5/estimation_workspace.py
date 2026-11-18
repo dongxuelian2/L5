@@ -12,7 +12,8 @@ import numpy as np
 from .datasets import prepare_csv
 from .estimation import MODEL_KEYS, STATES, estimate, model_config, observability, score, settings
 from .models.base import finite
-from .models.tanks import CoupledTankModel, integrate
+from .models.tanks import CoupledTankModel, integrate, validate_tank_measurements
+from .units import canonical
 
 
 def simulation_observations(source):
@@ -76,6 +77,7 @@ class EstimationService:
         dataset = self.store.dataset(source.get('datasetId'))
         if dataset['workspace_id'] != workspace_id:
             raise ValueError('Dataset belongs to another Workspace.')
+        validate_tank_measurements(self.store, dataset)
         mapping = source.get('mapping', {})
         if not isinstance(mapping, dict) or set(mapping)-{*STATES, 'pumpControl', 'valve'}:
             raise ValueError('Map level1, level2, pumpControl and valve to Dataset columns.')
@@ -85,6 +87,11 @@ class EstimationService:
         selected = [v for v in mapping.values() if v is not None]
         if not selected or len(set(selected)) != len(selected):
             raise ValueError('Map at least one distinct measurement or control column.')
+        expected_units = dict(level1='m', level2='m', pumpControl='%', valve='1')
+        units = {c['name']: c.get('unit') for c in dataset['metadata']['columns']}
+        for role, column in mapping.items():
+            if column and units[column] and canonical(units[column]) != expected_units[role]:
+                raise ValueError(f'{role} requires {expected_units[role]}. Convert the signal in Transformations.')
         times, values = self.store.load_data(dataset)
         if len(times) > 6000 or not np.isfinite(times).all() or np.any(np.diff(times) <= 0):
             raise ValueError('Dataset needs at most 6,000 finite strictly increasing timestamps; resolve duplicates before estimation.')
@@ -108,7 +115,8 @@ class EstimationService:
                 controls.append(dict(t=float(t), **command))
                 previous.update(command)
         return observations, controls, dict(**source, datasetName=dataset['name'],
-                    createdAt=dataset['created_at'], time=dataset['metadata']['time'], observationPolicy='measured-only')
+                    createdAt=dataset['created_at'], time=dataset['metadata']['time'], observationPolicy='measured-only',
+                    assumedUnits={k:expected_units[k] for k, v in mapping.items() if v and not units[v]})
 
     def create(self, workspace_id, body):
         from .workspace import now
@@ -124,7 +132,8 @@ class EstimationService:
         if source.get('kind') in ('simulation', 'scenario'):
             if source['kind'] == 'scenario':
                 scenario = self.store.scenarios.get(source.get('scenarioId'), source.get('version'))
-                if scenario['workspaceId'] != workspace_id or scenario['modelId'] != 'coupled-tanks':
+                if (scenario['workspaceId'] != workspace_id or scenario['modelId'] != 'coupled-tanks'
+                        or scenario['modelVersion'] != CoupledTankModel.version):
                     raise ValueError('Choose a coupled-tank scenario in this Workspace.')
                 source = {**source, 'simulation':scenario['config'], 'scenarioSnapshot':scenario}
             observations, controls, truth, source = simulation_observations(source)

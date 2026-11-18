@@ -25,7 +25,7 @@ def independent_run(store, run):
             e(n(event.get('firstDetectionDelay'))),
             e(f"{behavior['validSamples']}/{behavior['totalSamples']}; {behavior['abstainedSamples']} abstain") if behavior else '—',
             e(n(behavior['alarmDuration'])) if behavior else '—', e(n(behavior['durationMs'])) if behavior else '—'])
-    parts.extend(['<h3>All predeclared runs and algorithms</h3>', table(['Test run', 'Method', 'Status', 'TP / FP / TN / FN', 'Precision / recall / F1 / FAR', 'Hit / eligible / missed events', 'First delay (s)', 'Valid / total / abstain', 'Alarm duration (s)', 'Score time (ms)'], all_rows)])
+    parts.extend(['<h3>All predeclared runs and algorithms</h3>', table(['Test run', 'Method', 'Status', 'TP / FP / TN / FN', 'Sample precision / recall / F1 / FPR', 'Hit / eligible / missed events', 'First delay (s)', 'Valid / total / abstain', 'Alarm duration (s)', 'Score time (ms)'], all_rows)])
     for plan in snapshot['config']['testDatasets']:
         dataset = snapshot['datasets'][plan['datasetId']]
         external = dataset['metadata'].get('external')
