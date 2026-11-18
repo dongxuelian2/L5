@@ -65,6 +65,8 @@ C
       DOUBLE PRECISION BALMAX
       COMMON/L5CHECK/BALMAX
       INTEGER I, NN, NPTS, TEST, TEST1, IFAULT, NDIV
+      INTEGER ISTATE
+      DOUBLE PRECISION OFFSET
       REAL SCALE,DSTEP
 C
       DOUBLE PRECISION TIME, YY(50), YP(50)
@@ -77,7 +79,7 @@ C
 C
 C  Set the number of points to simulate
 C
-      READ(*,*) NPTS, IFAULT, SCALE, NDIV
+      READ(*,*) NPTS, IFAULT, SCALE, NDIV, ISTATE, OFFSET
       NPTS = NPTS * NDIV
 
 C
@@ -97,6 +99,8 @@ C  (Sets TIME to zero)
 C
       BALMAX=0.D0
       CALL TEINIT(NN,TIME,YY,YP)
+C     Research perturbations enter the physical state after initialization.
+      IF (ISTATE.GT.0) YY(ISTATE)=YY(ISTATE)+OFFSET
       WRITE(0,*) XMEAS(7),XMEAS(9),XMEAS(21)
 C
 C  Set Controller Parameters

@@ -61,6 +61,21 @@ def main():
         rows, audit = simulate(binary, *CASES['evaluation'], subdivisions=div)
         result['refinement'][div] = dict(**audit, postTemperatureMAE=float(abs(rows[160:, 9]-120.4).mean()),
                                          meanValveCommand=float(rows[160:, 51].mean()))
+    # Thermal-state subspace: one degree Celsius is the scale on each axis.
+    # The first hour supplies 20 output vectors. Common random numbers isolate
+    # the closed-loop response to a small change in each initial temperature.
+    result['thermalObservability'] = {}
+    for h in (.02, .01):
+        derivatives = []
+        for state in (37, 38):
+            plus = simulate(binary, 0, CASES['fit'][1], hours=1, state_offset=(state, h))[0]
+            minus = simulate(binary, 0, CASES['fit'][1], hours=1, state_offset=(state, -h))[0]
+            derivatives.append((plus[:, CHANNELS] - minus[:, CHANNELS]) / (2*h))
+        full = np.column_stack([np.linalg.solve(scale, d.T).ravel() for d in derivatives])
+        temperature = np.column_stack([d[:, 0] / np.sqrt(cov[0, 0]) for d in derivatives])
+        result['thermalObservability'][h] = {
+            name:np.linalg.svd(matrix, compute_uv=False).tolist()
+            for name, matrix in [('fiveSignals', full), ('temperatureOnly', temperature)]}
     # Paired central differences at the baseline gain multiplier; same seed for both perturbations.
     sensitivities = {}
     for h in (.02, .01):

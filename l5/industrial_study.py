@@ -108,7 +108,10 @@ def summarize(store, found):
             coolingValveTravel=float(np.sum(abs(np.diff(r[times >= ONSET, 51])))),
             peakReactorPressure=float(r[post, 7].max()), pressureSamplesAbove3000=int((r[post, 7]>3000).sum()),
             runtimeSeconds=found[role]['metadata']['processRun']['runtimeSeconds'])
-    return dict(diagnosticObservations=evidence, alarmTimesSeconds=times[alarms].tolist(), assumptions=[
+    dataset_meta = found['evaluation']['metadata']
+    quality = {k:dataset_meta['quality'][k] for k in ('timedCount', 'typicalInterval', 'gapCount', 'duplicateCount')}
+    quality['missingValues'] = dataset_meta['missingCount']
+    return dict(measurementQuality=quality, diagnosticObservations=evidence, alarmTimesSeconds=times[alarms].tolist(), assumptions=[
         "Independent normal seeds fit the covariance and calibrate the 99th percentile.",
         "Distances compare the first hour from the first confirmed alarm to two independent simulated signatures.",
         "The intervention changes only the cooling-loop gain at 8 h. Valve travel and pressure limits use 180 s samples."],

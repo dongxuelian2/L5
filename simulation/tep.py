@@ -44,8 +44,11 @@ def executable(cache):
     return target, version
 
 
-def simulate(binary, fault, seed, gain=1., subdivisions=1, hours=24):
-    args = f'{hours * 3600} {fault} {gain} {subdivisions}\n{seed}\n'
+def simulate(binary, fault, seed, gain=1., subdivisions=1, hours=24, state_offset=(0, 0.)):
+    state, offset = state_offset
+    if state not in (0, 37, 38) or not np.isfinite(offset):
+        raise ValueError('Choose an initial cooling-water temperature offset.')
+    args = f'{hours * 3600} {fault} {gain} {subdivisions} {state} {offset}\n{seed}\n'
     start = time.perf_counter()
     result = subprocess.run([binary], input=args, capture_output=True, text=True, timeout=120, check=True)
     rows = np.loadtxt(io.StringIO(result.stdout), ndmin=2)
