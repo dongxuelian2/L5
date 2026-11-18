@@ -19,7 +19,7 @@ export function IndustrialStudy({ workspaceId, onChanged }: { workspaceId: strin
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     async function restore() {
       try {
         const saved = await api<Study>(path, undefined, "GET", controller.signal);
@@ -28,7 +28,10 @@ export function IndustrialStudy({ workspaceId, onChanged }: { workspaceId: strin
         if (saved.activeStage) {
           setStatus(saved.activeStage === "measurements" ? "Preparing measurements…" : "Completing investigation…");
           timer = setTimeout(restore, 1000);
-        } else setStatus("");
+        } else {
+          setStatus("");
+          if (timer !== undefined) onChanged();
+        }
       } catch (e) {
         if (!controller.signal.aborted) { setError(message(e)); setStatus(""); }
       }

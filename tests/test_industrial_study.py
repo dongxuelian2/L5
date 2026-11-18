@@ -70,6 +70,9 @@ class CoolingStudy(unittest.TestCase):
             self.assertEqual(report['diagnosis']['hypothesis'], 'reactor-reference')
             self.assertEqual(report['diagnosis']['cutoff'], analysis['summary']['firstDetection'] + 3420)
             self.assertIn('RMS whitened residual', render_report(store, result['incidentId']))
+            edited = store.experiments.get(result['experimentId'])['config']
+            edited['persistence'] = 3
+            store.experiments.save(wid, dict(config=edited), result['experimentId'])
             source = store.root / wid / 'datasets' / result['datasets']['evaluation'] / 'source.csv'
             original_bytes = source.read_bytes()
             source.unlink()

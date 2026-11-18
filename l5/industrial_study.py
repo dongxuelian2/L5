@@ -195,6 +195,20 @@ def integrate(store, wid, found, execute):
     sources = {role: found[role]['id'] for role in CASES}
     context = dict(protocol=DIAGNOSIS, modelVersion=MODEL, sources=sources)
 
+    # A specialist may revise the experiment definition after the fixed run.
+    # Restore the immutable snapshot that owns this investigation's evidence.
+    with store.connect() as db:
+        saved = db.execute('''SELECT r.id FROM industrial_evidence i
+            JOIN experiment_runs r ON i.run_id=r.id JOIN experiments e ON r.experiment_id=e.id
+            WHERE e.workspace_id=? AND json_extract(r.snapshot, '$.config.industrialStudy.protocol')=?
+            AND json_extract(r.snapshot, '$.config.industrialStudy.sources.evaluation')=?
+            ORDER BY r.created_at''', (wid, DIAGNOSIS, sources['evaluation'])).fetchall()
+    for row in saved:
+        run = service.run(row['id'])
+        if run['snapshot']['config']['industrialStudy'] == context:
+            analysis = store.result(run['tasks'][0]['result_id'])
+            return investigation_result(store, wid, found, run, analysis, execute)
+
     def interval(role):
         axis = found[role]['metadata']['time']
         return [axis['start'], axis['end']]
@@ -228,8 +242,10 @@ def detection_run(service, experiment, expected, execute):
     if not run:
         if not execute:
             return None
-        active = next((r for r in runs if r['status'] in ('queued', 'running')), None)
-        run = service.run(active['id']) if active else service.execute(experiment['id'], {}, expected_revision=experiment['revision'])
+        pending = (service.run(r['id']) for r in runs if r['status'] in ('queued', 'running'))
+        run = next((r for r in pending if r['snapshot']['config'] == expected), None)
+        if run is None:
+            run = service.execute(experiment['id'], {}, expected_revision=experiment['revision'])
         while run['status'] in ('queued', 'running'):
             time.sleep(.05)
             run = service.run(run['id'])
