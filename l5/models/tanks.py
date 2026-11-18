@@ -71,7 +71,7 @@ def validate_tank_measurements(store, dataset):
         seen.add(source['id'])
         metadata = source['metadata']
         model = metadata.get('model')
-        if metadata.get('external', {}).get('kind') == 'tep-rieth' or (
+        if metadata.get('processRun') or metadata.get('external', {}).get('kind') == 'tep-rieth' or (
                 model and (model.get('id'), model.get('version')) != ('coupled-tanks', CoupledTankModel.version)):
             raise ValueError('Tank measurements require a compatible coupled-tank process and model version.')
         for record in metadata.get('transformation', {}).get('sources', []):

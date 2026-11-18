@@ -160,6 +160,7 @@ function DatasetPage({ workspaceId, datasets, onImport, selected, setSelected, p
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
         <SignalPicker columns={dataset.metadata.columns} selected={chosen} onChange={signals => setPreferences(dataset.id, signals)} title={"Signals to plot and analyze"} />
         <SignalPlots dataset={dataset} signals={chosen} />
+        {dataset.metadata.processRun && <p>{dataset.metadata.processRun.plant} · {dataset.metadata.processRun.type} · {dataset.metadata.processRun.role} · <a className="ws-link" href={`#/workspaces/${workspaceId}/tep`}>Open cooling-water study ↗</a></p>}
         <TransformationLineage dataset={dataset} /><ExternalProvenance dataset={dataset} /><EstimationProvenance dataset={dataset} />
         {dataset.metadata.model?.control && <a className="ws-link" href={`#/workspaces/${workspaceId}/control/${dataset.metadata.model.control.experimentId}`}>Open saved control comparison ↗</a>}
         {dataset.metadata.acquisition && <p className="ws-notice">

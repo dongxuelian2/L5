@@ -1,5 +1,11 @@
 # L5 user guide
 
+## Investigate a reactor cooling-water disturbance
+
+Install GNU Fortran on the L5 server and confirm that `gfortran --version` succeeds. Open a workspace, select **Tennessee Eastman benchmark** under Investigation and choose **Run study**. The first stage saves independent normal and disturbed trajectories. **Inspect simulated measurements** opens the evaluation dataset while the investigation finishes.
+
+Expand **Diagnostic evidence** to compare reactor and condenser signatures. The control table shows the cost of reducing valve movement in reactor-temperature tracking. **Analyze these five signals** opens the specialist analysis with the evaluation dataset and channels selected. **Export study report** downloads the evidence, scenario, thresholds, source dataset IDs and matched control results. Reopening the study restores its saved runs. The [model and protocol guide](industrial-process.md) gives the numerical references and reproduction commands.
+
 ## Start with an example
 
 From the workspace list, choose **Open guided demo**, then select **Load the scenario**. The example creates a saved dataset from a seeded coupled-tank simulation. The inlet pump loses efficiency while its command stays constant. Inspect the tank level charts, then switch to the inlet flow and pump command to see the supply loss.

@@ -27,7 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: python -m pip install -r requirements.txt
-      - run: python -m unittest discover -s tests -p test_numerical_references.py
+      - run: python -m unittest discover -s tests
       - name: Load the guided dataset
         shell: bash
         run: |
