@@ -22,8 +22,12 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
             separator = csv.Sniffer().sniff(source[:65536], delimiters=',;\t|').delimiter
         except csv.Error:
             separator = ','
+        header = next(csv.reader(StringIO(source), delimiter=separator), [])
+        names = [name.strip() for name in header]
+        if not names or not all(names) or len(set(names)) != len(names):
+            raise ValueError('CSV needs data rows and unique, nonempty column names.')
         frame = pd.read_csv(StringIO(source), sep=separator, skip_blank_lines=False, float_precision='round_trip')
-    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError) as error:
+    except (csv.Error, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError) as error:
         raise ValueError(f'Unable to read CSV: {error}') from error
     frame.columns = [str(c).strip() for c in frame.columns]
     if not len(frame) or not frame.columns.is_unique or any(not c for c in frame.columns):
@@ -35,6 +39,8 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
         if not np.isfinite(interval) or interval <= 0:
             raise ValueError('Sampling interval must be a positive number of seconds.')
         times = np.arange(len(frame), dtype=float) * interval
+        if not np.isfinite(times[-1]):
+            raise ValueError('Generated timestamps exceed the supported range.')
         time = {'kind': 'generated', 'column': None, 'sampleInterval': interval, 'origin': None}
     else:
         if column not in frame:
@@ -77,11 +83,17 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
     valid_time = np.isfinite(times)
     if not valid_time.any():
         raise ValueError('Time column needs at least one valid timestamp.')
-    invalid_times = [dict(row=int(i) + 2, raw=str(frame.iloc[i][column])) for i in np.flatnonzero(~valid_time)]
-    source_times = times.copy()
+    invalid_times = []
+    if not valid_time.all():
+        previous = np.maximum.accumulate(np.where(valid_time, np.arange(len(times)), -1))
+        first_time = float(times[valid_time].min())
+        raw_times = frame[column].to_numpy()
+        for i in np.flatnonzero(~valid_time):
+            nearby = float(times[previous[i]]) if previous[i] >= 0 else first_time
+            invalid_times.append(dict(row=int(i) + 2, raw=str(raw_times[i]), nearbyTime=nearby))
     times = times[valid_time]
     order = np.argsort(times, kind='stable')
-    if not np.array_equal(order, np.arange(len(frame))):
+    if not np.array_equal(order, np.arange(len(times))):
         times = times[order]
         notes.append('Rows were sorted by time before saving.')
     columns, arrays, ignored = [], [], []
@@ -107,10 +119,6 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
     time.update({'start': float(times[0]), 'end': float(times[-1]), 'unit': 'seconds'})
     if invalid_times:
         notes.append(f'{len(invalid_times)} rows have invalid / missing time. They remain in the original CSV and quality counts; timed plots and analysis omit them.')
-        for issue in invalid_times:
-            row = issue['row'] - 2
-            neighbors = np.flatnonzero(np.isfinite(source_times[:row]))
-            issue['nearbyTime'] = float(source_times[neighbors[-1]]) if len(neighbors) else float(times[0])
     quality = summarize(times, data, [c['name'] for c in columns], source_values=source_data, invalid_times=invalid_times)
     time.update({k: quality[k] for k in ('typicalInterval', 'irregularCount', 'duplicateCount', 'invalidTimeCount', 'gapCount')})
     metadata = {'rowCount': len(frame), 'columns': columns, 'sourceColumns': list(frame.columns),
