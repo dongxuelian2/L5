@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import csv
+from io import StringIO
 import os
 import traceback
 from urllib.parse import parse_qs, urlparse
@@ -16,7 +18,7 @@ def dispatch(handler, method: str) -> bool:
     namespaces = {
         'workspaces', 'datasets', 'analyses', 'simulations', 'models', 'scenarios',
         'incidents', 'signals', 'transformations', 'units', 'experiments', 'experiment-runs',
-        'external', 'guided-demo', 'sensor-health', 'estimations', 'regime-runs', 'alarm-sessions',
+        'external', 'sensor-health', 'estimations', 'regime-runs', 'alarm-sessions',
     }
     if len(parts) < 2 or parts[0] != 'api' or parts[1] not in namespaces:
         return False
@@ -44,16 +46,7 @@ def dispatch(handler, method: str) -> bool:
         if len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'safety':
             from .safety_routes import route
             return route(handler, store.safety, method, parts[2], parts[4:], body, parse_qs(url.query))
-        if parts[1] == 'guided-demo':
-            if len(parts) == 2 and method == 'GET':
-                result = store.guided_demo.state()
-            elif len(parts) == 2 and method == 'POST':
-                result = store.guided_demo.prepare()
-            elif parts[2:] == ['run'] and method == 'POST':
-                result = store.guided_demo.start()
-            elif parts[2:] == ['incident'] and method == 'POST':
-                result = store.guided_demo.incident()
-        elif parts[1] == 'sensor-health' and len(parts) == 3 and method == 'GET':
+        if parts[1] == 'sensor-health' and len(parts) == 3 and method == 'GET':
             result = store.sensor_health.get(parts[2])
         elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'control':
             workspace_id=parts[2]
@@ -108,6 +101,21 @@ def dispatch(handler, method: str) -> bool:
             result, status = route(handler, store.resilience, method, parts[2], parts[4:], body, url.query)
             if status is None:
                 return True
+        elif len(parts) >= 4 and parts[1] == 'workspaces' and parts[3] == 'plants':
+            wid, tail = parts[2], parts[4:]
+            if not tail and method == 'GET':
+                result = store.plants.list(wid)
+            elif tail == ['runs'] and method == 'POST':
+                result, status = store.plants.start(wid, body.get('scenarioId'), body.get('settings', {}),
+                                                    body.get('stage', 'investigation')), 202
+            elif len(tail) >= 2 and tail[0] == 'runs':
+                identity = tail[1]
+                if len(tail) == 2 and method == 'GET':
+                    result = store.plants.get(wid, identity)
+                elif tail[2:] == ['observations'] and method == 'GET':
+                    result = dict(series=store.plants.preview(wid, identity))
+                elif tail[2:] == ['cancel'] and method == 'POST':
+                    result, status = store.plants.cancel(wid, identity), 202
         elif len(parts) == 4 and parts[1] == 'workspaces' and parts[3] == 'industrial-study' and method in ('GET', 'POST'):
             from .industrial_study import study
             stage = body.get('stage') if method == 'POST' else None
@@ -391,6 +399,22 @@ def dispatch(handler, method: str) -> bool:
                 result = store.signals.clock(parts[2])
             elif method == 'PATCH':
                 result = store.signals.set_reference(parts[2], body)
+        elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] in ('series.csv', 'series.npz') and method == 'GET':
+            dataset = store.base_dataset(parts[2])
+            if parts[3] == 'series.npz':
+                folder = store.root / dataset['workspace_id'] / 'datasets' / dataset['id']
+                handler.send_content(200, 'application/octet-stream', (folder / 'series.npz').read_bytes(),
+                                     filename=f"l5-{dataset['id']}.npz")
+            else:
+                times, values = store.load_data(dataset)
+                observed = store.observation_mask(dataset)
+                stream = StringIO()
+                writer = csv.writer(stream)
+                writer.writerow(['elapsed_seconds', *(col['name'] for col in dataset['metadata']['columns'])])
+                writer.writerows([t, *(x if ok else '' for x, ok in zip(row, mask))]
+                                 for t, row, mask in zip(times, values, observed))
+                handler.send_content(200, 'text/csv', stream.getvalue(), filename=f"l5-{dataset['id']}.csv")
+            return True
         elif len(parts) == 4 and parts[1] == 'datasets' and parts[3] == 'series' and method == 'GET':
             query = parse_qs(url.query)
             result = store.series(parts[2], query.get('signal'),

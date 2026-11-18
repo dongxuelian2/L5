@@ -72,9 +72,13 @@ class PartitionReader:
         if simulation:
             identities.add('simulation:' + simulation)
         if not metadata.get('transformation'):
-            digest = dataset.get('sourceCsvSha256') or file_hash(
-                self.store.root / dataset['workspace_id'] / 'datasets' / dataset_id / 'source.csv')
-            identities.add('csv:' + digest)
+            if metadata.get('storage') == 'numeric':
+                identities.add('native:' + (metadata.get('processRun', {}).get('randomStreamId') or
+                                             snapshot(self.store, dataset)['sha256']))
+            else:
+                digest = dataset.get('sourceCsvSha256') or file_hash(
+                    self.store.root / dataset['workspace_id'] / 'datasets' / dataset_id / 'source.csv')
+                identities.add('csv:' + digest)
         for source in metadata.get('transformation', {}).get('sources', []):
             ancestor = self.lineage(self.store.base_dataset(source['datasetId']))
             identities.update(ancestor['identities'])

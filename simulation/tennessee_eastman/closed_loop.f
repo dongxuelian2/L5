@@ -65,7 +65,8 @@ C
       DOUBLE PRECISION BALMAX
       COMMON/L5CHECK/BALMAX
       INTEGER I, NN, NPTS, TEST, TEST1, IFAULT, NDIV
-      INTEGER ISTATE
+      INTEGER ISTATE, SSPTS, GAINPTS, ILOOP, ISTREAM, IOS
+      CHARACTER*256 CONFIG
       DOUBLE PRECISION OFFSET
       REAL SCALE,DSTEP
 C
@@ -79,14 +80,17 @@ C
 C
 C  Set the number of points to simulate
 C
-      READ(*,*) NPTS, IFAULT, SCALE, NDIV, ISTATE, OFFSET
+      READ(*,'(A)') CONFIG
+      SSPTS = 28800
+      GAINPTS = 28800
+      ILOOP = 10
+      ISTREAM = 0
+      READ(CONFIG,*,IOSTAT=IOS) NPTS, IFAULT, SCALE, NDIV, ISTATE,
+     &                         OFFSET, SSPTS, GAINPTS, ILOOP, ISTREAM
+      IF (IOS.GT.0) STOP 2
       NPTS = NPTS * NDIV
-
-C
-C  Set the number of pints to simulate in steady state operation
-C
-
-      SSPTS = 3600 * 8 * NDIV
+      SSPTS = SSPTS * NDIV
+      GAINPTS = GAINPTS * NDIV
 
 
 C
@@ -215,8 +219,11 @@ C
         DSTEP = DELTAT
         DELTAT = 1. / 3600.
         DO 1000 I = 1, NPTS
+         IF (I.EQ.GAINPTS+1) THEN
+                 IF (ILOOP.EQ.10) GAIN10=GAIN10*SCALE
+                 IF (ILOOP.EQ.11) GAIN11=GAIN11*SCALE
+         ENDIF
          IF (I.EQ.SSPTS+1) THEN
-                 GAIN10=GAIN10*SCALE
                  IF (IFAULT.GT.0) IDV(IFAULT)=1
           ENDIF
 	  TEST=MOD(I,3*NDIV)
@@ -246,7 +253,12 @@ C
 	  TEST1=MOD(I,900*NDIV)
 	  IF (TEST1.EQ.0) CALL CONTRL20
 	  IF (MOD(I,180*NDIV).EQ.0) THEN
-            WRITE(*,'(53ES24.15)') DBLE(I)/NDIV,XMEAS,XMV(1:11)
+            IF (ISTREAM.EQ.1) THEN
+                WRITE(*,'(103ES24.15)') DBLE(I)/NDIV,XMEAS,XMV(1:11),YY
+            ELSE
+                WRITE(*,'(53ES24.15)') DBLE(I)/NDIV,XMEAS,XMV(1:11)
+            ENDIF
+            FLUSH(6)
           ENDIF
           CALL INTGTR(NN,TIME,DBLE(DSTEP),YY,YP)
 C

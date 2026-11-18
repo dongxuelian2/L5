@@ -208,6 +208,7 @@ class TEPImportService:
                 timeConvention=source['timeConvention'], adapterVersion=ADAPTER_VERSION,
                 importedAt=now(), processing=['Official file size/MD5/SHA-256 verified.', 'Selected independent run; sorted and checked original sample indices.',
                                             'Metadata excluded from 52 detector inputs; no scaling or resampling.']))
+            metadata['processIdentity'] = dict(id='tep', name='Tennessee Eastman', source='Rieth et al. 2017')
             dataset = self.store.save_dataset(workspace_id, f'Rieth {run["split"]} · fault {run["faultNumber"]} · run {run["simulationRun"]}',
                 metadata, times, matrix, source_csv, extra_arrays={'original_samples': np.arange(1, len(times)+1)})
             onset = run['faultOnsetSeconds']
