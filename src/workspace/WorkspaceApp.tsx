@@ -76,8 +76,9 @@ function WorkspaceHome({ workspaces, refresh }: { workspaces: Workspace[]; refre
   </main>;
 }
 
-export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; onImport: (dataset: Dataset) => void }) {
+export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; onImport: (dataset: Dataset, open: boolean) => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const fileVersion = useRef(0);
   const [csv, setCsv] = useState(""), [filename, setFilename] = useState(""), [name, setName] = useState("");
   const [timeColumn, setTimeColumn] = useState("__auto"), [timeKind, setTimeKind] = useState("auto"), [timeUnit, setTimeUnit] = useState("seconds"), [interval, setInterval] = useState("1");
   const [timezone, setTimezone] = useState("UTC");
@@ -86,12 +87,13 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   const options = { ...(timeColumn === "__auto" ? {} : { timeColumn: timeColumn === "__generated" ? null : timeColumn }), timeKind, timeUnit, timezone, sampleInterval: Number(interval) };
   const optionKey = JSON.stringify(options);
   useEffect(() => {
-    setPreview(null); setError("");
+    setPreview(null);
     if (!csv) return;
+    setError("");
     const controller = new AbortController(); setLoading(true);
     const timer = setTimeout(() => {
       api<{ metadata: Metadata; series: Series }>("/datasets/preview", { csv, ...JSON.parse(optionKey) }, "POST", controller.signal)
-        .then(data => { setPreview(data); setColumns(data.metadata.sourceColumns); })
+        .then(data => { if (!controller.signal.aborted) { setPreview(data); setColumns(data.metadata.sourceColumns); } })
         .catch(e => { if (!controller.signal.aborted) setError(message(e)); })
         .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     }, 250);
@@ -99,18 +101,25 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   }, [csv, optionKey]);
   async function chooseFile(file?: File) {
     if (!file) return;
+    const version = ++fileVersion.current;
     setFilename(file.name); setName(file.name); setColumns([]); setCsv(""); setError(""); setTimeColumn("__auto"); setTimeKind("auto"); setTimeUnit("seconds"); setTimezone("UTC");
     try {
       const data = await file.arrayBuffer();
+      if (version !== fileVersion.current) return;
       let text: string;
       try { text = new TextDecoder("utf-8", { fatal: true }).decode(data); }
       catch { text = new TextDecoder("gb18030").decode(data); }
+      if (!text.trim()) throw new Error("Choose a nonempty CSV file.");
       setCsv(text);
-    } catch (e) { setError(message(e)); }
+    } catch (e) { if (version === fileVersion.current) setError(message(e)); }
   }
   async function save(e: FormEvent) {
     e.preventDefault(); setSaving(true); setError("");
-    try { onImport(await api<Dataset>(`/workspaces/${workspaceId}/datasets`, { csv, filename, name, ...options })); }
+    const route = window.location.hash;
+    try {
+      const dataset = await api<Dataset>(`/workspaces/${workspaceId}/datasets`, { csv, filename, name, ...options });
+      onImport(dataset, window.location.hash === route);
+    }
     catch (e) { setError(message(e)); } finally { setSaving(false); }
   }
   return <form className="ws-import ws-panel" onSubmit={save}>
@@ -135,16 +144,17 @@ export function ImportDataset({ workspaceId, onImport }: { workspaceId: string; 
   </form>;
 }
 
-function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, preferences, setPreferences }: {
-  workspaceId: string; datasets: Dataset[]; refresh: () => void; selected: string; setSelected: (id: string) => void;
-  preferences: Record<string, string[]>; setPreferences: (id: string, signals: string[]) => void;
+function DatasetPage({ workspaceId, datasets, onImport, selected, setSelected, preferences, setPreferences, datasetId }: {
+  workspaceId: string; datasets: Dataset[]; onImport: (dataset: Dataset, open: boolean) => void; selected: string; setSelected: (id: string) => void;
+  preferences: Record<string, string[]>; setPreferences: (id: string, signals: string[]) => void; datasetId?: string;
 }) {
   const [importing, setImporting] = useState(false);
-  const dataset = datasets.find(d => d.id === selected) || datasets[0];
+  const dataset = datasets.find(d => d.id === (datasetId || selected)) || (datasetId ? undefined : datasets[0]);
+  if (datasetId && !dataset) return <p role="alert">This dataset is unavailable in this workspace. <a className="ws-link" href={`#/workspaces/${workspaceId}/datasets`}>View saved datasets</a></p>;
   const chosen = dataset ? preferences[dataset.id] ?? dataset.metadata.columns.slice(0, 4).map(c => c.name) : [];
   return <>
     <div className="ws-page-title"><div><div className="ws-kicker">01 / DATASETS</div><h1>Your process data<span className="ws-accent">.</span></h1><p>Bring a new dataset into this workspace. Every column keeps its own meaning.{" "}<a className="ws-link" href={`#/workspaces/${workspaceId}/models`}>Generate process data ↗</a> · <a className="ws-link" href={`#/workspaces/${workspaceId}/tep`}>Import TEP benchmark ↗</a></p></div>{datasets.length > 0 && <button className="ws-primary" onClick={() => setImporting(!importing)}>{importing ? "Close import" : "+ Import CSV"}</button>}</div>
-    {(importing || datasets.length === 0) && <ImportDataset workspaceId={workspaceId} onImport={d => { setSelected(d.id); setImporting(false); refresh(); }} />}
+    {(importing || datasets.length === 0) && <ImportDataset workspaceId={workspaceId} onImport={(d, open) => { onImport(d, open); setImporting(false); }} />}
     {dataset && <>
       <div className="ws-section-heading"><h2>Saved datasets{" "}<span className="ws-muted">/ {datasets.length}</span></h2><label className="ws-inline">Dataset<select aria-label={"Saved dataset"} value={dataset.id} onChange={e => setSelected(e.target.value)}>{datasets.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label></div>
       <section className="ws-panel"><h2>{dataset.name}</h2><Stats metadata={dataset.metadata} /><p className="ws-muted">{timeLabel(dataset.metadata.time, dataset.metadata.time.start)} → {timeLabel(dataset.metadata.time, dataset.metadata.time.end)}{dataset.metadata.time.origin && " · Window inputs use seconds since the first timestamp."}</p>
@@ -171,8 +181,9 @@ function DatasetPage({ workspaceId, datasets, refresh, selected, setSelected, pr
 export function AnalysisPage({ workspaceId, datasets, selected, setSelected, preferences, jobId, refresh, intervalIndex, initialRange, initialDatasetId, initialSignals }: {
   workspaceId: string; datasets: Dataset[]; selected: string; setSelected: (id: string) => void; preferences: Record<string, string[]>; jobId?: string; refresh: () => void; intervalIndex?: number; initialRange?: [number, number]; initialDatasetId?: string; initialSignals?: string[];
 }) {
-  const dataset = datasets.find(d => d.id === (initialDatasetId || selected)) || datasets[0];
   const [config, setConfig] = useState<Config | null>(null), [result, setResult] = useState<AnalysisResult | null>(null);
+  const sourceId = jobId ? result?.datasetId : initialDatasetId;
+  const dataset = datasets.find(d => d.id === (sourceId || selected)) || (sourceId ? undefined : datasets[0]);
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
   const resultPanel = useRef<HTMLDivElement>(null);
   const context = useRef(0);
@@ -184,7 +195,7 @@ export function AnalysisPage({ workspaceId, datasets, selected, setSelected, pre
     setResult(null); setError("");
   }, [dataset?.id, jobId, initialRange, initialSignals]);
   useEffect(() => {
-    if (!jobId || result?.id === jobId) return;
+    if (!jobId || result?.id === jobId) { setLoading(false); return; }
     const controller = new AbortController(); setLoading(true); setError(""); setResult(null); setConfig(null);
     api<AnalysisResult>(`/analyses/${jobId}`, undefined, "GET", controller.signal).then(data => {
       if (controller.signal.aborted) return;
@@ -206,6 +217,7 @@ export function AnalysisPage({ workspaceId, datasets, selected, setSelected, pre
   }
   function set<K extends keyof Config>(key: K, value: Config[K]) { setConfig(c => c ? { ...c, [key]: value } : c); }
   if (result?.regimeRunId) return <p role="status">Opening saved regime session…</p>;
+  if (sourceId && !dataset) return <p role="alert">This analysis source is unavailable in this workspace. <a className="ws-link" href={`#/workspaces/${workspaceId}/datasets`}>Choose a dataset</a></p>;
   if (!dataset) return <Empty title={"Import data to start analyzing"}><a className="ws-link" href={`#/workspaces/${workspaceId}/datasets`}>Go to datasets →</a></Empty>;
   const resultDataset = result && datasets.find(d => d.id === result.datasetId);
   return <>
@@ -259,21 +271,21 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
   const [preferences, setPreferences] = useState<Record<string, string[]>>({}), [error, setError] = useState(""), [loading, setLoading] = useState(true), [revision, setRevision] = useState(0);
   function refresh() { setRevision(v => v + 1); }
   useEffect(() => {
+    if (workspaceId || guided) return;
     const controller = new AbortController(); setError("");
     api<{ workspaces: Workspace[] }>("/workspaces", undefined, "GET", controller.signal).then(data => setWorkspaces(data.workspaces)).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted && !workspaceId) setLoading(false); });
     return () => controller.abort();
-  }, [revision, workspaceId]);
-  useEffect(() => { setWorkspace(null); setDatasets([]); setJobs([]); setSelected(""); setLoading(Boolean(workspaceId)); }, [workspaceId]);
+  }, [revision, workspaceId, guided]);
   useEffect(() => { if (tab === "datasets" && jobId) setSelected(jobId); }, [tab, jobId]);
   useEffect(() => {
-    if (tab === "analysis" && routeContext.datasetId) {
+    if (tab === "analysis" && !jobId && routeContext.datasetId) {
       setSelected(routeContext.datasetId);
       if (routeContext.signals.length) setPreferences(p => ({ ...p, [routeContext.datasetId!]: routeContext.signals }));
     }
-  }, [tab, routeContext]);
+  }, [tab, jobId, routeContext]);
   useEffect(() => {
     if (!workspaceId) return;
-    const controller = new AbortController();
+    const controller = new AbortController(); setError("");
     Promise.all([api<Workspace>(`/workspaces/${workspaceId}`, undefined, "GET", controller.signal), api<{ datasets: Dataset[] }>(`/workspaces/${workspaceId}/datasets`, undefined, "GET", controller.signal), api<{ jobs: Job[] }>(`/workspaces/${workspaceId}/analyses`, undefined, "GET", controller.signal)])
       .then(([w, d, j]) => { if (controller.signal.aborted) return; setWorkspace(w); setDatasets(d.datasets); setJobs(j.jobs); })
       .catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -303,9 +315,27 @@ export default function WorkspaceApp({ path, search = "" }: { path: string[]; se
     tab === "estimations" ? <Suspense fallback={<p>Computing or opening estimation…</p>}><EstimationWorkspace key={workspaceId} workspaceId={workspaceId!} datasets={datasets} runId={jobId} onSaved={d => { setSelected(d.id); refresh(); }} /></Suspense> :
     tab === "history" ? <HistoryPage jobs={jobs} datasets={datasets} workspaceId={workspaceId!} /> :
     tab === "analysis" ? <AnalysisPage key={workspaceId} workspaceId={workspaceId!} datasets={datasets} selected={selected} setSelected={setSelected} preferences={preferences} jobId={jobId} initialDatasetId={routeContext.datasetId} initialSignals={routeContext.signals} initialRange={routeContext.range} intervalIndex={path[4] === undefined ? undefined : Number(path[4])} refresh={refresh} /> :
-    <DatasetPage workspaceId={workspaceId!} datasets={datasets} refresh={refresh} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
+    <DatasetPage workspaceId={workspaceId!} datasetId={jobId} datasets={datasets} onImport={(dataset, open) => {
+      setDatasets(previous => [dataset, ...previous.filter(d => d.id !== dataset.id)]);
+      if (open) {
+        setSelected(dataset.id); go(`workspaces/${workspaceId}/datasets/${dataset.id}`);
+      }
+      refresh();
+    }} selected={selected} setSelected={id => { setSelected(id); go(`workspaces/${workspaceId}/datasets/${id}`); }} preferences={preferences} setPreferences={(id, signals) => setPreferences(p => ({ ...p, [id]: signals }))} />;
   const activeTab = tab === "simulations" ? "models" : tab;
-  const workspaceRoute = (key: string) => `workspaces/${workspaceId}/${key}${key === "datasets" && selected ? `/${selected}` : ""}`;
+  const currentDataset = datasets.find(d => d.id === selected);
+  function workspaceRoute(key: string) {
+    const base = `workspaces/${workspaceId}/${key}`;
+    if (!currentDataset) return base;
+    if (key === "datasets" || (key === "monitoring" && !currentDataset.metadata.transformation)) return `${base}/${currentDataset.id}`;
+    if (key === "experiments") {
+      const signals = preferences[currentDataset.id] || [];
+      const query = new URLSearchParams(signals.map(signal => ["signal", signal]));
+      return `${base}/new/${currentDataset.id}${signals.length ? `?${query}` : ""}`;
+    }
+    if (["calibration", "maintenance", "safety"].includes(key)) return `${base}?dataset=${currentDataset.id}`;
+    return base;
+  }
   return <div className="ws-shell">
     <header className="ws-header">
       <a className="ws-brand" href="#/" aria-label="L5 home"><b>L5</b></a>

@@ -28,7 +28,7 @@ export function ControlWorkspace({workspaceId, experimentId, onSaved}: {workspac
   },[workspaceId]);
   useEffect(()=>{
     epoch.current++; const controller=new AbortController();setBusy(false);setError("");setResult(null);
-    if(!experimentId){setOpening(false);return ()=>controller.abort();}
+    if(!experimentId){setOpening(false);return ()=>{controller.abort();epoch.current++;};}
     setOpening(true);
     api<ControlExperiment>(`/workspaces/${workspaceId}/control/${experimentId}`,undefined,"GET",controller.signal)
       .then(r=>{if(controller.signal.aborted)return;setResult(r);setName(r.name);setConfig(r.config);setScenario(r.scenarioSnapshot);setProtocol(r.protocol);})

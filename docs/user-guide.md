@@ -8,7 +8,7 @@ Choose **Run both detectors** to fit and score Robust Max-Z and EWMA on the same
 
 ## Import and prepare measurements
 
-1. Create a workspace and open **Datasets**. Select a CSV or TSV and inspect the preview. Choose the time column and its unit, or supply a sample interval. Set the interpretation timezone when the file has date and time values without a timezone.
+1. Create a workspace and open **Datasets**. Select a CSV or TSV with a unique, nonempty name for each column and inspect the preview. Choose the time column and its unit, or supply a sample interval. Set the interpretation timezone when the file has date and time values without a timezone.
 2. Inspect missing measurements, duplicate times, and acquisition gaps in **Data quality**. Use **Signal catalog** to update engineering units, display names, and device tags. Use transformations to convert values between units.
 3. Open **Signal explorer** to browse multiple sources. Absolute clocks share a UTC time base. For a relative clock, select a reference source and set an offset before aligning with other measurements.
 4. Use **Transformations** to resample signals, choose missing-value and duplicate policies, or derive values from expressions. Preview the output grid and quality, then save the transformed output as a new dataset. Derived columns retain sample lineage and indicate which values were observed or processed.
