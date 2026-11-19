@@ -164,18 +164,26 @@ class ExperimentService:
         config['requiredSignals'] = list(dict.fromkeys(required))
         if 'industrialStudy' in raw:
             context = raw['industrialStudy']
-            from .industrial_study import CASES, DIAGNOSIS
-            from simulation.tep import MODEL
-            if not isinstance(context, dict) or context.get('protocol') != DIAGNOSIS or context.get('modelVersion') != MODEL:
+            from .industrial_study import CASES, DIAGNOSIS, PLANT_PROTOCOL
+            from .plants import SCENARIOS
+            if not isinstance(context, dict) or context.get('protocol') not in (DIAGNOSIS, PLANT_PROTOCOL):
                 raise ValueError('Unknown industrial investigation protocol.')
+            process = dataset['metadata'].get('processRun', {})
+            scenario = SCENARIOS.get(context.get('scenario'))
+            legacy = context['protocol'] == DIAGNOSIS and process.get('protocol') == 'tep-cooling-v1'
+            if (not process.get('modelVersion') or process['modelVersion'] != context.get('modelVersion')
+                    or (not legacy and (scenario is None or process.get('scenario') != scenario.id
+                                        or process.get('protocol') != PLANT_PROTOCOL))):
+                raise ValueError('Unknown industrial process version or scenario.')
+            roles = set(CASES) if legacy else {'fit', 'calibration', 'evaluation', 'intervention', *scenario.plant.references}
             sources = context.get('sources')
-            if not isinstance(sources, dict) or set(sources) != set(CASES) or sources['evaluation'] != dataset['id']:
+            if not isinstance(sources, dict) or set(sources) != roles or sources['evaluation'] != dataset['id']:
                 raise ValueError('Choose the complete set of process trajectories.')
             for role, source_id in sources.items():
                 source = self.store.base_dataset(source_id)
-                process = source['metadata'].get('processRun', {})
-                if (source['workspace_id'] != workspace_id or process.get('modelVersion') != MODEL
-                        or process.get('role') != role or process.get('studyId') != dataset['metadata'].get('processRun', {}).get('studyId')
+                source_process = source['metadata'].get('processRun', {})
+                if (source['workspace_id'] != workspace_id or source_process.get('modelVersion') != process['modelVersion']
+                        or source_process.get('role') != role or source_process.get('studyId') != process.get('studyId')
                         or role in ('fit', 'calibration') and (not training or source_id != training[role]['datasetId'])):
                     raise ValueError('Industrial source belongs to another investigation.')
             config['industrialStudy'] = context
@@ -426,9 +434,8 @@ class ExperimentService:
                 raise ValueError('The guided experiment was edited. Run the edited version from Experiments.')
             config, tasks = self.validate(experiment['workspace_id'], experiment['config'])
             dataset = self.store.dataset(config['datasetId'])
-            folder = self.store.root / dataset['workspace_id'] / 'datasets' / dataset['id']
             snapshot = dict(schemaVersion=1, experiment={k: experiment[k] for k in ('id', 'name', 'description', 'revision', 'notes', 'conclusion', 'conclusion_run_ids')},
-                config=config, dataset={**dataset, 'sha256': file_hash(folder / 'series.npz'), 'sourceCsvSha256': file_hash(folder / 'source.csv')},
+                config=config, dataset=dataset_snapshot(self.store, dataset),
                 labels=self.labels(config['labelSetId']) if config.get('labelSetId') else None,
                 engine=dict(python=platform.python_version(), numpy=np.__version__, analysis='l5.analysis.run_analysis'),
                 rules=RULES)

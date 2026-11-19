@@ -32,10 +32,11 @@ class Handler(SimpleHTTPRequestHandler):
     def send_json(self, status: int, data: dict):
         self.send_content(status, 'application/json', json.dumps(data, ensure_ascii=False, allow_nan=False))
 
-    def send_content(self, status: int, media_type: str, content: str, *, filename: str | None = None):
-        payload = content.encode('utf-8')
+    def send_content(self, status: int, media_type: str, content: str | bytes, *, filename: str | None = None):
+        payload = content.encode('utf-8') if isinstance(content, str) else content
+        content_type = f'{media_type}; charset=utf-8' if isinstance(content, str) else media_type
         self.send_response(status)
-        self.send_header('Content-Type', f'{media_type}; charset=utf-8')
+        self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Cache-Control', 'no-store')
         if filename is not None:

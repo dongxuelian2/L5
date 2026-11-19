@@ -130,6 +130,31 @@ def prepare_csv(text: str, options: dict) -> tuple[dict, np.ndarray, np.ndarray]
     return metadata, times, data
 
 
+def prepare_numeric(times, values, definitions, observed=None):
+    """Describe a native numerical series on a strictly increasing seconds clock."""
+    times, values = np.asarray(times, dtype=float), np.asarray(values, dtype=float)
+    names = [signal['name'] for signal in definitions]
+    if (times.ndim != 1 or not len(times) or not np.isfinite(times).all()
+            or np.any(np.diff(times) <= 0)):
+        raise ValueError('Numerical datasets require finite, strictly increasing timestamps.')
+    if not names or len(set(names)) != len(names) or values.shape != (len(times), len(names)):
+        raise ValueError('Provide a measurement column for each unique signal.')
+    finite = np.isfinite(values)
+    observed = finite if observed is None else np.asarray(observed, dtype=bool)
+    if observed.shape != values.shape or np.any(observed & ~finite):
+        raise ValueError('The observation mask must identify finite measurements.')
+    measured = np.where(observed, values, np.nan)
+    quality = summarize(times, measured, names)
+    columns = [dict(signal, **{k: quality['signals'][signal['name']][k] for k in ('missing', 'min', 'max')})
+               for signal in definitions]
+    axis = {k: quality[k] for k in ('start', 'end', 'typicalInterval', 'irregularCount',
+                                   'duplicateCount', 'invalidTimeCount', 'gapCount')}
+    metadata = dict(rowCount=len(times), columns=columns, sourceColumns=names, ignoredColumns=[],
+                    time=dict(axis, kind='numeric', column=None, unit='seconds', origin=None),
+                    missingCount=int((~observed).sum()), notes=[], quality=quality, storage='numeric')
+    return metadata, times, np.where(finite, values, np.nan), observed
+
+
 def series_preview(times: np.ndarray, data: np.ndarray, names: list[str], limit: int = 1600, *, gap_threshold=None) -> dict:
     """Display downsampling only; analysis always uses all selected source rows."""
     # Keep per-channel extrema so short spikes survive an overview plot.

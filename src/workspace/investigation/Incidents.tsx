@@ -1,7 +1,7 @@
 import { errorMessage, t as tr } from "../../lib/text";
 import { TransformationLineage } from "../data/TransformationWorkspace";
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
-import { api, message, prognosticSessionHref } from "../api";
+import { api, message, prognosticSessionHref, withPlantRun } from "../api";
 import { SensorHealthResult } from "../monitoring/SensorHealthWorkspace";
 import type { HealthResult } from "../monitoring/sensorHealthTypes";
 import { Plot, SignalPlots } from "../Charts";
@@ -219,7 +219,7 @@ function useRefDialog() {
 }
 
 function analysisHref(workspaceId: string, source: IncidentLink) {
-  return `#/workspaces/${workspaceId}/analysis/${source.details.analysisId}${source.kind === "interval" ? `/${source.details.intervalIndex}` : ""}`;
+  return withPlantRun(`#/workspaces/${workspaceId}/analysis/${source.details.analysisId}${source.kind === "interval" ? `/${source.details.intervalIndex}` : ""}`);
 }
 function simulationHref(workspaceId: string, source: IncidentLink) {
   const context = source.details.observationWindow;

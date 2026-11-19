@@ -13,6 +13,17 @@ export async function api<T>(path: string, body?: unknown, method = body === und
 }
 export function message(error: unknown) { return error instanceof Error ? error.message : "Unable to complete this operation."; }
 export function go(path: string) { window.location.hash = `#/${path}`; }
+export function withPlantRun(path: string) {
+  const query = new URLSearchParams(window.location.hash.split("?")[1]);
+  if (!query.has("plantRun")) return path;
+  const [route, ownSearch] = path.split("?");
+  const overrides = new URLSearchParams(ownSearch);
+  for (const key of new Set(overrides.keys())) {
+    query.delete(key);
+    overrides.getAll(key).forEach(value => query.append(key, value));
+  }
+  return `${route}?${query}`;
+}
 export function prognosticSessionHref(workspaceId: string, sessionId: string) {
   return `#/workspaces/${workspaceId}/maintenance/${sessionId}`;
 }

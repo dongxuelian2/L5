@@ -60,6 +60,7 @@ class ReplaySession:
             config[key] = value
 
         times, values = store.load_data(dataset)
+        values = np.where(store.observation_mask(dataset), values, np.nan)
         order = np.argsort(times, kind='stable')
         times = times[order]
         baseline, target = body.get('baselineRange'), body.get('analysisRange')

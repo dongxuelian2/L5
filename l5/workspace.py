@@ -1,4 +1,4 @@
-"""Local workspace repository: SQLite metadata, original CSV, NumPy arrays and results."""
+"""Local workspace repository for metadata, numerical measurements and results."""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -12,7 +12,7 @@ from uuid import uuid4
 import numpy as np
 
 from .analysis import run_analysis
-from .datasets import prepare_csv, series_preview
+from .datasets import prepare_csv, prepare_numeric, series_preview
 
 
 def now() -> str:
@@ -55,8 +55,8 @@ class WorkspaceStore:
         self.transformations = TransformationService(self)
         from .experiments import ExperimentService
         self.experiments = ExperimentService(self)
-        from .guided_demo import GuidedDemo
-        self.guided_demo = GuidedDemo(self)
+        from .plant_runs import PlantRuns
+        self.plants = PlantRuns(self)
         from .regime_workspace import RegimeService
         self.regimes = RegimeService(self)
         from .prognostic_sessions import PrognosticSessions
@@ -86,6 +86,7 @@ class WorkspaceStore:
         self.sensor_placement = SensorPlacementService(self)
 
     def close(self):
+        self.plants.close()
         self.live.close()
 
     @contextmanager
@@ -135,7 +136,7 @@ class WorkspaceStore:
         self.workspace(identity)
         simulations = {s['id'] for s in self.runtime.list(identity)}
         simulations.update(d['metadata']['model']['simulationId'] for d in self.datasets(identity) if d['metadata'].get('model'))
-        with self.live.workspace_removal(identity), self.connect() as db:
+        with self.plants.workspace_removal(identity), self.live.workspace_removal(identity), self.connect() as db:
             db.execute('DELETE FROM workspaces WHERE id=?', (identity,))
             remaining = [self.dataset_row(r) for r in db.execute('SELECT * FROM datasets')]
         folder = self.root / identity  # identity has been resolved against an existing generated ID.
@@ -171,6 +172,8 @@ class WorkspaceStore:
         metadata, times, values = prepare_csv(body.get('csv'), body)
         name = self.name(body.get('name') or body.get('filename') or 'Imported CSV')
         metadata['filename'] = str(body.get('filename', name))
+        if body.get('plantName'):
+            metadata['processIdentity'] = dict(name=self.name(body['plantName']), source='operator-supplied')
         if model:
             metadata['model'] = model
             config = self.runtime.get(model['simulationId'])['config']
@@ -181,7 +184,14 @@ class WorkspaceStore:
 
         return self.save_dataset(workspace_id, name, metadata, times, values, body['csv'])
 
-    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv, *, extra_arrays=None, on_save=None):
+    def save_numeric(self, workspace_id, name, times, values, definitions, *, observed=None,
+                     provenance=None, extra_arrays=None, on_save=None):
+        metadata, times, values, observed = prepare_numeric(times, values, definitions, observed)
+        metadata.update(provenance or {})
+        return self.save_dataset(workspace_id, name, metadata, times, values,
+                                 extra_arrays=dict(extra_arrays or {}, observed=observed), on_save=on_save)
+
+    def save_dataset(self, workspace_id, name, metadata, times, values, source_csv=None, *, extra_arrays=None, on_save=None):
         """Persist imported and generated datasets through the same repository path."""
         self.workspace(workspace_id)
         name = self.name(name)
@@ -189,7 +199,8 @@ class WorkspaceStore:
         folder = self.root / workspace_id / 'datasets' / identity
         folder.mkdir(parents=True)
         try:
-            (folder / 'source.csv').write_text(source_csv, encoding='utf-8')
+            if source_csv is not None:
+                (folder / 'source.csv').write_text(source_csv, encoding='utf-8')
             np.savez_compressed(folder / 'series.npz', times=times, values=values, **(extra_arrays or {}))
             with self.connect() as db:
                 db.execute('INSERT INTO datasets VALUES (?,?,?,?,?)', (identity, workspace_id, name, json.dumps(metadata), stamp))
@@ -213,6 +224,10 @@ class WorkspaceStore:
     def provenance_sample(self, dataset, index, signals):
         if dataset['metadata'].get('estimation'):
             return dict(provenance={s:'state-estimation' for s in signals}, observed={s:False for s in signals})
+        if dataset['metadata'].get('storage') == 'numeric':
+            names = [c['name'] for c in dataset['metadata']['columns']]
+            mask = self.observation_mask(dataset)[index]
+            return dict(observed={s: bool(mask[names.index(s)]) for s in signals})
         if not dataset['metadata'].get('transformation'):
             return {}
         from .resampling import PROVENANCE
@@ -275,7 +290,9 @@ class WorkspaceStore:
         else:
             times, values = self.load_data(dataset)
             result = run_analysis(times, values, [c['name'] for c in dataset['metadata']['columns']], body,
-                                  observed=self.observation_mask(dataset) if dataset['metadata'].get('transformation') or dataset['metadata'].get('estimation') else None)
+                                  observed=self.observation_mask(dataset) if (
+                                      dataset['metadata'].get('storage') == 'numeric' or
+                                      dataset['metadata'].get('transformation') or dataset['metadata'].get('estimation')) else None)
         return self.save_analysis(workspace_id, dataset, result, body.get('name'), experiment=experiment)
 
     def save_analysis(self, workspace_id, dataset, result, name=None, *, experiment=None):

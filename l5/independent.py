@@ -20,7 +20,8 @@ def file_hash(path):
 
 def snapshot(store, dataset):
     folder = store.root / dataset['workspace_id'] / 'datasets' / dataset['id']
-    return {**dataset, 'sha256': file_hash(folder / 'series.npz'), 'sourceCsvSha256': file_hash(folder / 'source.csv')}
+    original = None if dataset['metadata'].get('storage') == 'numeric' else file_hash(folder / 'source.csv')
+    return {**dataset, 'sha256': file_hash(folder / 'series.npz'), 'sourceCsvSha256': original}
 
 
 def window(times, interval, *, minimum=1):
@@ -50,6 +51,10 @@ def mapping_for(reference, dataset, names, raw=None):
     left = reference['metadata'].get('external', {}).get('schema')
     right = dataset['metadata'].get('external', {}).get('schema')
     left_model, right_model = reference['metadata'].get('model'), dataset['metadata'].get('model')
+    left_process, right_process = (d['metadata'].get('processRun', {}) for d in (reference, dataset))
+    identity = ('plant', 'modelVersion')
+    if tuple(left_process.get(k) for k in identity) != tuple(right_process.get(k) for k in identity):
+        raise ValueError('Independent process datasets require a matching plant and model version.')
     if left != right or (left and any(key != value for key, value in mapping.items())):
         raise ValueError('Incompatible external signal schemas; an explicitly verified schema adapter is required.')
     if bool(left_model) != bool(right_model) or (left_model and (left_model['id'], left_model.get('version')) != (right_model['id'], right_model.get('version'))):
@@ -85,11 +90,15 @@ def validate_training(store, workspace_id, raw):
         clean[key] = dict(datasetId=dataset['id'], range=[float(v) for v in item['range']], signalMapping=mapping)
         datasets[key] = dataset
     fit, cal = clean['fit'], clean['calibration']
-    def sequence(dataset):
-        return dataset['metadata'].get('external', {}).get('sequenceId', dataset['id'])
     if sequence(datasets['fit']) == sequence(datasets['calibration']) and fit['range'][1] >= cal['range'][0]:
         raise ValueError('Fit and calibration must be disjoint and chronological within the same source run.')
     return clean, datasets
+
+
+def sequence(dataset):
+    metadata = dataset['metadata']
+    return (metadata.get('external', {}).get('sequenceId') or
+            metadata.get('processRun', {}).get('randomStreamId') or dataset['id'])
 
 
 def validate_test(store, workspace_id, raw, training, datasets):
@@ -97,7 +106,7 @@ def validate_test(store, workspace_id, raw, training, datasets):
     if dataset['workspace_id'] != workspace_id:
         raise ValueError('The test dataset must belong to this workspace.')
     source = dataset['metadata'].get('external', {})
-    if any(dataset['id'] == d['id'] or (source.get('sequenceId') and source['sequenceId'] == d['metadata'].get('external', {}).get('sequenceId')) for d in datasets.values()):
+    if any(sequence(dataset) == sequence(d) for d in datasets.values()):
         raise ValueError('Test runs must be independent of both fit and calibration sources, including re-imported copies.')
     if source and source['split'] != 'testing':
         raise ValueError('Use official testing runs for independent TEP evaluation.')

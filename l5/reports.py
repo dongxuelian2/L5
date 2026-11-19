@@ -452,15 +452,16 @@ def render_report(store, identity):
             run = store.experiments.run(analysis['experiment']['runId'])
             evidence = saved_evidence(store, run['id'])
             if evidence:
-                parts.append('<h2>Mode 1 cooling-water investigation</h2>')
+                parts.append('<h2>' + e(evidence.get('title', 'Mode 1 cooling-water investigation')) + '</h2>')
                 diagnosis = evidence['diagnosis']
                 if diagnosis:
                     parts.append(prose(f"Closest trajectory: {diagnosis['hypothesis']}. Observed through {diagnosis['cutoff']} s."))
                     parts.append(table(['Hypothesis', 'RMS whitened residual', 'Estimated onset (s)'],
                         [[e(role), n(value), e(diagnosis['estimatedOnsets'].get(role))] for role, value in diagnosis['distances'].items()]))
-                parts.append(table(['Simulated trajectory', 'Temperature MAE (°C)', 'Valve travel (pp)', 'Peak pressure (kPa gauge)'],
-                    [[e(role), n(c['reactorTemperatureMAE']), n(c['coolingValveTravel']), n(c['peakReactorPressure'])]
-                     for role, c in evidence['comparison'].items()]))
+                columns = evidence.get('comparisonColumns', dict(reactorTemperatureMAE='Temperature MAE (°C)',
+                    coolingValveTravel='Valve travel (pp)', peakReactorPressure='Peak pressure (kPa gauge)'))
+                parts.append(table(['Simulated trajectory', *(e(label) for label in columns.values())],
+                    [[e(role), *(n(c[key]) for key in columns)] for role, c in evidence['comparison'].items()]))
                 parts.extend(prose(assumption) for assumption in evidence['assumptions'])
                 task = next(t for t in run['tasks'] if t['result_id'] == analysis['id'])
                 parts.append('<details><summary>Detection metrics, source runs and model provenance</summary>' +

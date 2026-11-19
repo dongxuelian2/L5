@@ -276,3 +276,41 @@
 .incident-report iframe { width:100%; height:850px; margin-top:24px; border:1px solid #54634c; background:white; border-radius:3px; }
 .incident-report .incident-actions { margin:18px 0; }
 .incident-report .ws-notice { margin-top:18px; }
+.ws-main:has(.ws-plant-title) { padding-top: 26px; }
+.ws-plant-title { margin-bottom: 18px; }
+.ws-plant-title h1 { font-size: clamp(25px, 3.2vw, 40px); margin: 0 0 .35rem; }
+.ws-plant { padding-block: 16px; }
+.ws-plant-settings {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .85rem;
+  margin-bottom: .8rem;
+}
+.ws-plant-settings label { min-width: 11rem; }
+.ws-plant-settings label:nth-child(2) { flex: 1; }
+.ws-plant details .ws-plant-settings { margin-top: .75rem; }
+.ws-plant-status {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .7rem;
+  margin-top: .8rem;
+}
+.ws-plant > form > details { margin: .65rem 0; padding-top: .65rem; }
+.ws-plant-measurements > .ws-section-heading { justify-content: flex-start; flex-wrap: wrap; margin: 0 0 .45rem; }
+.ws-plant-chart { margin-top: .85rem; }
+.ws-plant-chart .ws-plot { margin: 0; }
+.ws-plant-legend { color: #b3bfa9; flex-wrap: wrap; margin: .4rem 0; font-size: 11px; }
+.ws-plant-legend i { display: inline-block; width: 1.2em; border-top: 2px solid currentColor; margin-right: .5em; vertical-align: middle; }
+.ws-plant-legend .ws-plant-dashed { border-top-style: dashed; }
+.ws-investigation-nav { position: sticky; top: 0; z-index: 6; background: #101410; flex-wrap: wrap; padding: .75rem 0; border-bottom: 1px solid #30392d; }
+.ws-investigation-nav ~ .ws-result-anchor { scroll-margin-top: 60px; }
+.ws-investigation-nav ~ .incident-workstation .incident-nav { top: 42px; }
+.ws-plant-runs { list-style: none; padding: 0; }
+.ws-plant-runs li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.2rem;
+  padding: .5rem 0;
+}

@@ -79,7 +79,7 @@ export function SensorPlacementWorkspace({ workspaceId, runId, onChanged }: {
   return <div className="sensor-workspace">
     <header className="ws-page-title"><div>
       <h1>Fault detectability and sensor placement</h1>
-      <p>Compare fault trajectories under declared noise and choose measurements within an installation budget.</p>
+      <p>Compare coupled-tank fault trajectories under declared noise and choose measurements within an installation budget.</p>
     </div></header>
     {error && <p className="ws-error" role="alert">{errorMessage(error)}</p>}
     {loading ? <p role="status">Loading</p> : options && config && <>
