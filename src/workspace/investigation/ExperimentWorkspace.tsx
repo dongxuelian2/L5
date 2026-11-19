@@ -1,6 +1,6 @@
 import { errorMessage, t as tr, type Message } from "../../lib/text";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api, go, message } from "../api";
+import { api, go, message, withPlantRun } from "../api";
 import { AlgorithmParameters, algorithmParameters, algorithms } from "../monitoring/AlgorithmControls";
 import { ExperimentComparison } from "./ExperimentComparison";
 import { ExperimentLabels } from "./ExperimentLabels";
@@ -110,7 +110,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
         setRunFilter(run.id); setSaved({ ...result, runs: [run, ...result.runs] }); setNotice(["Batch queued: {0} tasks. Completed results are saved as each task finishes.", {0: run.task_count}]);
       } else setNotice(["Experiment definition and research notes saved."]);
       setTick(v => v+1); onChanged();
-      if (!existingId) go(`workspaces/${workspaceId}/experiments/${result.id}`);
+      if (!existingId) go(withPlantRun(`workspaces/${workspaceId}/experiments/${result.id}`));
     } catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
   }
   async function previewTasks() {
@@ -121,7 +121,7 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
   }
   async function copy() {
     if (!saved) return; const request = context.current; setBusy(true); setError("");
-    try { const result = await api<Experiment>(`/experiments/${saved.id}/copy`, {}); if (request === context.current) go(`workspaces/${workspaceId}/experiments/${result.id}`); }
+    try { const result = await api<Experiment>(`/experiments/${saved.id}/copy`, {}); if (request === context.current) go(withPlantRun(`workspaces/${workspaceId}/experiments/${result.id}`)); }
     catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
   }
   async function retry(runId: string) {
@@ -142,7 +142,8 @@ export function ExperimentWorkspace({ workspaceId, datasets, experimentId, initi
     catch (e) { if (request === context.current) setError(message(e)); } finally { if (request === context.current) setBusy(false); }
   }
   return <div className="experiment-workspace notranslate" translate="no">
-    {saved && <a className="ws-link" href={`#/workspaces/${workspaceId}/calibration?${new URLSearchParams({dataset:saved.config.datasetId,experiment:saved.id})}`}>Calibrate a model from observed data ↗</a>}
+    {saved && dataset && !dataset.metadata.processRun && (!dataset.metadata.model || dataset.metadata.model.id === "coupled-tanks") &&
+      <a className="ws-link" href={`#/workspaces/${workspaceId}/calibration?${new URLSearchParams({dataset:saved.config.datasetId,experiment:saved.id})}`}>Calibrate a coupled-tank twin ↗</a>}
     <div className="ws-page-title"><div><div className="ws-kicker">RESEARCH / ANALYSIS EXPERIMENTS</div><h1>One question. Many methods<span className="ws-accent">.</span></h1><p>Save the setup, run a batch, compare the evidence and retain the research.</p></div><span className="ws-badge">{running ? "BATCH IN PROGRESS" : "PERSISTENT EXPERIMENTS"}</span></div>
     <nav className="experiment-nav" aria-label={"Experiment sections"}>{[["definition", "Configure"], ["execution", "Execution"], ...(draft?.config.training ? [["benchmark", "TEP benchmark"]] : []), ["comparison", "Comparison"], ["report", "Report"]].map(([id, title]) => <button type="button" key={id} onClick={() => document.getElementById(`experiment-${id}`)?.scrollIntoView({ block: "start" })}>{title}</button>)}</nav>
     <section className="ws-panel experiment-library" aria-label={"Saved experiments"}><div className="ws-section-heading"><h2>Your experiments</h2><a className="ws-link" href={`#/workspaces/${workspaceId}/experiments/new`}>＋ New experiment</a></div>

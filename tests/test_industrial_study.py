@@ -207,6 +207,9 @@ class CascadeStudy(unittest.TestCase):
                 try:
                     self.assertTrue(observed.wait(10))
                     self.assertEqual(store.plants.preview(wid, identity)['times'], [0.])
+                    plotted = store.plants.preview(wid, identity, operating=True)
+                    self.assertEqual(list(plotted['values']), ['temperature_1', 'temperature_2', 'a_1', 'a_2', 'jacket_1', 'jacket_2'])
+                    np.testing.assert_array_equal(plotted['values']['jacket_1'], [cstr.COOLANT])
                     self.assertEqual(store.plants.start(wid, 'cstr-feed-warming', {})['id'], identity)
                     store.plants.cancel(wid, identity)
                 finally:
@@ -235,6 +238,16 @@ class CascadeStudy(unittest.TestCase):
             try:
                 self.assertEqual(reopened.plants.get(wid, identity), result)
                 self.assertEqual(len(reopened.plants.preview(wid, identity)['times']), 181)
+                saved_series = reopened.plants.preview(wid, identity, operating=True)
+                source = reopened.dataset(investigate['datasets']['evaluation'])
+                times, values = reopened.load_data(source)
+                np.testing.assert_array_equal(saved_series['times'], times)
+                for index, signal in enumerate(source['metadata']['columns']):
+                    if signal['name'] in saved_series['values']:
+                        np.testing.assert_array_equal(saved_series['values'][signal['name']], values[:, index])
+                legacy = {key: value for key, value in result.items() if key != 'operatingPlots'}
+                with patch.object(reopened.plants, 'get', return_value=legacy):
+                    self.assertEqual(reopened.plants.preview(wid, identity, operating=True), saved_series)
                 self.assertEqual(reopened.plants.start(wid, 'cstr-feed-warming', {})['id'], identity)
             finally:
                 reopened.close()

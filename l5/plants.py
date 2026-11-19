@@ -60,22 +60,45 @@ class Scenario:
     onset: int
     intervention: int
     comparison: str
+    plots: tuple[tuple[str, tuple[str, ...]], ...]
 
+
+CSTR_PLOTS = (
+    ('Reactor liquid temperature', ('temperature_1', 'temperature_2')),
+    ('Reactant A concentration', ('a_1', 'a_2')),
+    ('Jacket temperature commands', ('jacket_1', 'jacket_2')),
+)
 
 SCENARIOS = {s.id: s for s in (
     Scenario('reactor-cooling', TEP, 'Reactor cooling-water inlet step',
              'Reactor coolant warms by 5 °C. Reactor temperature and cooling valve respond.',
-             4, 4598956239, 86400, 28800, 28800, 'Half reactor cooling-loop gain'),
+             4, 4598956239, 86400, 28800, 28800, 'Reactor cooling-loop gain adjustment', (
+                 ('Reactor temperature', ('xmeas_9',)),
+                 ('Reactor cooling-water outlet temperature', ('xmeas_21',)),
+                 ('Reactor cooling-water valve command', ('xmv_10',)),
+             )),
     Scenario('condenser-cooling', TEP, 'Condenser cooling-water inlet step',
              'Condenser coolant warms by 5 °C. Separator cooling and downstream measurements respond.',
-             5, 5658678765, 86400, 28800, 28800, 'Reduced condenser cooling-loop gain'),
+             5, 5658678765, 86400, 28800, 28800, 'Condenser cooling-loop gain adjustment', (
+                 ('Separator temperature', ('xmeas_11',)),
+                 ('Condenser cooling-water outlet temperature', ('xmeas_22',)),
+                 ('Separator underflow', ('xmeas_14',)),
+                 ('Condenser cooling-water valve command', ('xmv_11',)),
+             )),
     Scenario('cstr-feed-warming', CSTR, 'Warm feed to Reactor 1',
              'Feed temperature rises by 6 K. The thermal and reaction transient propagates to Reactor 2.',
-             'warm-feed', 659, 1800, 600, 660, 'Bounded Reactor 1 jacket PI'),
+             'warm-feed', 659, 1800, 600, 660, 'Bounded Reactor 1 jacket PI', CSTR_PLOTS),
     Scenario('cstr-feed-dilution', CSTR, 'Lean feed to Reactor 1',
              'Feed reactant concentration drops by 8%. Reactant, product and reaction heat change in both reactors.',
-             'lean-feed', 857, 1800, 600, 660, 'Bounded Reactor 1 jacket PI'),
+             'lean-feed', 857, 1800, 600, 660, 'Bounded Reactor 1 jacket PI', CSTR_PLOTS),
 )}
+
+
+def operating_plots(scenario):
+    definitions = {signal['name']: signal for signal in scenario.plant.signals}
+    return [dict(title=title, signals=[definitions[name] for name in names],
+                 stepAfter=scenario.plant is CSTR and names == ('jacket_1', 'jacket_2'))
+            for title, names in scenario.plots]
 
 
 def settings(scenario, supplied=None):
@@ -99,7 +122,7 @@ def settings(scenario, supplied=None):
             or seed in {p.fit_seed, p.calibration_seed, *(value[1] for value in p.references.values())}):
         raise ValueError('Choose a positive integer evaluation seed below 2⁵³, distinct from the fit, calibration and diagnosis seeds.')
     if p is TEP and (type(config['gain']) not in (int, float) or not .1 <= config['gain'] <= 1.5):
-        raise ValueError('Choose a reactor cooling-gain multiplier from 0.1 to 1.5.')
+        raise ValueError('Choose a cooling-loop gain multiplier from 0.1 to 1.5.')
     return config
 
 
@@ -116,5 +139,6 @@ def catalog():
                  version=p.version, mode=p.mode, sampleSeconds=p.sample, limits=p.limits,
                  signals=[p.signals[i-1] for i in p.channels],
                  scenarios=[dict(id=s.id, title=s.title, mechanism=s.mechanism, comparison=s.comparison,
-                                 settings=settings(s)) for s in SCENARIOS.values() if s.plant is p])
+                                 settings=settings(s), operatingPlots=operating_plots(s))
+                            for s in SCENARIOS.values() if s.plant is p])
             for p in (TEP, CSTR)]

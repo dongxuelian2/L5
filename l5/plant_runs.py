@@ -10,7 +10,7 @@ import numpy as np
 
 from .datasets import series_preview
 from .industrial_study import run_report, saved_evidence, study
-from .plants import SCENARIOS, catalog, run_id, run_key, settings
+from .plants import SCENARIOS, catalog, operating_plots, run_id, run_key, settings
 from .workspace import now
 
 
@@ -95,7 +95,8 @@ class PlantRuns:
                 return existing
             payload = dict(plantId=scenario.plant.id, modelVersion=scenario.plant.version, scenarioId=scenario_id,
                            title=scenario.title, settings=config, createdAt=existing.get('createdAt', now()),
-                           signalDefinitions=[scenario.plant.signals[i-1] for i in scenario.plant.channels])
+                           signalDefinitions=[scenario.plant.signals[i-1] for i in scenario.plant.channels],
+                           operatingPlots=operating_plots(scenario))
             self.put(wid, identity, 'configured', payload)
             cancel = self.active[identity] = Event()
             self.worker.submit(self.execute, wid, identity, scenario, config, payload, cancel, stage)
@@ -122,22 +123,37 @@ class PlantRuns:
         with self.lock:
             return self.study_locks.setdefault(key, Lock())
 
-    def preview(self, wid, identity):
+    def preview(self, wid, identity, *, operating=False):
         run = self.get(wid, identity, include_report=False)
         names = [s['name'] for s in run['signalDefinitions']]
+        requested = names
+        if operating:
+            plots = run.get('operatingPlots')
+            if plots is None and run['scenarioId'] in SCENARIOS:
+                plots = operating_plots(SCENARIOS[run['scenarioId']])
+            if plots:
+                requested = list(dict.fromkeys(s['name'] for plot in plots for s in plot['signals']))
         if run.get('evaluationId'):
-            return self.store.series(run['evaluationId'], names)
+            return self.store.series(run['evaluationId'], requested)
         path = self.folder(wid, identity) / 'observations.npz'
         try:
             with self.lock:
                 with np.load(path, allow_pickle=False) as data:
-                    return series_preview(data['times'], data['values'], names)
+                    columns = data['signals'].tolist() if 'signals' in data else names
+                    available = [name for name in requested if name in columns]
+                    if not available:
+                        available = names
+                    return series_preview(data['times'], data['values'][:, [columns.index(name) for name in available]], available)
         except FileNotFoundError:
             return None
 
     def execute(self, wid, identity, scenario, config, payload, cancel, stage):
         path = self.folder(wid, identity) / 'observations.npz'
-        channels = list(scenario.plant.channels)
+        names = list(dict.fromkeys(s['name'] for s in (
+            payload['signalDefinitions'] + [item for plot in payload['operatingPlots'] for item in plot['signals']]
+        )))
+        positions = {signal['name']: index for index, signal in enumerate(scenario.plant.signals, start=1)}
+        channels = [positions[name] for name in names]
         samples = []
         written, last_write = 0, 0.
 
@@ -162,7 +178,7 @@ class PlantRuns:
             rows = np.asarray(samples)
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_name('pending.npz')
-            np.savez_compressed(tmp, times=rows[:, 0], values=rows[:, channels])
+            np.savez_compressed(tmp, times=rows[:, 0], values=rows[:, channels], signals=names)
             with self.lock:
                 tmp.replace(path)
             written, last_write = len(samples), stamp

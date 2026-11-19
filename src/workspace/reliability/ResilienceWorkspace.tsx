@@ -195,7 +195,7 @@ export function ResilienceWorkspace({ workspaceId, section, recordId, caseId, on
   return <div className="resilience-workspace">
     <div className="ws-page-title"><div>
       <h1>Resilience Testing</h1>
-      <p>Compose process and acquisition faults, then compare detector behavior against the simulated timeline.</p>
+      <p>Simulate coupled-tank process and acquisition faults, then compare detector behavior against the simulated timeline.</p>
     </div></div>
     <nav className="resilience-nav" aria-label={"Resilience workspace"}>
       <a href={`#/${route}`} aria-current={mode === "composer" ? "page" : undefined}>Scenario composer</a>

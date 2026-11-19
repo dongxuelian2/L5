@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { t as tr } from "../../lib/text";
 import { errorMessage } from "../../lib/text";
-import { api, go, message } from "../api";
+import { api, go, message, withPlantRun } from "../api";
 import { ConstraintEditor, ForecastEditor, newConstraint, toConstraintDefinition, toConstraintDraft, toForecastDraft, toForecastOptions, type ConstraintDraft } from "./SafetyEditors";
 import { SafetyResults } from "./SafetyResults";
 import { dateLabel, timeLabel, type CatalogSignal, type Dataset, type Incident, type IncidentSummary } from "../types";
@@ -107,7 +107,7 @@ export function SafetyWorkspace({ workspaceId, datasets, initialDatasetId, asses
   function changeDataset(id: string) {
     setDatasetId(id); setSelection(undefined); setConfigurationName(""); setAssessmentName(""); setDrafts([]);
     setForecast(toForecastDraft()); setResult(undefined); setNotice(""); setError(""); setIncident(undefined);
-    if (assessmentId) go(route);
+    if (assessmentId) go(withPlantRun(route));
   }
 
   function chooseConfiguration(id: string) {
@@ -162,8 +162,8 @@ export function SafetyWorkspace({ workspaceId, datasets, initialDatasetId, asses
         const summary = { id: assessment.id, name: assessment.name, workspaceId: assessment.workspaceId, datasetId: assessment.datasetId, createdAt: assessment.createdAt };
         setAssessments(previous => [summary, ...previous.filter(item => item.id !== summary.id)]);
         setNotice("Assessment saved.");
-        go(`${route}/${assessment.id}`);
-      } else if (assessmentId) go(route);
+        go(withPlantRun(`${route}/${assessment.id}`));
+      } else if (assessmentId) go(withPlantRun(route));
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
 
@@ -185,12 +185,12 @@ export function SafetyWorkspace({ workspaceId, datasets, initialDatasetId, asses
     <section className="ws-panel safety-source" aria-labelledby="safety-source-title">
       <h2 id="safety-source-title">Source and saved assessments</h2>
       <div className="ws-form-grid safety-fields">
-        <label>Dataset<select value={datasetId} disabled={busy || opening} onChange={event => changeDataset(event.target.value)}>
+        <label>Dataset<select aria-label="Dataset" value={datasetId} disabled={busy || opening} onChange={event => changeDataset(event.target.value)}>
           <option value="">Choose a dataset</option>
           {datasetOptions.map(item => <option key={item.id} value={item.id}>{item.name}{item.metadata.model ? ` · ${tr(item.metadata.model.name || item.metadata.model.id)}` : ""}</option>)}
         </select></label>
         <label>Saved assessment<select value={assessmentId || ""} disabled={busy || opening || loading} onChange={event => {
-          if (event.target.value) go(`${route}/${event.target.value}`); else { setResult(undefined); go(route); }
+          if (event.target.value) go(withPlantRun(`${route}/${event.target.value}`)); else { setResult(undefined); go(withPlantRun(route)); }
         }}><option value="">Choose an assessment</option>
           {assessments.map(item => <option value={item.id} key={item.id}>{item.name} · {dateLabel(item.createdAt)}</option>)}</select></label>
       </div>

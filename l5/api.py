@@ -113,7 +113,8 @@ def dispatch(handler, method: str) -> bool:
                 if len(tail) == 2 and method == 'GET':
                     result = store.plants.get(wid, identity)
                 elif tail[2:] == ['observations'] and method == 'GET':
-                    result = dict(series=store.plants.preview(wid, identity))
+                    operating = parse_qs(url.query).get('view') == ['operating']
+                    result = dict(series=store.plants.preview(wid, identity, operating=operating))
                 elif tail[2:] == ['cancel'] and method == 'POST':
                     result, status = store.plants.cancel(wid, identity), 202
         elif len(parts) == 4 and parts[1] == 'workspaces' and parts[3] == 'industrial-study' and method in ('GET', 'POST'):

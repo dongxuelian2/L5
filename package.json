@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "npm run typecheck && vite build",
     "serve": "node scripts/python.mjs server.py",
-    "typecheck": "tsc --noEmit",
-    "generate": "node scripts/python.mjs simulation/generate.py"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",

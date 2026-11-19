@@ -7,14 +7,16 @@ import { axisLabel, datasetClock, number, signalLabel, timeLabel, type CatalogSi
 import "./signals.css";
 
 type Mode = "signals" | "quality" | "explorer";
-type Props = { workspaceId: string; datasets: Dataset[]; jobs: Job[]; mode: Mode; initialSignalIds?: string; onChanged: () => void; onAnalyze: (datasetId: string, signals: string[], range: [number, number]) => void };
+type Props = { workspaceId: string; datasets: Dataset[]; jobs: Job[]; mode: Mode; initialSignalIds?: string;
+  initialDatasetId?: string; initialRange?: [number, number]; onChanged: () => void;
+  onAnalyze: (datasetId: string, signals: string[], range: [number, number]) => void };
 const colors = ["#b5ed9a", "#e2bc75", "#9ccbdc", "#cfb2ed", "#eea496"];
 const categories = ["Temperature", "Pressure", "Flow", "Current", "Voltage", "Vibration", "Speed", "Power", "State"];
 function errorText(error: string) { return error && <p className="ws-error" role="alert">{errorMessage(error)}</p>; }
 function axisTime(axis: ExplorerAxis): TimeAxis { return { kind: axis.origin ? "datetime" : "numeric", origin: axis.origin, column: null, start: axis.start, end: axis.end }; }
 function qualityNumber(n: number | null | undefined) { return n == null ? "—" : number(n); }
 
-export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSignalIds, onChanged, onAnalyze }: Props) {
+export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSignalIds, initialDatasetId, initialRange, onChanged, onAnalyze }: Props) {
   const [catalog, setCatalog] = useState<CatalogSignal[]>([]), [views, setViews] = useState<ExplorerView[]>([]);
   const [selected, setSelected] = useState<string[]>(initialSignalIds?.split(",").filter(Boolean) || []);
   const [windows, setWindows] = useState<Record<string, ExplorerWindow>>({}), [displayMode, setDisplayMode] = useState<"separate" | "overlay">("separate");
@@ -36,7 +38,16 @@ export function SignalWorkspace({ workspaceId, datasets, jobs, mode, initialSign
       }).catch(e => { if (!controller.signal.aborted) setError(message(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [workspaceId, datasets, revision]);
-  useEffect(() => { if (initialSignalIds) { setSelected(initialSignalIds.split(",").filter(Boolean)); setWindows({}); setViewId(""); setSaved(null); } }, [initialSignalIds]);
+  const initialDataset = datasets.find(dataset => dataset.id === initialDatasetId);
+  useEffect(() => {
+    if (!initialSignalIds) return;
+    const clock = initialDataset && initialRange ? datasetClock(initialDataset) : undefined;
+    setSelected(initialSignalIds.split(",").filter(Boolean));
+    setWindows(clock && initialRange ? { [clock.axisId]: {
+      start: initialRange[0] + clock.offset, end: initialRange[1] + clock.offset, at: initialRange[0] + clock.offset,
+    } } : {});
+    setViewId(""); setSaved(null);
+  }, [initialSignalIds, initialDataset?.id, initialRange]);
   const rangeKey = JSON.stringify(Object.fromEntries(Object.entries(windows).map(([id, w]) => [id, { start: w.start, end: w.end }])));
   const signalKey = JSON.stringify(selected);
   useEffect(() => {

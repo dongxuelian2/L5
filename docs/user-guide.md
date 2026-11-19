@@ -4,9 +4,15 @@
 
 Open **Plants and runs** and select a plant and scenario. Tennessee Eastman requires GNU Fortran on the server path. Expand **Run settings and plant equipment** to change duration, disturbance time, intervention time or the evaluation seed.
 
-Choose **Run investigation**. The measurements panel updates during simulation. The completed study presents the alarm delay, the closest reference trajectory and the intervention metrics. **Export investigation report** downloads HTML. The linked measurements, detection analysis, experiment and incident open with the original run context. Expand **Diagnostic residuals and exports** to download evidence JSON or inspect the intervention trace.
+Choose **Run investigation**. **Operating measurements** updates during simulation. The CSTR plots pair Reactor 1 and Reactor 2 liquid temperatures, reactant concentrations, and jacket commands. The Tennessee Eastman plots follow the disturbed cooling loop through its process temperature, cooling-water outlet temperature, and valve command. The condenser scenario also shows separator underflow.
+
+All operating plots use elapsed seconds on the same clock. Solid traces show baseline simulated observations. Dashed traces show the matched counterfactual. Vertical markers locate the scheduled disturbance and intervention. Click any plot to read both trajectories at the same time. **Explore signals** opens the operating channels at the diagnosed event window and gives access to the other saved channels.
+
+**Investigation findings** jumps to the alarm delay, closest reference trajectory, and intervention metrics. Open the saved detection analysis, experiment, incident, or operating-limit assessment from this section. **Plant run** returns to the original investigation. **Export investigation report** downloads HTML from the run header. Expand **Diagnostic residuals and exports** for reference distances, intervention measurements, and evidence JSON.
 
 **Saved runs** reopens investigations after navigation or refresh. **Cancel run** preserves the available measurements. **Resume investigation** repeats an interrupted trajectory from initialization and reuses complete sources with the same configuration. For a staged study, choose **Run measurements only** under the run settings, then **Complete investigation** when ready. See the [industrial process guide](industrial-process.md) for model provenance and numerical assumptions.
+
+The [specialist applicability table](architecture.md#specialist-applicability) lists compatible processes and input requirements. The sidebar groups hydraulic tools under **Coupled-tank specialists**.
 
 ## Import and prepare measurements
 
@@ -48,9 +54,9 @@ For equipment, use **Sign & Encrypt**, a trusted server certificate, a client ce
 
 | View | Workflow |
 | --- | --- |
-| **Process simulation** | Choose TripLens or Coupled-Tank, configure a fault and seed, and simulate the scenario. Compare interventions and save observations as CSV or as a workspace dataset. |
-| **Closed-loop control** | Compare open-loop, PI, and model predictive control on a coupled-tank scenario. Inspect tracking error, command saturation, and limit violations on a shared time axis. |
-| **Digital twins** | Map calibration measurements and inputs to coupled-tank variables in physical units. Fit selected coefficients within bounds, check rank and residual diagnostics, and score a separate validation interval or dataset. Save a converged twin and export its revision as a model scenario. |
+| **Hydraulic and TripLens simulation** | Choose TripLens or Coupled-Tank, configure a fault and seed, and simulate the scenario. Compare interventions and save observations as CSV or as a workspace dataset. |
+| **PI and MPC control** | Compare open-loop, PI, and model predictive control on a coupled-tank scenario. Inspect tracking error, command saturation, and limit violations on a shared time axis. |
+| **Digital twin calibration** | Map calibration measurements and inputs to coupled-tank variables in physical units. Fit selected coefficients within bounds, check rank and residual diagnostics, and score a separate validation interval or dataset. Save a converged twin and export its revision as a model scenario. |
 | **State estimation** | Map measured channels and commands to the coupled-tank model. Compare state and sensor-fusion estimates, innovations, and uncertainty under the chosen noise assumptions. |
 | **Sensor placement** | Compare sensor subsets using simulated operating points, fault signatures, and noise. Inspect which faults each layout detects or distinguishes. |
 | **Experiment design** | Compare bounded pump and valve excitation sequences. Inspect worst-case margins and predicted information before saving a plan for simulation. |
@@ -62,7 +68,7 @@ Digital twin predictions use known inputs and estimated parameters. State estima
 | View | Workflow |
 | --- | --- |
 | **Predictive maintenance** | Select a condition indicator, its observation window, and a failure limit. Compare forecasts and remaining useful life under the selected trend assumptions. |
-| **Process safety** | Choose operating and trip limits. Inspect projected limit crossings and the effects of simulated candidate responses. |
+| **Operating limits and forecasts** | Check operating and trip limits against measured histories. For coupled-tank simulations, inspect projected crossings and the effects of candidate responses. |
 | **Resilience testing** | Compare strategies across a seeded matrix of simulated faults. Inspect recovery times, constraint violations, and worst runs. |
 | **Recovery and reachability** | Choose state bounds, a target, and actuator limits. Compute finite-grid recovery and viability maps, then compare policies and fixed emergency actions in nonlinear replay. Grid classifications are numerical approximations within the configured states, inputs, and scenarios. |
 
