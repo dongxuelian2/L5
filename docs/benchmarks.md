@@ -6,7 +6,7 @@ The main case study uses mode 1 simulated trajectories from the [Rieth et al. da
 
 The expanded study uses nine methods on 65 test trajectories (three runs per fault for 20 faults and five normal runs). That gives 585 executions per training configuration. The A/B/C study repeats the same workload for three fit/calibration pairs. The timely detection metric checks for an alarm sample during the first 30 minutes of the fault window. Eventual detection counts an alarm interval overlapping any part of that window. Healthy alarm samples come from the five independent normal runs.
 
-On the same normal runs, Page CUSUM produced 0, 739, and 1,833 alarm samples under configurations A, B, and C. Thresholds and alarm burden depend on the normal training data. The configured reporting windows also include one hour, four hours, and the full run. [Configuration A results](../README.md#reproducible-results)
+On the same normal runs, Page CUSUM produced 0, 739, and 1,833 alarm samples under configurations A, B, and C. Thresholds and alarm burden depend on the normal training data. The configured reporting windows also include one hour, four hours, and the full run.
 
 ### Reading detection results
 
@@ -25,7 +25,7 @@ The A/B/C replay reproduced every count in the 567 published configuration–det
 
 ### Prepare the source data
 
-Install L5 using the [README](../README.md#installation). Run the following commands at the repository root. The three source files total about 909 MB. The preparation command extracts the selected runs after verifying the original files. Use `--source-dir` to point to local originals and omit `--download` to prepare data offline.
+Install L5 using the [quick start](../README.md#quick-start). Run the following commands at the repository root. The three source files total about 909 MB. The preparation command extracts the selected runs after verifying the original files. Use `--source-dir` to point to local originals and omit `--download` to prepare data offline.
 
 ```sh
 node scripts/python.mjs -m examples.tep.prepare --source-dir output/rieth --cache-dir output/tep-cache --source fault-free-training --faults 0 --runs 1 2 3 4 5 6 --download
@@ -52,14 +52,7 @@ node scripts/python.mjs -m examples.tep.run --data-dir output/tep-small-workspac
 
 Open the resulting workspace and select **Tennessee Eastman histories** to compare the detection matrix, training configurations, and individual trajectories. Drill into an experiment to inspect its synchronized scores and raw signals, or link an alarm interval to an incident for export.
 
-### Independent reference evaluation
-
-The earlier [Braatz laboratory reference data](https://github.com/camaramm/tennessee-eastman-profBraatz) is a separate protocol. It chronologically splits the normal training run for fit and calibration, scores 21 fault runs and a held-out normal run, and reports fault detection, pre-fault alarm burden, and normal-run alarm burden.
-
-```sh
-node scripts/python.mjs -m benchmarks.fetch_reference --dest output/tep-reference
-node scripts/python.mjs -m benchmarks.run_suite output/tep-reference --output-dir output/tep-reference-results
-```
+### Additional datasets
 
 The independent Rieth normal-operation study uses the original training and testing RData files in `output/rieth`. Prepare them with the first two source commands above. The study compares calibration and healthy alarm burden across distinct simulation runs.
 

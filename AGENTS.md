@@ -1,26 +1,13 @@
-# L5 repository instructions
+# L5 repository rules
 
-These rules apply to all contributions and to every directory in the repository.
+Keep a file when it directly serves a running feature, a reproducible numerical result, installation, or necessary maintenance. Remove superseded paths, duplicate implementations, unused assets, and one-off machinery after checking their callers.
 
-1. Use English throughout the repository and application, including UI text, reports, logs, examples, comments, and project metadata. Preserve text supplied by users and original source data.
-2. Write direct, affirmative, concise engineering prose. State capabilities, assumptions, and operating constraints in concrete terms.
-3. Remove defensive, apologetic, self-justifying, repetitive, and contrastive prose.
-4. Describe implemented functionality. Support technical claims with reproducible methods and measured results.
-5. Keep the architecture and dependency set small. Prefer standard libraries, native platform features, and existing shared code.
-6. Keep generated outputs, temporary files, superseded development notes, and duplicate artifacts out of the tracked tree.
-7. Organize the repository around the tasks users need to perform. Keep the README as the main entry point and place essential details in linked documentation.
-8. Provide Linux-compatible and cross-platform commands for installation, execution, and builds. Use portable tooling and document platform differences where they affect users.
-9. Avoid PowerShell-only workflows.
-10. Keep documentation, verification, and automation proportionate to the user-facing work they support.
-11. Track new files only when they contribute to functionality, distribution, installation, or necessary documentation.
-
-12. Design for human efficiency across the full workflow. Preserve context, derive meaningful defaults, and make the next useful action apparent. Measure required interactions, repeated selections, navigation, and configuration for a complete user task.
-
-## Structure and delivery
-
-- Keep modules flat by default. Group closely related files one level deep by capability and keep adapters thin.
-- Name files and directories for their durable responsibilities. Use Git to record revisions, phases, and dates.
-- Give each topic one authoritative home. Lead with the result or action the reader needs, and place detailed methods and assumptions in the relevant guide.
-- Keep reproducible source and required runtime data in Git. Write generated reports, benchmark runs, and local working state to ignored directories. Use issues and pull requests for project discussion.
-- Push changes to a working branch and submit them through a pull request. Update the default branch through reviewed pull request merges after required checks pass.
-- Verify the affected workflows locally and expand the checks when a change crosses shared boundaries. Add CI for recurring integration needs or explicit requests.
+- Use English for source, UI, reports, documentation, and project metadata. Preserve original user input and source data.
+- Describe what the software does, its measured results, and its operative limits in concise engineering language. Delete defensive and repetitive prose.
+- Organize the product around complete user workflows. Minimize navigation, repeated selections, configuration, and context loss.
+- Keep the executable plant, data, detector, experiment, incident, and reporting paths coherent. Share code across features when the same invariant applies.
+- Keep real numerical checks, data compatibility checks, persistence safeguards, and reproducible source data. Delete ceremonial smoke tests, redundant snapshots, manual hash ledgers, and duplicate CI layers.
+- Keep generated reports, caches, local workspaces, downloaded datasets, and temporary development materials outside Git.
+- Maintain a compact README with working installation and usage instructions; put equations, data sources, and specialist protocols in their relevant guides.
+- Prefer cross-platform implementation and Linux-compatible commands. Support Windows without making PowerShell a dependency.
+- Work on a branch, open a pull request, and verify the affected build and numerical workflows before merging.
